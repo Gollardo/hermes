@@ -1,0 +1,87 @@
+name: ${COMPOSE_PROJECT_NAME:-hermes}-dev
+
+services:
+  backend:
+    build:
+      context: .
+      target: development
+    working_dir: /workspace/backend
+    command:
+      [
+        "sh",
+        "-c",
+        "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+      ]
+    environment:
+      HERMES_APP_ENV: development
+      HERMES_DATABASE_HOST: postgres
+      HERMES_DATABASE_PORT: 5432
+      HERMES_DATABASE_NAME: ${POSTGRES_DB:-hermes}
+      HERMES_DATABASE_USER: ${POSTGRES_USER:-hermes}
+      HERMES_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      HERMES_DATABASE_ECHO: ${HERMES_DATABASE_ECHO:-false}
+    volumes:
+      - ./backend:/workspace/backend
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  frontend:
+    image: node:22.23.1-alpine
+    working_dir: /workspace/frontend
+    command: ["sh", "-c", "npm ci && npm start -- --host 0.0.0.0"]
+    environment:
+      HERMES_PROXY_TARGET: http://backend:8000
+    volumes:
+      - ./frontend:/workspace/frontend
+      - frontend_node_modules:/workspace/frontend/node_modules
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-4200}:4200"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:4200').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hermes}
+      POSTGRES_USER: ${POSTGRES_USER:-hermes}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  frontend_node_modules:
+  postgres_dev_data:

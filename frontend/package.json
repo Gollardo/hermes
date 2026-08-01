@@ -1,0 +1,44 @@
+{
+  "name": "frontend",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve --proxy-config proxy.conf.js",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test --watch=false",
+    "lint": "ng lint",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,html,css}\" \"*.{json,js}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,html,css}\" \"*.{json,js}\""
+  },
+  "private": true,
+  "packageManager": "npm@10.9.8",
+  "dependencies": {
+    "@angular/common": "^22.1.0",
+    "@angular/compiler": "^22.1.0",
+    "@angular/core": "^22.1.0",
+    "@angular/forms": "^22.1.0",
+    "@angular/platform-browser": "^22.1.0",
+    "@angular/router": "^22.1.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.1.2",
+    "@angular/cli": "^22.1.2",
+    "@angular/compiler-cli": "^22.1.0",
+    "@eslint/js": "^10.0.1",
+    "angular-eslint": "22.1.0",
+    "eslint": "^10.6.0",
+    "jsdom": "^28.0.0",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "8.62.1",
+    "vitest": "^4.0.8"
+  },
+  "overrides": {
+    "@hono/node-server": "2.0.12",
+    "@modelcontextprotocol/sdk": "1.30.0"
+  }
+}

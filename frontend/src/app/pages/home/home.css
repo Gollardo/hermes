@@ -1,0 +1,35 @@
+.hero {
+  background: #fffdf7;
+  border: 1px solid #d8ded9;
+  border-radius: 1rem;
+  box-shadow: 0 1rem 2.5rem rgb(23 37 31 / 8%);
+  padding: clamp(1.4rem, 5vw, 4rem);
+}
+
+.eyebrow {
+  color: #8b5d18;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: clamp(2rem, 6vw, 4rem);
+  line-height: 1.05;
+  margin: 0.45rem 0 1rem;
+  max-width: 16ch;
+}
+
+p:not(.eyebrow) {
+  color: #4b5952;
+  font-size: 1.05rem;
+  max-width: 62ch;
+}
+
+a {
+  color: #245c43;
+  display: inline-block;
+  font-weight: 700;
+  margin-top: 1rem;
+}

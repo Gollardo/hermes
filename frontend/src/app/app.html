@@ -1,0 +1,17 @@
+<div class="app-shell">
+  <header class="app-header">
+    <a class="brand" routerLink="/" aria-label="Hermes — главная">Hermes</a>
+    <nav aria-label="Основная навигация">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        Обзор
+      </a>
+      <a routerLink="/backend-status" routerLinkActive="active">Связь с backend</a>
+    </nav>
+  </header>
+
+  <main class="app-content">
+    <router-outlet />
+  </main>
+
+  <footer>Ранний этап разработки · данные остаются под вашим контролем</footer>
+</div>

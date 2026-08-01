@@ -1,0 +1,52 @@
+name: ${COMPOSE_PROJECT_NAME:-hermes}
+
+services:
+  app:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    environment:
+      HERMES_APP_ENV: production
+      HERMES_DATABASE_HOST: postgres
+      HERMES_DATABASE_PORT: 5432
+      HERMES_DATABASE_NAME: ${POSTGRES_DB:-hermes}
+      HERMES_DATABASE_USER: ${POSTGRES_USER:-hermes}
+      HERMES_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      HERMES_DATABASE_ECHO: ${HERMES_DATABASE_ECHO:-false}
+    ports:
+      - "${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hermes}
+      POSTGRES_USER: ${POSTGRES_USER:-hermes}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres_data:

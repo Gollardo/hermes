@@ -1,0 +1,18 @@
+<section class="status-card" aria-live="polite">
+  <p class="eyebrow">GET /api/v1/health</p>
+  <h1>Доступность backend</h1>
+
+  @switch (state()) {
+    @case ('checking') {
+      <p class="checking">Проверяем соединение…</p>
+    }
+    @case ('available') {
+      <p class="success">Backend отвечает: status ok.</p>
+    }
+    @case ('unavailable') {
+      <p class="failure">Backend недоступен. Проверьте, запущен ли локальный сервер.</p>
+    }
+  }
+
+  <button type="button" (click)="check()">Проверить снова</button>
+</section>

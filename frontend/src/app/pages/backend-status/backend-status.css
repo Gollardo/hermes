@@ -1,0 +1,33 @@
+.status-card {
+  background: #fffdf7;
+  border: 1px solid #d8ded9;
+  border-radius: 1rem;
+  max-width: 42rem;
+  padding: clamp(1.25rem, 5vw, 3rem);
+}
+
+.eyebrow {
+  color: #68756e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+h1 {
+  margin-top: 0.35rem;
+}
+
+.checking {
+  color: #6c5b3b;
+}
+
+.success {
+  color: #17613e;
+}
+
+.failure {
+  color: #9a3227;
+}
+
+button {
+  margin-top: 1rem;
+}
