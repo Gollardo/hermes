@@ -7,6 +7,19 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Account creation, list, derived balance, edit, archive/restore and safe deletion.
+- Exact initial balances posted as atomic `balance_adjustment` operations.
+- Income and expense category trees with subcategories, editing and archival.
+- Authenticated Angular screens for accounts and categories.
+- Migration `0003_accounts_categories` and PostgreSQL/unit/frontend coverage.
+
+### Changed
+
+- Base currency now locks on the first account write; categories remain currency-independent.
+- Financial JSON values use decimal strings and reject binary floating-point input.
+
 ## [0.1.0-alpha.1] - 2026-08-02
 
 ### Added

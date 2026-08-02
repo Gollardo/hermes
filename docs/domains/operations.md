@@ -30,6 +30,14 @@ The ability to edit/delete is owner-confirmed, but the audit representation is
 not. Soft deletion, immutable revision history and direct replacement are still
 alternatives.
 
+## Release 0.1.0-alpha.2 foundation
+
+Only `balance_adjustment` posting for a non-zero initial account balance is
+implemented. Account creation, currency locking, operation creation and movement
+creation share one request transaction. `financial_operations` and
+`account_movements` deliberately contain no general income/expense/transfer API;
+that design remains part of `0.1.0-alpha.3`.
+
 ## Open questions
 
 - Exact movement model and balancing rule for income/expense versus transfers.

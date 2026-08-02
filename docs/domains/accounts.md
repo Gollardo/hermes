@@ -21,6 +21,17 @@ Balances are calculated with exact decimal values: Python `Decimal`, PostgreSQL
 `NUMERIC`, and decimal strings at JSON boundaries where numeric parsing could
 lose precision. Binary `float` is forbidden.
 
+## Release 0.1.0-alpha.2 behavior
+
+- Accounts contain type, trimmed name, optional description and lifecycle timestamps.
+- The supported amount envelope is `NUMERIC(20,4)`; JSON writes and reads use decimal strings.
+- Creating the first account locks the singleton base currency in the same transaction.
+- A non-zero initial balance creates one `balance_adjustment` and one account movement.
+- A zero initial balance creates no synthetic zero movement.
+- Initial balances are non-negative until overdraft semantics are explicitly designed.
+- Edit does not accept a balance field. Balance is always the sum of movements.
+- Archive and restore preserve ledger history. Physical deletion is allowed only without movements.
+
 ## Boundary
 
 Accounts owns account identity, lifecycle and type rules. Operations owns posted
@@ -29,7 +40,7 @@ caller to overwrite the derived balance.
 
 ## Open questions
 
-- Currency model and permitted precision per currency.
-- Whether negative physical balances or debit overdrafts are allowed.
+- Currency-specific precision and rounding beyond the alpha-wide four-decimal envelope.
+- Whether later operations may produce negative physical balances or debit overdrafts.
 - Account archive/close behavior when the ledger or fund allocations exist.
 - Treatment of pending bank transactions, which are not in current scope.

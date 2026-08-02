@@ -75,10 +75,10 @@ Angular CLI advisory and must be rechecked during Angular upgrades.
 ## Migrations
 
 Run Alembic from `backend` through the Make targets. Revision
-`0001_first_run_access` is the first public schema;
-`0002_harden_access_invariants` upgrades initialized alpha data with additional
-database checks. Do not rewrite either revision after release; correct them with
-a later revision.
+`0001_first_run_access` is the first public schema,
+`0002_harden_access_invariants` adds database checks, and
+`0003_accounts_categories` adds the first financial directories and ledger
+foundation. Do not rewrite a shipped revision; correct it with a later revision.
 
 `make test-backend` keeps PostgreSQL scenarios opt-in so an isolated backend unit
 run does not create or drop databases. The aggregate `make test` and explicit

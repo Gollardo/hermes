@@ -117,9 +117,14 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
       already_initialized: 'Первоначальная настройка уже завершена.',
       authentication_required: 'Сессия завершена. Войдите снова.',
       base_currency_locked: 'Основную валюту уже нельзя изменить.',
+      account_has_history: 'Счёт с историей операций нельзя удалить. Архивируйте его.',
+      account_not_found: 'Счёт не найден.',
+      category_has_active_children: 'Сначала архивируйте активные подкатегории.',
+      category_not_found: 'Категория не найдена.',
       csrf_failed: 'Защитный токен устарел. Обновите страницу и повторите действие.',
       current_password_invalid: 'Текущий мастер-пароль указан неверно.',
       invalid_credentials: 'Неверный мастер-пароль.',
+      invalid_category_parent: 'Родитель должен быть активной категорией того же типа.',
       login_rate_limited: 'Слишком много неудачных попыток. Повторите вход позже.',
     };
     return localized[detail.code] ?? fallback;

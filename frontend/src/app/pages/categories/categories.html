@@ -1,0 +1,79 @@
+<section class="directory-page">
+  <header>
+    <p class="eyebrow">Финансовая структура</p>
+    <h1>Категории</h1>
+    <p>Разделяйте доходы и расходы, добавляйте подкатегории и сохраняйте историю архивированием.</p>
+  </header>
+  <div class="directory-grid">
+    <section class="panel">
+      <h2>{{ editingId() ? 'Редактировать' : 'Новая категория' }}</h2>
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <label for="category-name">Название</label>
+        <input id="category-name" formControlName="name" maxlength="120" />
+        <label for="category-type">Назначение</label>
+        <select id="category-type" formControlName="type">
+          <option value="expense">Расход</option>
+          <option value="income">Доход</option>
+        </select>
+        <label for="category-parent">Родительская категория</label>
+        <select id="category-parent" formControlName="parentId">
+          <option value="">Нет — верхний уровень</option>
+          @for (parent of availableParents(); track parent.id) {
+            <option [value]="parent.id">{{ parent.name }}</option>
+          }
+        </select>
+        <label for="category-description">Описание</label>
+        <textarea
+          id="category-description"
+          formControlName="description"
+          maxlength="2000"
+        ></textarea>
+        @if (error(); as message) {
+          <p class="form-error" role="alert">{{ message }}</p>
+        }
+        <button type="submit" [disabled]="saving()">
+          {{ saving() ? 'Сохраняем…' : editingId() ? 'Сохранить' : 'Создать категорию' }}
+        </button>
+        @if (editingId()) {
+          <button type="button" class="secondary" (click)="cancelEdit()">Отмена</button>
+        }
+      </form>
+    </section>
+    <section class="panel">
+      <h2>Дерево категорий</h2>
+      @if (loading()) {
+        <p>Загружаем…</p>
+      } @else if (categories().length === 0) {
+        <p class="hint">Создайте первую категорию доходов или расходов.</p>
+      } @else {
+        <div class="item-list">
+          @for (category of roots(); track category.id) {
+            <article class="directory-item" [class.archived]="category.archived">
+              <div>
+                <span class="badge">{{ category.type }}</span>
+                <h3>{{ category.name }}</h3>
+              </div>
+              <div class="item-actions">
+                <button type="button" class="secondary" (click)="edit(category)">Изменить</button>
+                <button type="button" class="secondary" (click)="toggleArchive(category)">
+                  {{ category.archived ? 'Восстановить' : 'Архивировать' }}
+                </button>
+              </div>
+              @for (child of children(category.id); track child.id) {
+                <div class="subcategory" [class.archived]="child.archived">
+                  <span>↳ {{ child.name }}</span>
+                  <div class="item-actions">
+                    <button type="button" class="secondary" (click)="edit(child)">Изменить</button>
+                    <button type="button" class="secondary" (click)="toggleArchive(child)">
+                      {{ child.archived ? 'Восстановить' : 'Архивировать' }}
+                    </button>
+                  </div>
+                </div>
+              }
+            </article>
+          }
+        </div>
+      }
+    </section>
+  </div>
+</section>

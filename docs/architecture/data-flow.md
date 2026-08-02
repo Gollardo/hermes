@@ -42,6 +42,11 @@ Editing or deleting follows the same transaction boundary: replace or remove all
 parts of the operation atomically, then derive balances from the resulting
 ledger. A balance adjustment is itself an operation, including initial balance.
 
+For `0.1.0-alpha.2`, an application-layer use case coordinates account identity,
+base-currency lock, optional non-zero adjustment and its movement in one
+transaction. Neither Accounts nor Operations depends on the other's private
+implementation. General operation posting remains `0.1.0-alpha.3`.
+
 ## Expense from a virtual fund
 
 ```mermaid

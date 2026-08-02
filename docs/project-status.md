@@ -10,10 +10,10 @@
 
 ## Current phase
 
-**0.1.0-alpha.1 — первый запуск и доступ к приложению завершён.**
+**0.1.0-alpha.2 — основной срез счетов и категорий реализован.**
 
-Следующий запланированный этап: **0.1.0-alpha.2 — счета и категории**. Его
-roadmap описывает границы, но не является утверждённым детальным дизайном.
+Следующий запланированный этап: **0.1.0-alpha.3 — финансовое ядро**. Перед его
+реализацией требуется отдельно подтвердить модель проводок и правила операций.
 
 ## Verified capabilities
 
@@ -48,7 +48,7 @@ roadmap описывает границы, но не является утвер
 ### Settings
 
 - Владелец может просматривать и менять timezone.
-- Основную валюту можно менять до первого финансового объекта.
+- Основную валюту можно менять до первого счёта или денежной операции.
 - `settings.lock_base_currency()` является публичным транзакционным контрактом
   будущих финансовых модулей; после lock смена валюты запрещена, timezone остаётся
   изменяемым.
@@ -68,14 +68,47 @@ roadmap описывает границы, но не является утвер
   `HERMES_*`; development Compose явно использует non-Secure cookie только для
   локального HTTP.
 
+### Accounts and balances
+
+- Владелец может создавать, просматривать и редактировать счета типов `cash`,
+  `debit`, `savings`, архивировать и восстанавливать их.
+- Начальный ненулевой остаток атомарно создаёт `balance_adjustment` и движение;
+  текущий остаток вычисляется суммой `NUMERIC(20,4)`-движений и возвращается строкой.
+- API не принимает `float` для денег и ограничивает alpha-scale четырьмя знаками.
+- Счёт без движений можно удалить; наличие истории возвращает conflict и требует архивации.
+- Первый account write в той же транзакции фиксирует основную валюту; создание
+  currency-independent категории оставляет её изменяемой.
+
+### Categories
+
+- Владелец может создавать и редактировать раздельные деревья категорий доходов
+  и расходов; UI оптимизирован под категорию и подкатегорию.
+- Родитель обязан быть активным и иметь тот же тип; циклы запрещены.
+- API и UI поддерживают ровно два уровня; третий уровень отклоняется.
+- Активные дети блокируют архивирование родителя, а архивный родитель — восстановление ребёнка.
+- Архивные категории остаются читаемыми для истории; публичный validation-контракт
+  запрещает их для новых операций и имеет явный historical-read режим.
+- Мутации дерева и проверка новой operation reference сериализуются общей
+  transaction-level advisory-блокировкой.
+
+### Financial schema
+
+- Миграция `0003_accounts_categories` добавляет `accounts`, `categories`,
+  `financial_operations`, `account_movements` и PostgreSQL enum-типы.
+- Operations-модуль в этом релизе реализует только ledger foundation и начальную
+  корректировку; general posting API намеренно не добавлен.
+
 ## Verification snapshot
 
-- Backend suite: 14 tests, включая 8 PostgreSQL integration scenarios.
+- Backend suite: 25 тестов, включая 12 PostgreSQL integration scenarios.
 - PostgreSQL scenarios: clean migration/setup, protected API, CSRF/logout/login,
   password/session revocation, expired sessions, sequential and concurrent rate
   limiting, serialized settings currency lock and upgrade initialized data from
-  `0001_first_run_access` to `0002_harden_access_invariants`.
-- Frontend Vitest: 7 tests для access shell, session expiry, setup, settings и health UI.
+  `0001_first_run_access` до текущего migration head; account lifecycle,
+  initial adjustment/history protection, category lifecycle и конкурентные
+  reparent/archive-create races.
+- Frontend Vitest: 11 тестов для access shell, session expiry, setup, settings,
+  health UI, счетов и категорий.
 - Ruff, Ruff format, strict mypy, ESLint, Prettier, strict TypeScript и docs check.
 - Production Angular/backend Docker image build.
 - Production-like Compose e2e на отдельном clean volume: setup → authenticated
@@ -94,14 +127,23 @@ roadmap описывает границы, но не является утвер
 - Currency validation проверяет форму ISO 4217-style кода, но не использует
   внешний реестр. Scale, rounding и exchange rates ещё не спроектированы.
 - Currency lock требует вызова публичного settings-контракта в транзакции первого
-  будущего financial write; это обязательство следующего финансового среза.
+  monetary/account write; account creation выполняет этот контракт через
+  application-layer use case, category creation не блокирует валюту.
+- `NUMERIC(20,4)` — единый alpha-envelope, а не утверждённая currency-specific
+  политика precision/rounding.
+- Список счетов вычисляет остаток отдельным агрегатным запросом на счёт; при
+  большом количестве счетов потребуется batch read model.
+- Advisory lock намеренно сериализует редкие мутации всего category tree; при
+  доказанной необходимости высокой write-concurrency потребуется более узкая схема блокировок.
 - HTTPS reverse-proxy configurations и CSP не проверены внешним security audit.
 - Миграция имеет downgrade для разработки, но production rollback после schema
   upgrade не гарантирован; нужен проверенный backup.
 
 ## Outside current scope
 
-- Счета, категории, операции, остатки и любые финансовые API/таблицы.
+- Доходы, расходы, переводы, общий журнал и редактирование/удаление операций.
+- Реальный categorized-operation scenario с архивной категорией; подготовлен
+  только immutable validation/reference contract для `alpha.3`.
 - Фонды, расписания, календарь, прогнозы, liabilities и debts.
 - Импорт CSV/Excel, versioned JSON backup/restore и password recovery.
 - Несколько пользователей, роли, permissions, organizations и tenants.
@@ -109,8 +151,7 @@ roadmap описывает границы, но не является утвер
 
 ## Recommended next action
 
-Перед реализацией `0.1.0-alpha.2` спроектировать вертикальный сценарий счетов и
-категорий: подтвердить типы/архивирование/удаление, валютную модель счёта и
-начальный остаток. Первая запись счёта или другой финансовой сущности должна в
-той же транзакции вызвать `settings.lock_base_currency()`; денежные поля должны
-использовать `Decimal`/`NUMERIC`, не `float`.
+Перед реализацией `0.1.0-alpha.3` подтвердить модель проводок для дохода,
+расхода и перевода, balancing semantics, дату операции, конкурентное
+редактирование и политику отрицательного остатка. Расширять существующий
+operations-owned ledger без прямых записей из accounts/categories.

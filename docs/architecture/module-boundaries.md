@@ -19,8 +19,9 @@
 | `backup` | versioned export and restore orchestration | module-owned export/import contracts |
 
 `app.core` owns technical configuration and database lifecycle, not business
-rules. `app.api` composes module routers and cross-cutting HTTP concerns, not
-domain use cases.
+rules. `app.api` composes HTTP routes and cross-cutting concerns. Cross-module
+commands that share a transaction belong to `app.application`; it owns no tables
+and calls only public module contracts.
 
 ## Dependency direction
 
@@ -31,6 +32,10 @@ tables.
 flowchart TB
     API["API composition"] --> Auth
     API --> Settings
+    API --> Application["Application use cases"]
+    Application --> Settings
+    Application --> Accounts
+    Application --> Operations
     Auth --> Settings
     API --> Operations
     API --> Scheduling
@@ -72,6 +77,8 @@ composed by `app.api`, so the settings module does not depend on auth internals.
 
 - A module owns writes to its state and defines any public commands or reads.
 - Cross-module changes that must stay consistent share one database transaction.
+- Cross-module orchestration belongs to `app.application`, not a participating
+  domain module, so the dependency graph stays acyclic.
 - Read-oriented modules may query purpose-built public read models; this does not
   authorize writes around the owner module.
 - Avoid generic repository or service abstractions until repeated behaviour

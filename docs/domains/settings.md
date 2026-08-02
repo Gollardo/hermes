@@ -17,10 +17,11 @@ change the base currency only while it is unlocked.
   This release validates code shape, not membership in an external currency
   registry.
 - Timezone must resolve through the runtime IANA timezone database.
-- The base currency becomes immutable once financial data exists. Because no
-  financial domain writes data in this release, the settings module exposes
-  `lock_base_currency(session)` as its public contract. The first future
-  financial-data write must call it in the same database transaction.
+- The base currency becomes immutable once monetary/account data exists. The
+  settings module exposes `lock_base_currency(session)` as its public contract;
+  the account application use case calls it in the same transaction as the first
+  account and optional initial-balance movement.
+- Currency-independent category writes do not lock the base currency.
 - Locking is idempotent. Changing only the timezone remains valid after the
   currency lock.
 - Currency changes and the first financial lock take a row-level lock on the
@@ -31,6 +32,7 @@ change the base currency only while it is unlocked.
 
 - A single base currency is sufficient until per-account currency and
   conversion-aware reporting are designed.
-- Currency symbols, decimal scales and exchange rates are outside this release.
+- Currency symbols, currency-specific decimal scales and exchange rates are
+  outside this release.
 - Browser timezone suggestions are convenience only; backend validation is
   authoritative.

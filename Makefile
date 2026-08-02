@@ -30,7 +30,7 @@ test-backend:
 	cd $(BACKEND) && ../$(VENV_BIN)/pytest
 
 test-backend-postgres:
-	cd $(BACKEND) && HERMES_TEST_POSTGRES=1 ../$(VENV_BIN)/pytest tests/integration/test_access.py
+	cd $(BACKEND) && HERMES_TEST_POSTGRES=1 ../$(VENV_BIN)/pytest tests/integration
 
 test-frontend:
 	npm test --prefix $(FRONTEND)

@@ -33,7 +33,7 @@ curl --fail http://localhost:8000/
 
 On a clean database, opening the Angular URL presents the one-time setup screen.
 After setup, subsequent browsers see the master-password login screen. The app
-container applies all migrations through `0002_harden_access_invariants`
+container applies all migrations through the current Alembic head
 automatically before serving traffic.
 
 Complete setup from the host over loopback before changing `APP_BIND_ADDRESS`.

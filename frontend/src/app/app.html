@@ -27,6 +27,8 @@
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
             Обзор
           </a>
+          <a routerLink="/accounts" routerLinkActive="active">Счета</a>
+          <a routerLink="/categories" routerLinkActive="active">Категории</a>
           <a routerLink="/settings" routerLinkActive="active">Настройки</a>
           <button type="button" class="nav-action" (click)="logout()">Выйти</button>
         </nav>
@@ -38,7 +40,7 @@
       <main class="app-content">
         <router-outlet />
       </main>
-      <footer>Hermes 0.1.0-alpha.1 · данные остаются под вашим контролем</footer>
+      <footer>Hermes 0.1.0-alpha.2 · данные остаются под вашим контролем</footer>
     </div>
   }
 }

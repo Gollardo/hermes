@@ -1,0 +1,6 @@
+@import '../directory.css';
+
+.balance {
+  font-size: 1.35rem;
+  white-space: nowrap;
+}

@@ -49,9 +49,10 @@ flowchart LR
 ## Layering principle
 
 Application-wide `api` and `core` packages compose HTTP and runtime
-infrastructure. Business state and rules belong to modules. Modules collaborate
-through public contracts and transactional use cases, never through another
-module's private tables or implementation objects.
+infrastructure. `app.application` coordinates cross-module transactional use
+cases without owning domain state. Business state and rules belong to modules.
+Modules collaborate through public contracts, never through another module's
+private tables or mutable implementation objects.
 
 ## Explicit assumptions
 
@@ -59,11 +60,11 @@ module's private tables or implementation objects.
 - Python 3.13 and PostgreSQL 17 are the initial supported runtime versions.
 - The first deployment can run synchronous SQLAlchemy request work. Re-evaluate
   only with measurements; async database access is not an architectural goal.
+- Release `0.1.0-alpha.2` uses the singleton base currency for every account.
+  Per-account currencies and conversion-aware reporting remain future design work.
 
 ## Open questions
 
-- Which currency model is required: one base currency, per-account currencies,
-  or conversion-aware reporting?
 - Whether authentication later needs idle expiry or scheduled session cleanup.
 - What concurrency policy protects ledger and fund invariants under simultaneous
   requests?
