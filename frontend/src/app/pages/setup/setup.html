@@ -1,0 +1,64 @@
+<main class="access-layout">
+  <section class="access-card" aria-labelledby="setup-title">
+    <p class="eyebrow">Первый запуск</p>
+    <h1 id="setup-title">Настройте личный Hermes</h1>
+    <p class="intro">
+      Создайте мастер-пароль и выберите параметры, от которых будут зависеть будущие финансовые
+      записи. Повторно открыть этот мастер после сохранения нельзя.
+    </p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <label for="setup-password">Мастер-пароль</label>
+      <input
+        id="setup-password"
+        type="password"
+        formControlName="password"
+        autocomplete="new-password"
+      />
+      @if (form.controls.password.touched && form.controls.password.invalid) {
+        <p class="field-error">Используйте от 12 до 1024 символов.</p>
+      }
+
+      <label for="setup-password-confirmation">Повторите пароль</label>
+      <input
+        id="setup-password-confirmation"
+        type="password"
+        formControlName="passwordConfirmation"
+        autocomplete="new-password"
+      />
+
+      <div class="field-grid">
+        <div>
+          <label for="setup-currency">Основная валюта</label>
+          <input
+            id="setup-currency"
+            formControlName="baseCurrency"
+            list="setup-currency-options"
+            maxlength="3"
+            autocapitalize="characters"
+          />
+          <datalist id="setup-currency-options">
+            @for (currency of currencies; track currency) {
+              <option [value]="currency">{{ currency }}</option>
+            }
+          </datalist>
+        </div>
+        <div>
+          <label for="setup-timezone">Часовой пояс</label>
+          <select id="setup-timezone" formControlName="timezone">
+            @for (timezone of timezones; track timezone) {
+              <option [value]="timezone">{{ timezone }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      @if (error(); as message) {
+        <p class="form-error" role="alert">{{ message }}</p>
+      }
+      <button type="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Создаём…' : 'Создать приложение' }}
+      </button>
+    </form>
+  </section>
+</main>

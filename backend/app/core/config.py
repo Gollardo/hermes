@@ -2,7 +2,7 @@ from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -28,6 +28,18 @@ class Settings(BaseSettings):
     database_password: SecretStr = SecretStr("")
     database_echo: bool = False
     static_dir: Path | None = None
+    session_cookie_name: str = "hermes_session"
+    cookie_secure: bool | None = None
+    session_lifetime_days: int = Field(default=7, ge=1, le=90)
+    login_failure_limit: int = Field(default=5, ge=1, le=100)
+    login_failure_window_minutes: int = Field(default=15, ge=1, le=1440)
+    login_block_minutes: int = Field(default=15, ge=1, le=1440)
+
+    @property
+    def secure_cookies(self) -> bool:
+        if self.cookie_secure is not None:
+            return self.cookie_secure
+        return self.app_env is AppEnvironment.PRODUCTION
 
     @property
     def database_url(self) -> URL:

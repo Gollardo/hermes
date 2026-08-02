@@ -4,11 +4,17 @@ Hermes is an early-stage, single-owner, self-hosted web application for personal
 finance. It is intended for a home server or local computer and keeps its data
 independent of external cloud services.
 
-> **Early development:** only the project foundation and a health-check UI
-> exist. Financial workflows, authentication and stable data schemas are not
-> implemented yet.
+> **Alpha release:** `0.1.0-alpha.1` provides first-run setup, single-owner
+> authentication and base settings. Financial workflows are not implemented yet.
 
-## Planned capabilities
+## Current capabilities
+
+- one-time setup with a master password, base currency and IANA timezone;
+- Argon2id password storage and revocable server-side browser sessions;
+- protected API and application shell, login throttling and session termination;
+- base settings and master-password changes.
+
+## Planned financial capabilities
 
 - accounts backed by a financial-operation ledger;
 - categories and subcategories;

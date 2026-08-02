@@ -4,6 +4,27 @@ The diagrams describe confirmed semantic flows. Names such as “transaction
 boundary” are architectural concepts, not promised endpoint, class or table
 names.
 
+## First-run setup and authenticated requests
+
+```mermaid
+flowchart LR
+    Status["Public setup status"] --> Setup["Validated one-time setup"]
+    Setup --> Tx["One database transaction"]
+    Tx --> Credential["Argon2id owner credential"]
+    Tx --> Preferences["Currency and timezone"]
+    Tx --> Session["Hashed server session and CSRF tokens"]
+    Session --> Cookie["HttpOnly session cookie"]
+    Cookie --> Guard["Protected API guard"]
+    Guard --> CSRF["CSRF check for writes"]
+    CSRF --> UseCase["Authenticated use case"]
+```
+
+After credential commit, setup can only report a conflict. Login throttling is
+locked and updated in the same database transaction as password verification
+and session issuance, preventing parallel attempts from bypassing the counter.
+Database request dependencies close at FastAPI function scope, so a successful
+HTTP response and authentication cookies are sent only after transaction commit.
+
 ## Posting an ordinary operation
 
 ```mermaid

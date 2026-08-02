@@ -44,8 +44,9 @@ The proxy target defaults to host `localhost:8000`; development Compose sets
 | `make up` | build/start production-like stack in background |
 | `make down` | stop production and development stacks |
 | `make logs` | follow production app/PostgreSQL logs |
-| `make test` | all backend and frontend tests |
+| `make test` | all backend and frontend tests, including PostgreSQL integration |
 | `make test-backend` | pytest with coverage |
+| `make test-backend-postgres` | access/migration integration tests against disposable databases on a test PostgreSQL server |
 | `make test-frontend` | Angular/Vitest unit tests once |
 | `make lint` | Ruff, formatting, ESLint, Prettier and docs links/fences |
 | `make format` | apply Ruff and Prettier formatting |
@@ -73,7 +74,25 @@ Angular CLI advisory and must be rechecked during Angular upgrades.
 
 ## Migrations
 
-Run Alembic from `backend` through the Make targets. The foundation intentionally
-has no revision because it defines no tables. Do not generate an empty migration.
-Once a revision ships publicly, correct it with a later revision rather than
-rewriting history.
+Run Alembic from `backend` through the Make targets. Revision
+`0001_first_run_access` is the first public schema;
+`0002_harden_access_invariants` upgrades initialized alpha data with additional
+database checks. Do not rewrite either revision after release; correct them with
+a later revision.
+
+`make test-backend` keeps PostgreSQL scenarios opt-in so an isolated backend unit
+run does not create or drop databases. The aggregate `make test` and explicit
+`make test-backend-postgres` targets require a dedicated PostgreSQL server whose
+test role may create databases. Point these variables at that server:
+
+```bash
+HERMES_TEST_DATABASE_HOST=127.0.0.1 \
+HERMES_TEST_DATABASE_PORT=5432 \
+HERMES_TEST_DATABASE_USER=hermes \
+HERMES_TEST_DATABASE_PASSWORD=test-only-password \
+make test-backend-postgres
+```
+
+Each test creates a randomly named `hermes_test_*` database, migrates it and
+drops only that database with `FORCE` during teardown. Never point the test
+credentials at a role that should not create disposable databases.

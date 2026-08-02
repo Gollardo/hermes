@@ -31,6 +31,7 @@ question by itself.
 ## Domains
 
 - [Authentication](domains/authentication.md)
+- [Application settings](domains/settings.md)
 - [Accounts](domains/accounts.md)
 - [Operations](domains/operations.md)
 - [Categories](domains/categories.md)

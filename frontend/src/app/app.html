@@ -1,17 +1,44 @@
-<div class="app-shell">
-  <header class="app-header">
-    <a class="brand" routerLink="/" aria-label="Hermes — главная">Hermes</a>
-    <nav aria-label="Основная навигация">
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-        Обзор
-      </a>
-      <a routerLink="/backend-status" routerLinkActive="active">Связь с backend</a>
-    </nav>
-  </header>
+@switch (auth.state()) {
+  @case ('checking') {
+    <main class="state-screen" aria-live="polite">
+      <p class="eyebrow">Hermes</p>
+      <h1>Проверяем состояние приложения…</h1>
+    </main>
+  }
+  @case ('unavailable') {
+    <main class="state-screen" role="alert">
+      <p class="eyebrow">Нет соединения</p>
+      <h1>Приложение временно недоступно</h1>
+      <p>Проверьте backend и базу данных, затем повторите попытку.</p>
+      <button type="button" (click)="auth.initialize()">Проверить снова</button>
+    </main>
+  }
+  @case ('uninitialized') {
+    <app-setup-page />
+  }
+  @case ('unauthenticated') {
+    <app-login-page />
+  }
+  @case ('authenticated') {
+    <div class="app-shell">
+      <header class="app-header">
+        <a class="brand" routerLink="/" aria-label="Hermes — главная">Hermes</a>
+        <nav aria-label="Основная навигация">
+          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            Обзор
+          </a>
+          <a routerLink="/settings" routerLinkActive="active">Настройки</a>
+          <button type="button" class="nav-action" (click)="logout()">Выйти</button>
+        </nav>
+      </header>
 
-  <main class="app-content">
-    <router-outlet />
-  </main>
-
-  <footer>Ранний этап разработки · данные остаются под вашим контролем</footer>
-</div>
+      @if (actionError(); as message) {
+        <p class="shell-error" role="alert">{{ message }}</p>
+      }
+      <main class="app-content">
+        <router-outlet />
+      </main>
+      <footer>Hermes 0.1.0-alpha.1 · данные остаются под вашим контролем</footer>
+    </div>
+  }
+}

@@ -4,7 +4,7 @@ VENV_BIN := $(VENV)/bin
 BACKEND := backend
 FRONTEND := frontend
 
-.PHONY: setup dev up down logs test test-backend test-frontend lint format typecheck migrate migration build docs-check
+.PHONY: setup dev up down logs test test-backend test-backend-postgres test-frontend lint format typecheck migrate migration build docs-check
 
 setup:
 	$(PYTHON) -m venv $(VENV)
@@ -24,10 +24,13 @@ down:
 logs:
 	docker compose logs -f app postgres
 
-test: test-backend test-frontend
+test: test-backend test-backend-postgres test-frontend
 
 test-backend:
 	cd $(BACKEND) && ../$(VENV_BIN)/pytest
+
+test-backend-postgres:
+	cd $(BACKEND) && HERMES_TEST_POSTGRES=1 ../$(VENV_BIN)/pytest tests/integration/test_access.py
 
 test-frontend:
 	npm test --prefix $(FRONTEND)

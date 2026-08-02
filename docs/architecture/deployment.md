@@ -39,6 +39,16 @@ entrypoint behind a VPN or HTTPS reverse proxy. Never publish PostgreSQL merely
 for convenience; use an explicit local override and loopback binding if an
 administrator genuinely needs host database access.
 
+Production defaults session and CSRF cookies to `Secure`. Plain-HTTP loopback
+testing can explicitly set `HERMES_COOKIE_SECURE=false`; do not use that override
+for LAN or remote access. State-changing requests rely on same-origin Angular
+delivery plus the per-session CSRF cookie/header pair.
+
+Production-like Compose binds to loopback by default. Initial setup must complete
+over that trusted local path before an operator deliberately publishes the app
+through a LAN, VPN or HTTPS reverse proxy; otherwise another network client could
+claim the single owner credential first.
+
 ## Open questions
 
 - Supported reverse proxies and forwarded-header configuration.

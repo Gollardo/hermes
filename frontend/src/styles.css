@@ -31,8 +31,107 @@ button {
   padding: 0.65rem 0.9rem;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+input,
+select {
+  background: #fff;
+  border: 1px solid #aebbb4;
+  border-radius: 0.6rem;
+  color: inherit;
+  font: inherit;
+  min-height: 2.8rem;
+  padding: 0.6rem 0.7rem;
+  width: 100%;
+}
+
+input:focus-visible,
+select:focus-visible {
+  border-color: #245c43;
+  outline: 3px solid rgb(36 92 67 / 18%);
+}
+
+label {
+  display: block;
+  font-weight: 700;
+  margin: 1rem 0 0.35rem;
+}
+
+form > button {
+  margin-top: 1.35rem;
+  width: 100%;
+}
+
+.access-layout {
+  align-items: center;
+  display: grid;
+  min-height: 100dvh;
+  padding: clamp(1rem, 5vw, 3rem);
+  place-items: center;
+}
+
+.access-card {
+  background: #fffdf7;
+  border: 1px solid #d8ded9;
+  border-radius: 1.25rem;
+  box-shadow: 0 1rem 3rem rgb(23 37 31 / 10%);
+  padding: clamp(1.4rem, 5vw, 3rem);
+  width: 100%;
+}
+
+.access-card h1 {
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  line-height: 1.05;
+  margin: 0.35rem 0 1rem;
+}
+
+.eyebrow {
+  color: #8b5d18;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.intro,
+.hint {
+  color: #59665f;
+}
+
+.field-error,
+.form-error {
+  color: #9a3227;
+}
+
+.field-error,
+.hint {
+  font-size: 0.85rem;
+  margin: 0.35rem 0;
+}
+
+.form-error,
+.form-success {
+  border-radius: 0.55rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.form-error {
+  background: #fae9e6;
+}
+
+.form-success {
+  background: #e4f3e9;
+  color: #17613e;
+}
+
 button:focus-visible,
-a:focus-visible {
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
   outline: 3px solid #f0a43a;
   outline-offset: 3px;
 }

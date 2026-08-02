@@ -17,11 +17,16 @@ cookies, protected Docker volumes and tested backups.
 - Do not expose PostgreSQL to the internet; the production Compose file does not
   publish its port.
 - Replace example passwords and keep `.env` out of version control.
+- Complete first-run setup while the default `127.0.0.1` bind is still active;
+  never expose an uninitialized instance to a LAN or remote network.
 - Protect the PostgreSQL volume and backup files as sensitive financial data.
-- For remote access, prefer a VPN or a maintained reverse proxy with HTTPS.
+- For remote access, require a VPN or a maintained reverse proxy with HTTPS and
+  keep `HERMES_COOKIE_SECURE=true`.
 - End server-side sessions after suspected compromise and keep the host, images
   and dependencies patched.
 
 The authentication design is documented in
-[the authentication domain](docs/domains/authentication.md). Security hardening
-must be revisited before the first public release.
+[the authentication domain](docs/domains/authentication.md). The alpha release
+has not undergone an external security audit. Password recovery,
+content-security policy and tested reverse-proxy configurations remain future
+hardening work.

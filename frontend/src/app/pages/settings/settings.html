@@ -1,0 +1,94 @@
+<section class="settings-page">
+  <header>
+    <p class="eyebrow">Приложение</p>
+    <h1>Настройки</h1>
+    <p>Основные параметры и безопасность локального владельца.</p>
+  </header>
+
+  @if (loading()) {
+    <p aria-live="polite">Загружаем настройки…</p>
+  } @else {
+    <div class="settings-grid">
+      <section class="panel" aria-labelledby="preferences-title">
+        <h2 id="preferences-title">Основные параметры</h2>
+        <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()">
+          <label for="settings-currency">Основная валюта</label>
+          <input
+            id="settings-currency"
+            formControlName="baseCurrency"
+            list="settings-currency-options"
+            maxlength="3"
+            autocapitalize="characters"
+          />
+          <datalist id="settings-currency-options">
+            @for (currency of currencies; track currency) {
+              <option [value]="currency">{{ currency }}</option>
+            }
+          </datalist>
+          @if (currencyLocked()) {
+            <p class="hint">Валюта зафиксирована, потому что финансовые данные уже созданы.</p>
+          }
+
+          <label for="settings-timezone">Часовой пояс</label>
+          <select id="settings-timezone" formControlName="timezone">
+            @for (timezone of timezones; track timezone) {
+              <option [value]="timezone">{{ timezone }}</option>
+            }
+          </select>
+
+          @if (settingsError(); as message) {
+            <p class="form-error" role="alert">{{ message }}</p>
+          }
+          @if (settingsSuccess(); as message) {
+            <p class="form-success" role="status">{{ message }}</p>
+          }
+          <button type="submit" [disabled]="savingSettings()">
+            {{ savingSettings() ? 'Сохраняем…' : 'Сохранить настройки' }}
+          </button>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="password-title">
+        <h2 id="password-title">Мастер-пароль</h2>
+        <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
+          <label for="current-password">Текущий пароль</label>
+          <input
+            id="current-password"
+            type="password"
+            formControlName="currentPassword"
+            autocomplete="current-password"
+          />
+          <label for="new-password">Новый пароль</label>
+          <input
+            id="new-password"
+            type="password"
+            formControlName="newPassword"
+            autocomplete="new-password"
+          />
+          <label for="new-password-confirmation">Повторите новый пароль</label>
+          <input
+            id="new-password-confirmation"
+            type="password"
+            formControlName="newPasswordConfirmation"
+            autocomplete="new-password"
+          />
+          @if (passwordError(); as message) {
+            <p class="form-error" role="alert">{{ message }}</p>
+          }
+          @if (passwordSuccess(); as message) {
+            <p class="form-success" role="status">{{ message }}</p>
+          }
+          <button type="submit" [disabled]="changingPassword()">
+            {{ changingPassword() ? 'Изменяем…' : 'Изменить пароль' }}
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <section class="panel danger-zone" aria-labelledby="sessions-title">
+      <h2 id="sessions-title">Активные сессии</h2>
+      <p>Завершить все входы, включая текущий. После этого потребуется мастер-пароль.</p>
+      <button type="button" class="danger" (click)="logoutAll()">Завершить все сессии</button>
+    </section>
+  }
+</section>

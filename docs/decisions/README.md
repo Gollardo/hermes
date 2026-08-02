@@ -103,8 +103,12 @@ formal consequences and unresolved details still require review.
   sessions identified by HttpOnly cookies.
 - **Known alternatives:** JWT bearer tokens; HTTP Basic authentication; reverse
   proxy authentication; multi-user identity model.
-- **Questions:** session persistence/expiry, CSRF defense, recovery flow, cookie
-  policy and brute-force protection.
+- **Implemented alpha baseline:** seven-day database sessions, hashed opaque
+  tokens, SameSite cookies, double-submit CSRF and persistent instance-wide
+  throttling. These are documented release assumptions, not a retroactively
+  accepted ADR.
+- **Questions:** recovery flow, idle expiry, reverse-proxy cookie behavior and
+  whether the alpha defaults should become long-term policy.
 
 ### ADR-006 Expected occurrence materialization
 

@@ -1,40 +1,79 @@
 # Authentication
 
-## Owner-confirmed rules
+## Confirmed product boundary
 
-- There is exactly one local owner. Registration, multiple users, roles,
+- Hermes has exactly one local owner. Registration, multiple users, roles,
   permissions, organizations, invitations and tenants are out of scope.
-- On first run the owner creates a password; store only an Argon2id hash.
-- Authentication uses server-side sessions. The browser carries only a session
-  identifier in an HttpOnly cookie, and sessions can be terminated.
-- The API requires authentication except owner setup, login and health check.
-- JWT is not required.
+- First run creates the owner credential once. A committed credential makes
+  setup permanently unavailable through the normal application flow.
+- Authentication uses an Argon2id master-password hash and revocable
+  server-side sessions. JWT and external identity providers are not used.
+- Every API route is authenticated by default except health, setup status,
+  setup and login.
 
-## Terms and boundary
+## Release 0.1.0-alpha.1 behavior
 
-**Uninitialized instance** has no owner credential. **Setup** is the one-time
-transition that creates it. **Session** is revocable server-owned authentication
-state, distinct from the owner password hash. The auth module owns these states
-and the HTTP authentication dependency; it owns no financial records.
+An **uninitialized instance** has no owner credential. `GET /setup/status`
+reports that state without exposing settings. `POST /setup` atomically creates
+the owner credential, application settings, persistent login-throttle state and
+the first session. A repeated setup returns a conflict and cannot replace the
+credential or preferences.
 
-## Initialization status
+An uninitialized deployment is bound to loopback by default and must be claimed
+locally before it is exposed to another network. The public setup endpoint has no
+user credential to authenticate until that one-time operation succeeds.
 
-Authentication is intentionally not implemented in the foundation. Argon2 and
-session dependencies will be added with the first designed auth slice, avoiding
-unused security packages and fake tables now.
+The browser receives a random session identifier in an HttpOnly, SameSite=Lax
+cookie. PostgreSQL stores only its SHA-256 digest. Sessions have a seven-day
+absolute lifetime by default and are checked on every protected request. Login
+rotates both session and CSRF tokens. Expired session rows are pruned during a
+successful login; no background cleanup system is introduced.
 
-## Assumptions requiring confirmation
+State-changing authenticated requests use a double-submit CSRF token. Its
+non-HttpOnly cookie is readable by the same-origin Angular client and must match
+the digest attached to the server-side session. The session identifier remains
+HttpOnly. Cookies are `Secure` by default in production and non-Secure in the
+development Compose environment.
 
-- Setup should become permanently unavailable after the first credential is
-  committed, except through an explicit recovery procedure.
-- State-changing cookie-authenticated requests require CSRF protection or an
-  equivalent same-origin design.
-- Session identifiers must be random, opaque, rotated after login and stored
-  hashed if persisted.
+Logout deletes the current session. “Logout all” deletes every session,
+including the caller. Changing the master password requires the current
+password and revokes every other session while retaining the current one.
 
-## Open questions
+## Security invariants
 
-- Session storage schema, idle/absolute expiry and cleanup policy.
-- Cookie `SameSite`, `Secure`, domain and reverse-proxy behavior.
-- Password reset and owner recovery without an email or cloud dependency.
-- Brute-force throttling appropriate to a single-node trusted deployment.
+- There can be at most one owner credential; the database enforces singleton
+  identity `1`.
+- Plain master passwords, session identifiers and CSRF tokens are never stored.
+- Setup credential creation, initial preferences and first session commit in
+  one database transaction.
+- Successful setup, login and mutation responses are not sent until their
+  database transaction commits.
+- A missing, unknown or expired session receives `401` before a protected use
+  case runs.
+- A state-changing request with an absent or wrong CSRF token receives `403`.
+- Failed login state persists across process restarts. By default, five failures
+  in a rolling 15-minute window block all login attempts for 15 minutes. A
+  successful login clears the counters.
+- Password changes never leave older browser sessions authenticated.
+
+## Explicit release assumptions
+
+- New master passwords contain 12–1024 Unicode characters. No additional
+  composition rule is imposed.
+- Session expiry is absolute; idle expiry and “remember me” are deferred.
+- Login throttling is instance-wide because there is one owner and client IP is
+  not a reliable identity behind an unspecified reverse proxy.
+- Password recovery is intentionally absent. Losing the master password
+  requires an out-of-band, future recovery design; normal setup cannot be
+  reopened.
+
+These values are implementation defaults selected to complete the release, not
+permanent owner-approved product policy. Deployment operators can tune session
+and throttling durations with the documented `HERMES_*` environment variables.
+
+## Remaining work
+
+- Design a safe local recovery procedure.
+- Decide whether idle expiry or long-lived remembered sessions are needed.
+- Add scheduled cleanup only if expired-session accumulation becomes material.
+- Document tested HTTPS reverse proxies and forwarded-header policy.

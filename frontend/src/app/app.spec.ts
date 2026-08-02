@@ -1,25 +1,43 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+
 import { App } from './app';
+import { AccessState, AuthService } from './core/auth.service';
 
 describe('App', () => {
+  const accessState = signal<AccessState>('checking');
+  const auth = {
+    state: accessState,
+    initialize: vi.fn(),
+    logout: vi.fn(() => of(undefined)),
+  };
+
   beforeEach(async () => {
+    accessState.set('checking');
+    auth.initialize.mockClear();
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([])],
+      providers: [provideRouter([]), { provide: AuthService, useValue: auth }],
     }).compileComponents();
   });
 
-  it('should create the app', () => {
+  it('checks application access state on startup', () => {
     const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
+    fixture.detectChanges();
+
+    expect(auth.initialize).toHaveBeenCalledOnce();
+    expect(fixture.nativeElement.textContent).toContain('Проверяем состояние');
   });
 
-  it('should render the application brand', async () => {
+  it('renders the protected shell only for an authenticated owner', () => {
+    accessState.set('authenticated');
     const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
+    fixture.detectChanges();
+
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand')?.textContent).toContain('Hermes');
+    expect(compiled.textContent).toContain('Настройки');
   });
 });

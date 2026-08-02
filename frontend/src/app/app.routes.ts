@@ -10,5 +10,9 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/backend-status/backend-status').then((module) => module.BackendStatusPage),
   },
+  {
+    path: 'settings',
+    loadComponent: () => import('./pages/settings/settings').then((module) => module.SettingsPage),
+  },
   { path: '**', redirectTo: '' },
 ];

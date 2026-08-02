@@ -1,0 +1,15 @@
+.access-card {
+  max-width: 44rem;
+}
+
+.field-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 38rem) {
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+}

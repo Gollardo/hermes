@@ -32,6 +32,11 @@ flowchart LR
   password.
 - Health is exposed at `GET /api/v1/health`; it proves process readiness, not
   database liveness. Compose separately health-checks PostgreSQL.
+- Public health/setup/login routers and one authenticated router tree make
+  authentication the default for application APIs. Cookie-authenticated writes
+  also require a per-session double-submit CSRF token.
+- PostgreSQL persists the singleton Argon2id owner credential, opaque-token
+  session digests, login throttling and base settings.
 - Angular 22 uses standalone, lazy-routed pages, strict TypeScript, a development
   proxy and no third-party UI component library.
 - Angular CLI's persistent LMDB build cache is disabled after a reproducible
@@ -59,7 +64,7 @@ module's private tables or implementation objects.
 
 - Which currency model is required: one base currency, per-account currencies,
   or conversion-aware reporting?
-- Which session persistence and cleanup policy should authentication use?
+- Whether authentication later needs idle expiry or scheduled session cleanup.
 - What concurrency policy protects ledger and fund invariants under simultaneous
   requests?
 - What compatibility window will backup restore support across app versions?

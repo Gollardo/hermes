@@ -4,8 +4,8 @@
 
 | Module | Owns | Collaborates through |
 | --- | --- | --- |
-| `auth` | owner setup, password hash, sessions | authentication dependency at API boundary |
-| `settings` | persisted preferences | explicit settings queries/commands |
+| `auth` | owner setup, password hash, sessions, login throttle | authentication dependency and settings setup contract |
+| `settings` | persisted preferences and base-currency lock | explicit settings queries/commands |
 | `accounts` | account identity and account rules | account references and balance read contract |
 | `categories` | category tree | category reference validation |
 | `operations` | posted operations and physical money movements | atomic posting commands and ledger reads |
@@ -30,6 +30,8 @@ tables.
 ```mermaid
 flowchart TB
     API["API composition"] --> Auth
+    API --> Settings
+    Auth --> Settings
     API --> Operations
     API --> Scheduling
     API --> Reports
@@ -57,6 +59,14 @@ flowchart TB
 Authentication guards every API except setup, login and health. It does not own
 financial data. Backup may orchestrate all modules, but must not duplicate their
 validation rules.
+
+The auth setup use case calls the settings module's public initialization
+command with the same SQLAlchemy session so credential, preferences and first
+session commit atomically. A future module creating the first financial record
+must call settings' public currency-lock command in that write transaction.
+These Python-level commands and validators are exported by
+`app.modules.settings.contracts`; HTTP authentication and CSRF dependencies are
+composed by `app.api`, so the settings module does not depend on auth internals.
 
 ## Boundary rules
 

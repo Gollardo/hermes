@@ -1,10 +1,30 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+
+import { AuthService, apiErrorMessage } from './core/auth.service';
+import { LoginPage } from './pages/login/login';
+import { SetupPage } from './pages/setup/setup';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, LoginPage, SetupPage],
   templateUrl: './app.html',
   styleUrl: './app.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App {}
+export class App implements OnInit {
+  protected readonly auth = inject(AuthService);
+  protected readonly actionError = signal<string | null>(null);
+
+  ngOnInit(): void {
+    this.auth.initialize();
+  }
+
+  protected logout(): void {
+    this.actionError.set(null);
+    this.auth.logout().subscribe({
+      error: (error: unknown) =>
+        this.actionError.set(apiErrorMessage(error, 'Не удалось завершить сессию.')),
+    });
+  }
+}
