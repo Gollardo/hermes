@@ -24,6 +24,11 @@ Create a focused branch from `main`. A pull request should explain the problem,
 the chosen approach, verification performed, migration impact and any deferred
 work. Do not combine unrelated refactors with a behavioural change.
 
+Before implementation, compare the change with the
+[current project status](docs/project-status.md) and the intended milestone in
+the [roadmap](docs/roadmap.md). The roadmap defines direction and release scope;
+it does not replace design work or resolve open decisions.
+
 Use Conventional Commits, for example `feat(accounts): add account creation`,
 `fix(funds): reject over-allocation`, or `docs: clarify restore procedure`.
 
@@ -36,6 +41,10 @@ Use Conventional Commits, for example `feat(accounts): add account creation`,
   `NUMERIC` and decimal strings at JSON boundaries when precision could be lost.
 - Update documentation in the same change when architecture, ownership,
   invariants, flows or deployment changes.
+- Update `docs/project-status.md` when the factual implementation state,
+  verification results, known risks or next action changes. Update the roadmap
+  when milestone scope, order or completion changes, and do not mark an item
+  complete until its user scenario and required checks are complete.
 
 ## Database migrations
 

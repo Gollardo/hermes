@@ -2,6 +2,13 @@
 
 - Start with [docs/index.md](docs/index.md); architecture and domain ownership
   are described under `docs/architecture/` and `docs/domains/`.
+- Before feature work, compare [project status](docs/project-status.md) with the
+  intended scope and sequence in [the roadmap](docs/roadmap.md). Planned items
+  are not approved detailed designs.
+- Update `docs/project-status.md` after a meaningful task changes verified
+  capabilities, checks, risks or the next action. Update `docs/roadmap.md` when
+  milestone scope, order or completion changes; mark completion only after the
+  relevant scenario and checks pass.
 - Run locally with `make setup` then `make dev`; production-like Compose uses
   `make up`. Run checks with `make test`, `make lint`, and `make typecheck`.
 - Preserve the modular monolith. Do not bypass a module's public boundary to

@@ -54,6 +54,8 @@ PostgreSQL is available only inside the Compose network. Stop services with
 
 ## Documentation
 
+- [Current project status](docs/project-status.md)
+- [Development roadmap](docs/roadmap.md)
 - [Documentation map](docs/index.md)
 - [Architecture overview](docs/architecture/overview.md)
 - [Local development](docs/operations/local-development.md)
