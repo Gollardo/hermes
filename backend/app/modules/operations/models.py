@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -11,11 +11,21 @@ from app.core.database import Base
 
 
 class OperationType(StrEnum):
+    INCOME = "income"
+    EXPENSE = "expense"
+    TRANSFER = "transfer"
     BALANCE_ADJUSTMENT = "balance_adjustment"
 
 
 class FinancialOperation(Base):
     __tablename__ = "financial_operations"
+    __table_args__ = (
+        CheckConstraint("version > 0", name="ck_financial_operations_version_positive"),
+        CheckConstraint(
+            "reason IS NULL OR length(btrim(reason)) > 0",
+            name="ck_financial_operations_reason_not_blank",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
     type: Mapped[OperationType] = mapped_column(
@@ -25,9 +35,17 @@ class FinancialOperation(Base):
             values_callable=lambda values: [v.value for v in values],
         )
     )
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    reason: Mapped[str | None] = mapped_column(Text)
+    category_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("categories.id", ondelete="RESTRICT"),
+        index=True,
+    )
+    occurred_on: Mapped[date]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(default=1)
 
 
 class AccountMovement(Base):

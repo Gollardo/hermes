@@ -16,6 +16,12 @@ a category through a public identifier and validation contract. The tree must
 not contain cycles, and a node cannot be its own ancestor; these are necessary
 technical invariants implied by any tree model.
 
+While an operation references a category, its `income`/`expense` type is part of
+historical classification and cannot change. The application-layer update use
+case checks the operations-owned public history contract while holding the same
+category advisory lock used by new postings. Name, description, parent and
+archive state remain editable under their normal rules.
+
 ## Assumptions
 
 - A pure transfer is normally uncategorized.
@@ -30,6 +36,7 @@ These behaviours have not been confirmed by the owner.
 - A parent must be active and have the same type as its child.
 - A parent must be a root; creating a third level is rejected.
 - Changing a category cannot introduce a cycle or make existing children type-incompatible.
+- Changing the type of a category currently referenced by a financial operation is rejected.
 - A category with active children cannot be archived; archive children first.
 - A child cannot be restored while its parent remains archived.
 - Archived categories remain readable. The public operations validation contract rejects them

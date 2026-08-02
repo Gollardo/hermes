@@ -1,11 +1,13 @@
 from concurrent.futures import ThreadPoolExecutor
-from threading import Barrier
+from threading import Barrier, Event
+from time import sleep
 from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
+from app.application.accounts import AccountHasHistoryError, delete_account_without_history
 from app.core.config import Settings
 from app.core.database import create_database_engine, create_session_factory
 from app.main import create_app
@@ -20,6 +22,8 @@ from app.modules.categories.service import (
     update_category,
 )
 from app.modules.operations.models import AccountMovement, FinancialOperation, OperationType
+from app.modules.operations.schemas import OperationCreateRequest
+from app.modules.operations.service import create_operation
 
 MASTER_PASSWORD = "correct-master-password"
 SETUP_PAYLOAD = {
@@ -124,6 +128,74 @@ def test_empty_account_can_be_deleted(postgres_database_settings: Settings) -> N
         )
         account_id = created.json()["id"]
         assert client.delete(f"/api/v1/accounts/{account_id}", headers=headers).status_code == 204
+
+
+def test_account_delete_waits_for_concurrent_posting_history(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = csrf_headers(client)
+        account_id = UUID(
+            client.post(
+                "/api/v1/accounts",
+                headers=headers,
+                json={"type": "cash", "name": "Race", "initial_balance": "0"},
+            ).json()["id"]
+        )
+        category_id = UUID(
+            client.post(
+                "/api/v1/categories",
+                headers=headers,
+                json={"type": "income", "name": "Concurrent income"},
+            ).json()["id"]
+        )
+
+    engine = create_database_engine(postgres_database_settings)
+    factory = create_session_factory(engine)
+    posting_ready = Event()
+    allow_post_commit = Event()
+    deletion_started = Event()
+
+    def post_income() -> str:
+        with factory.begin() as session:
+            create_operation(
+                session,
+                OperationCreateRequest(
+                    type="income",
+                    occurred_on="2026-08-02",
+                    amount="10",
+                    account_id=account_id,
+                    category_id=category_id,
+                ),
+            )
+            posting_ready.set()
+            assert allow_post_commit.wait(timeout=5)
+        return "posted"
+
+    def delete_account() -> str:
+        assert posting_ready.wait(timeout=5)
+        deletion_started.set()
+        try:
+            with factory.begin() as session:
+                delete_account_without_history(session, account_id)
+        except AccountHasHistoryError:
+            return "history"
+        return "deleted"
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            post_result = executor.submit(post_income)
+            delete_result = executor.submit(delete_account)
+            assert deletion_started.wait(timeout=5)
+            sleep(0.1)
+            assert not delete_result.done()
+            allow_post_commit.set()
+            assert post_result.result(timeout=5) == "posted"
+            assert delete_result.result(timeout=5) == "history"
+    finally:
+        engine.dispose()
 
 
 def test_category_tree_edit_and_archive_rules(postgres_database_settings: Settings) -> None:
@@ -258,6 +330,7 @@ def test_concurrent_category_reparenting_cannot_create_cycle(
                         name=str(category_id),
                         description=None,
                         parent_id=parent_id,
+                        has_financial_history=False,
                     )
             except InvalidCategoryParentError:
                 return "rejected"

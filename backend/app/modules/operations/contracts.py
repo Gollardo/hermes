@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -8,16 +8,21 @@ from sqlalchemy.orm import Session
 from app.modules.operations.models import AccountMovement, FinancialOperation, OperationType
 
 
-def post_initial_balance(session: Session, *, account_id: UUID, amount: Decimal) -> None:
+def post_initial_balance(
+    session: Session, *, account_id: UUID, amount: Decimal, occurred_on: date
+) -> None:
     """Post the immutable initial-balance fact inside the caller's transaction."""
     if amount == 0:
         return
     now = datetime.now(UTC)
     operation = FinancialOperation(
         type=OperationType.BALANCE_ADJUSTMENT,
-        description="Initial balance",
-        occurred_at=now,
+        description=None,
+        reason="Initial balance",
+        occurred_on=occurred_on,
         created_at=now,
+        updated_at=now,
+        version=1,
     )
     session.add(operation)
     session.flush()
@@ -37,6 +42,17 @@ def account_has_history(session: Session, account_id: UUID) -> bool:
     return (
         session.scalar(
             select(AccountMovement.id).where(AccountMovement.account_id == account_id).limit(1)
+        )
+        is not None
+    )
+
+
+def category_has_history(session: Session, category_id: UUID) -> bool:
+    return (
+        session.scalar(
+            select(FinancialOperation.id)
+            .where(FinancialOperation.category_id == category_id)
+            .limit(1)
         )
         is not None
     )

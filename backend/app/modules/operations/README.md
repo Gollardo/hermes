@@ -3,6 +3,9 @@
 Owns posted financial operations and their money movements. Creating, editing
 or deleting one operation is one database transaction.
 
-Release `0.1.0-alpha.2` implements only the ledger foundation and
-`balance_adjustment` posting required for initial account balances. Ordinary
-income, expense, transfer and general adjustment workflows remain `alpha.3`.
+Release `0.1.0-alpha.3` implements income, expense, transfer and signed ledger
+adjustment commands, journal reads, full-selection net totals and pagination.
+The UI derives an adjustment delta from the expected balance. Affected accounts are locked
+before a mutation, non-negative alpha balances are checked against the
+ledger-derived result, and an optimistic integer version rejects lost edits and
+deletes. Posting details and assumptions are recorded in ADR 0001.

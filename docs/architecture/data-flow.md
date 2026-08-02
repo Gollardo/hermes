@@ -33,7 +33,7 @@ flowchart LR
     UseCase --> Validate["Validate account and category references"]
     Validate --> Tx["Begin database transaction"]
     Tx --> Header["Record financial operation"]
-    Header --> Movements["Record balanced physical money movements"]
+    Header --> Movements["Record complete physical money movements"]
     Movements --> Commit["Commit"]
     Commit --> Balance["Balances derived from ledger"]
 ```
@@ -42,10 +42,21 @@ Editing or deleting follows the same transaction boundary: replace or remove all
 parts of the operation atomically, then derive balances from the resulting
 ledger. A balance adjustment is itself an operation, including initial balance.
 
-For `0.1.0-alpha.2`, an application-layer use case coordinates account identity,
+In `0.1.0-alpha.3`, affected account identities are locked in deterministic
+order and their prospective ledger balances are checked before commit. Transfer
+movements net to zero; income and expense cross the boundary of modelled
+accounts and therefore do not.
+
+Category mutation and posting share the category-tree advisory lock. A type
+change consults the operations-owned history contract and is rejected after the
+first reference. Account deletion locks the account before checking movement
+history, using the same account-row ordering convention as posting.
+
+An application-layer use case coordinates account identity,
 base-currency lock, optional non-zero adjustment and its movement in one
 transaction. Neither Accounts nor Operations depends on the other's private
-implementation. General operation posting remains `0.1.0-alpha.3`.
+implementation. The initial adjustment date is resolved in the application
+timezone.
 
 ## Expense from a virtual fund
 

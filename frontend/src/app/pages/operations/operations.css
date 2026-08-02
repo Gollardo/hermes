@@ -1,0 +1,199 @@
+@import '../directory.css';
+
+.operation-layout {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(19rem, 0.62fr) minmax(0, 1.38fr);
+}
+.entry-panel {
+  position: sticky;
+  top: 1rem;
+}
+.entry-panel.editing {
+  border-color: #b7d4c0;
+  box-shadow: 0 0 0 0.2rem rgb(23 115 79 / 7%);
+}
+.journal-column {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.compact-heading {
+  margin-bottom: 0.75rem;
+}
+.filter-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.filter-grid label {
+  margin: 0;
+}
+.filter-grid input,
+.filter-grid select {
+  margin-top: 0.35rem;
+}
+.filter-actions {
+  align-items: end;
+  display: flex;
+  gap: 0.5rem;
+}
+.filter-actions button {
+  margin: 0;
+  width: auto;
+}
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+.filter-chips span {
+  background: var(--surface-accent);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  padding: 0.25rem 0.55rem;
+}
+.selection-total,
+.loading-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0.25rem 0 0;
+}
+.operation-list {
+  display: grid;
+  gap: 0.55rem;
+}
+.operation-row {
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  overflow: hidden;
+}
+.row-main {
+  background: var(--surface);
+  border: 0;
+  border-radius: 0;
+  color: var(--ink);
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  min-height: 4.5rem;
+  padding: 0.8rem 1rem;
+  text-align: left;
+  width: 100%;
+}
+.row-main:hover {
+  background: var(--surface-soft);
+  box-shadow: none;
+  transform: none;
+}
+.operation-date {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.operation-copy {
+  display: grid;
+  min-width: 0;
+}
+.operation-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.operation-copy small {
+  color: var(--muted);
+}
+.operation-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 740;
+}
+.income .operation-amount {
+  color: var(--accent-strong);
+}
+.expense .operation-amount {
+  color: var(--danger);
+}
+.operation-details {
+  background: var(--surface-soft);
+  border-top: 1px solid var(--line);
+  padding: 1rem;
+}
+.operation-details dl {
+  display: flex;
+  gap: 2rem;
+  margin: 0 0 0.8rem;
+}
+.operation-details dl div {
+  display: grid;
+}
+.operation-details dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+.operation-details dd {
+  margin: 0;
+}
+.movement-list {
+  display: grid;
+  gap: 0.35rem;
+}
+.movement-list span {
+  display: flex;
+  justify-content: space-between;
+}
+.row-actions {
+  display: flex;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+.row-actions button {
+  min-height: 2.2rem;
+}
+.impact-preview {
+  background: var(--surface-accent);
+  border-radius: 0.7rem;
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  padding: 0.65rem;
+  display: grid;
+  gap: 0.25rem;
+}
+.pagination {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+.pagination span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.pagination button {
+  min-height: 2.3rem;
+}
+
+@media (max-width: 70rem) {
+  .operation-layout {
+    grid-template-columns: 1fr;
+  }
+  .entry-panel {
+    position: static;
+  }
+}
+@media (max-width: 42rem) {
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+  .row-main {
+    grid-template-columns: 1fr auto;
+  }
+  .operation-date {
+    grid-column: 1 / -1;
+  }
+  .operation-copy {
+    margin-top: 0.25rem;
+  }
+}

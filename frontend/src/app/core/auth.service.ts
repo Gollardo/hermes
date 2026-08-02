@@ -121,11 +121,18 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
       account_not_found: 'Счёт не найден.',
       category_has_active_children: 'Сначала архивируйте активные подкатегории.',
       category_not_found: 'Категория не найдена.',
+      category_type_has_history:
+        'Тип категории с финансовой историей изменить нельзя. Создайте новую категорию.',
       csrf_failed: 'Защитный токен устарел. Обновите страницу и повторите действие.',
       current_password_invalid: 'Текущий мастер-пароль указан неверно.',
       invalid_credentials: 'Неверный мастер-пароль.',
       invalid_category_parent: 'Родитель должен быть активной категорией того же типа.',
+      invalid_account_reference: 'Выбранный счёт недоступен для новой операции.',
+      invalid_category_reference: 'Выбранная категория недоступна или имеет другой тип.',
+      insufficient_balance: 'На счёте недостаточно денег. Отрицательный остаток запрещён.',
       login_rate_limited: 'Слишком много неудачных попыток. Повторите вход позже.',
+      operation_conflict: 'Операция уже изменена в другой вкладке. Обновите журнал.',
+      operation_not_found: 'Операция не найдена.',
     };
     return localized[detail.code] ?? fallback;
   }

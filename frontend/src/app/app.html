@@ -52,6 +52,12 @@
               </svg>
               <span>Счета</span>
             </a>
+            <a routerLink="/operations" routerLinkActive="active">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 6h14M5 12h14M5 18h9M7 4v4M12 10v4M17 16v4" />
+              </svg>
+              <span>Операции</span>
+            </a>
           </div>
 
           <div class="nav-group">
@@ -89,7 +95,7 @@
       <div class="app-workspace">
         <header class="workspace-header">
           <span class="workspace-kicker">Личные финансы</span>
-          <span class="release-pill">0.1.0-alpha.2</span>
+          <span class="release-pill">0.1.0-alpha.3</span>
         </header>
 
         @if (actionError(); as message) {

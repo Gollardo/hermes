@@ -11,6 +11,11 @@ export const routes: Routes = [
       import('./pages/backend-status/backend-status').then((module) => module.BackendStatusPage),
   },
   {
+    path: 'operations',
+    loadComponent: () =>
+      import('./pages/operations/operations').then((module) => module.OperationsPage),
+  },
+  {
     path: 'accounts',
     loadComponent: () => import('./pages/accounts/accounts').then((module) => module.AccountsPage),
   },

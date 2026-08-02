@@ -37,6 +37,11 @@ def get_application_settings(session: Session) -> ApplicationSettings:
     return settings
 
 
+def application_timezone(session: Session) -> str:
+    """Return the configured IANA timezone through the module's public contract."""
+    return get_application_settings(session).timezone
+
+
 def update_application_settings(
     session: Session, *, base_currency: str, timezone: str
 ) -> ApplicationSettings:

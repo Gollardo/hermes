@@ -66,6 +66,6 @@ private tables or mutable implementation objects.
 ## Open questions
 
 - Whether authentication later needs idle expiry or scheduled session cleanup.
-- What concurrency policy protects ledger and fund invariants under simultaneous
-  requests?
+- Whether the account-row locking convention adopted for the `alpha.3` ledger
+  remains sufficient once virtual fund invariants join the same transaction.
 - What compatibility window will backup restore support across app versions?

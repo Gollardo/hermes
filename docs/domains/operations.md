@@ -15,7 +15,8 @@ For the first ordinary-operation model:
 - the user records the calendar date when the financial fact occurred;
 - exact time is not collected;
 - ordinary operations do not require a separate payee field in the MVP;
-- whether description is required remains open.
+- description is optional in the alpha implementation; long-term owner review
+  remains open.
 
 ## Ledger semantics
 
@@ -40,16 +41,39 @@ alternatives.
 
 ## Release 0.1.0-alpha.2 foundation
 
-Only `balance_adjustment` posting for a non-zero initial account balance is
-implemented. Account creation, currency locking, operation creation and movement
-creation share one request transaction. `financial_operations` and
-`account_movements` deliberately contain no general income/expense/transfer API;
-that design remains part of `0.1.0-alpha.3`.
+At that release, only `balance_adjustment` posting for a non-zero initial
+account balance was implemented. Account creation, currency locking, operation
+creation and movement creation shared one request transaction. General
+income/expense/transfer commands were added in `0.1.0-alpha.3`.
 
-## Open questions
+## Release 0.1.0-alpha.3 posting model
 
-- Exact movement model and balancing rule for income/expense versus transfers.
-- Timezone interpretation and stable ordering of operations on the same date.
-- How concurrent edits detect lost updates.
-- Whether reconciliation or an optional audit trail is required.
+The separately reviewed posting model is recorded in
+[ADR 0001](../decisions/0001-financial-posting-model.md). Income and expense
+have one signed account movement because their counter-side is outside the
+modelled account universe. A transfer has equal opposite movements and is the
+only operation required to net to zero across accounts. Adjustments contain one
+signed ledger delta and a visible reason; the UI asks for the expected balance
+and calculates that delta exactly before posting.
+
+The financial fact uses a calendar `occurred_on` date. Creation timestamp and
+identifier provide stable ordering within the date but do not add user-visible
+financial time. Integer optimistic versions reject lost edits and deletes.
+Defaults and migration from the old timestamp resolve calendar dates through the
+configured application timezone.
+
+Journal totals are calculated over the complete filtered selection, not the
+visible page. Without an account filter they represent the net change across all
+modelled accounts, so transfers contribute zero. With an account filter they sum
+that account's matching movements.
+
+For this alpha, an operation mutation may not leave any affected physical
+account below zero. Affected accounts are locked in deterministic order before
+the ledger-derived post-mutation balances are checked. This conservative rule
+is an alpha assumption, not a final overdraft decision.
+
+## Remaining open questions
+
+- Whether reconciliation or an optional immutable audit trail is required.
 - Rounding policy once currency precision is chosen.
+- Account-specific overdraft policy beyond the alpha-wide non-negative rule.

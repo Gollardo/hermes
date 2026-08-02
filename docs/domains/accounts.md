@@ -31,6 +31,11 @@ lose precision. Binary `float` is forbidden.
 - Initial balances are non-negative until overdraft semantics are explicitly designed.
 - Edit does not accept a balance field. Balance is always the sum of movements.
 - Archive and restore preserve ledger history. Physical deletion is allowed only without movements.
+- Physical deletion locks the account before checking history, so a concurrent
+  posting either observes a deleted account or commits first and makes deletion
+  return the normal history conflict.
+- Initial-balance dates use the configured application timezone, not the host or
+  database-session timezone.
 
 ## Boundary
 

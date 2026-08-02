@@ -3,12 +3,9 @@
     <div class="page-header-copy">
       <p class="eyebrow">Обзор</p>
       <h1>Финансовая основа без лишнего шума</h1>
-      <p>
-        Подготовьте счета и категории — они станут надёжной основой для операций, фондов и будущего
-        прогноза.
-      </p>
+      <p>Ведите доходы, расходы, переводы и корректировки в едином журнале с точными остатками.</p>
     </div>
-    <a class="button-link" routerLink="/accounts">Добавить счёт</a>
+    <a class="button-link" routerLink="/operations">Добавить операцию</a>
   </header>
 
   <div class="overview-grid">
@@ -17,11 +14,11 @@
         <span class="status-pill positive">Основа доступна</span>
         <h2>Начните с реальной картины ваших денег</h2>
         <p>
-          Создайте физические счета с точными начальными остатками, затем настройте категории
-          доходов и расходов.
+          Создайте счета и категории, затем фиксируйте финансовые факты — остатки пересчитаются из
+          журнала автоматически.
         </p>
         <div class="welcome-actions">
-          <a class="button-link" routerLink="/accounts">Перейти к счетам</a>
+          <a class="button-link" routerLink="/operations">Открыть журнал</a>
           <a class="button-link secondary" routerLink="/categories">Настроить категории</a>
         </div>
       </div>
@@ -53,6 +50,15 @@
           </div>
           <span class="card-arrow" aria-hidden="true">↗</span>
         </a>
+        <a class="entity-card" routerLink="/operations">
+          <span class="entity-icon" aria-hidden="true">↕</span>
+          <div>
+            <span class="section-label">Что изменилось</span>
+            <h2>Операции</h2>
+            <p>Доходы, расходы, переводы и корректировки с атомарными движениями.</p>
+          </div>
+          <span class="card-arrow" aria-hidden="true">↗</span>
+        </a>
       </div>
 
       <section class="trust-card panel" aria-labelledby="trust-title">
@@ -69,7 +75,7 @@
       <div class="panel-heading">
         <div>
           <p class="section-label">Текущий этап</p>
-          <h2 id="foundation-title">0.1.0-alpha.2</h2>
+          <h2 id="foundation-title">0.1.0-alpha.3</h2>
         </div>
         <span class="count-pill">Финансовая структура</span>
       </div>
@@ -81,19 +87,16 @@
             ><small>Локальный владелец защищён мастер-паролем</small>
           </div>
         </li>
-        <li class="current">
+        <li class="done">
           <span>02</span>
           <div>
             <strong>Счета и категории</strong
             ><small>Создайте структуру для ежедневного учёта</small>
           </div>
         </li>
-        <li>
+        <li class="current">
           <span>03</span>
-          <div>
-            <strong>Операции</strong
-            ><small>Следующий этап после утверждения финансовой модели</small>
-          </div>
+          <div><strong>Операции</strong><small>Журнал и фактические остатки доступны</small></div>
         </li>
       </ol>
     </section>

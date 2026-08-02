@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.application.categories import update_category_preserving_history
 from app.core.database import DatabaseSession
 from app.modules.categories.models import Category
 from app.modules.categories.schemas import (
@@ -12,11 +13,11 @@ from app.modules.categories.schemas import (
 from app.modules.categories.service import (
     CategoryHasChildrenError,
     CategoryNotFoundError,
+    CategoryTypeHasHistoryError,
     InvalidCategoryParentError,
     create_category,
     list_categories,
     set_category_archived,
-    update_category,
 )
 
 read_router = APIRouter(prefix="/categories", tags=["categories"])
@@ -72,11 +73,21 @@ def replace_category(
     category_id: UUID, payload: CategoryUpdateRequest, session: DatabaseSession
 ) -> CategoryResponse:
     try:
-        return _response(update_category(session, category_id, **payload.model_dump()))
+        return _response(
+            update_category_preserving_history(session, category_id, **payload.model_dump())
+        )
     except CategoryNotFoundError as error:
         raise _not_found(error) from error
     except InvalidCategoryParentError as error:
         raise _invalid_parent(error) from error
+    except CategoryTypeHasHistoryError as error:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "category_type_has_history",
+                "message": "A category used by operations cannot change type",
+            },
+        ) from error
 
 
 @write_router.post("/{category_id}/archive", response_model=CategoryResponse)

@@ -5,6 +5,12 @@ Create one when a choice changes architecture, data semantics, deployment or a
 cross-module contract. Do not manufacture past meetings or mark a proposal as
 accepted without an explicit project-owner decision.
 
+## Release implementation decisions
+
+- [ADR 0001: Financial posting model for 0.1.0-alpha.3](0001-financial-posting-model.md)
+  records the separately reviewed alpha model and explicitly labels the
+  remaining owner-confirmation assumptions.
+
 ## Template for a future ADR
 
 ```markdown

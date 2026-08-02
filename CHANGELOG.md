@@ -9,6 +9,11 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Financial posting model ADR with explicit alpha assumptions and invariants.
+- Atomic income, expense, transfer and balance-adjustment CRUD.
+- Filtered, paginated operation journal with details and responsive Angular UI.
+- Migration `0004_financial_operations`, optimistic operation versions and
+  clean/existing-database PostgreSQL coverage.
 - Account creation, list, derived balance, edit, archive/restore and safe deletion.
 - Exact initial balances posted as atomic `balance_adjustment` operations.
 - Income and expense category trees with subcategories, editing and archival.
@@ -17,8 +22,17 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Account balances now include all ordinary journal movements; the conservative
+  alpha policy rejects mutations that would leave an affected account negative.
 - Base currency now locks on the first account write; categories remain currency-independent.
 - Financial JSON values use decimal strings and reject binary floating-point input.
+- Balance correction now accepts the expected balance in the UI and posts an
+  exact calculated ledger delta with current/difference preview.
+- Calendar defaults and migration use the configured application timezone.
+- Historical category types and concurrent account deletion are protected by
+  operation-aware lifecycle checks and shared locking conventions.
+- Journal rows show transfer direction, retain existing archived references and
+  preserve visible rows while another page loads.
 
 ## [0.1.0-alpha.1] - 2026-08-02
 

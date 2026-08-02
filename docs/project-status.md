@@ -10,10 +10,11 @@
 
 ## Current phase
 
-**0.1.0-alpha.2 — основной срез счетов и категорий реализован.**
+**0.1.0-alpha.3 — финансовое ядро реализовано и проверено.**
 
-Следующий запланированный этап: **0.1.0-alpha.3 — финансовое ядро**. Перед его
-реализацией требуется отдельно подтвердить модель проводок и правила операций.
+Следующий запланированный этап: **0.1.0-alpha.4 — виртуальные фонды**. До него
+требуется подтвердить правила распределения, округления и покрытия фондов
+физическим остатком.
 
 ## Product and UI/UX foundation
 
@@ -27,11 +28,12 @@
   тёмная тема отложена.
 - Текущий Angular frontend приведён к этому направлению: access/setup,
   адаптивная shell-навигация, обзор, счета, категории, настройки и системные
-  состояния используют общую иерархию поверхностей и действий. Нереализованные
-  операции, фонды и прогноз не имитируются dashboard-заглушками.
-- Для будущих доходов и расходов подтверждены обязательная категория, дата
+  состояния и журнал используют общую иерархию поверхностей и действий. Фонды
+  и прогноз не имитируются dashboard-заглушками.
+- Для доходов и расходов подтверждены обязательная категория, дата
   финансового факта без времени, серийный ручной ввод и отсутствие отдельного
-  payee в MVP. Конкретная posting model всё ещё не реализована и не утверждена.
+  payee в MVP. Posting model отдельно проверена и описана в ADR 0001; её
+  overdraft и audit-допущения остаются alpha-решениями для owner review.
 
 ## Verified capabilities
 
@@ -106,6 +108,8 @@
 - Активные дети блокируют архивирование родителя, а архивный родитель — восстановление ребёнка.
 - Архивные категории остаются читаемыми для истории; публичный validation-контракт
   запрещает их для новых операций и имеет явный historical-read режим.
+- Тип категории неизменяем, пока на неё ссылается финансовая операция;
+  application use case проверяет operations-owned history contract.
 - Мутации дерева и проверка новой operation reference сериализуются общей
   transaction-level advisory-блокировкой.
 
@@ -113,23 +117,49 @@
 
 - Миграция `0003_accounts_categories` добавляет `accounts`, `categories`,
   `financial_operations`, `account_movements` и PostgreSQL enum-типы.
-- Operations-модуль в этом релизе реализует только ledger foundation и начальную
-  корректировку; general posting API намеренно не добавлен.
+- Миграция `0004_financial_operations` добавляет общие типы операций, calendar
+  date, category reference, adjustment reason, optimistic version, journal
+  indexes и уникальность движения операции по счёту. Старые timestamps
+  преобразуются в дату через timezone приложения; downgrade заполняет обязательное
+  legacy-описание для записей alpha.3.
+
+### Financial operations and journal
+
+- Владелец может создавать, просматривать, редактировать и удалять доходы,
+  расходы, переводы и корректировки до ожидаемого остатка; composer вычисляет
+  точный signed delta для журнала.
+- Доход и расход требуют активную категорию соответствующего типа; перевод
+  использует два разных активных счёта и остаётся одной операцией с двумя
+  противоположными движениями.
+- Создание, полная замена движений и удаление выполняются в транзакции запроса.
+  Затронутые счета блокируются в UUID-порядке, версия защищает от lost update.
+- Консервативная alpha-политика запрещает результат ниже нуля; неуспешная
+  проверка не сохраняет заголовок или часть перевода.
+- Журнал фильтруется по периоду, счёту, типу и категории, имеет server-side
+  пагинацию, стабильный порядок, раскрываемую деталь, transfer direction,
+  full-selection net total и локализованные ошибки.
+- Удаление счёта блокирует identity до проверки истории, поэтому конкурентное
+  проведение не превращается в необработанную FK-ошибку.
 
 ## Verification snapshot
 
-- Backend suite: 25 тестов, включая 12 PostgreSQL integration scenarios.
+- Backend suite: 36 тестов: 18 unit/non-PostgreSQL и 18 PostgreSQL-dependent
+  integration scenarios.
 - PostgreSQL scenarios: clean migration/setup, protected API, CSRF/logout/login,
   password/session revocation, expired sessions, sequential and concurrent rate
   limiting, serialized settings currency lock and upgrade initialized data from
-  `0001_first_run_access` до текущего migration head; account lifecycle,
+  `0001_first_run_access` до head и upgrade базы `alpha.2` с начальной
+  корректировкой; account lifecycle,
   initial adjustment/history protection, category lifecycle и конкурентные
-  reparent/archive-create races.
-- Frontend Vitest: 11 тестов для access shell, session expiry, setup, settings,
-  health UI, счетов и категорий.
-- Обновлённый frontend визуально проверен в локальном браузере на desktop и
-  mobile breakpoint для access/setup, обзора, счетов и категорий; browser
-  console без ошибок.
+  reparent/archive-create races; immutable historical category type, operation
+  CRUD, filters/totals, version conflict, concurrent expenses, concurrent
+  account deletion, insufficient balance и injected rollback после первого
+  движения перевода. Проверены timezone-boundary upgrade и data-bearing downgrade.
+- Frontend Vitest: 17 тестов для access shell, session expiry, setup, settings,
+  health UI, счетов, категорий и журнала, включая timezone default, expected-balance
+  adjustment, archived edit reference, transfer direction и loading continuity.
+- Production-like frontend проверен в браузере на desktop и mobile: clean setup,
+  счета, категории, расход, единый перевод и его два движения; console без ошибок.
 - Ruff, Ruff format, strict mypy, ESLint, Prettier, strict TypeScript и docs check.
 - Production Angular/backend Docker image build.
 - Production-like Compose e2e на отдельном clean volume: setup → authenticated
@@ -154,17 +184,24 @@
   политика precision/rounding.
 - Список счетов вычисляет остаток отдельным агрегатным запросом на счёт; при
   большом количестве счетов потребуется batch read model.
+- Journal response пока разрешает имена отдельными запросами на операцию; перед
+  большими объёмами нужен batch read model.
+- Редактирование заменяет движения и увеличивает version, но immutable audit
+  trail отсутствует. Описание обычной операции остаётся опциональным.
+- Запрет отрицательного остатка един для всех типов счетов и должен быть
+  подтверждён или заменён account-specific overdraft model.
 - Advisory lock намеренно сериализует редкие мутации всего category tree; при
   доказанной необходимости высокой write-concurrency потребуется более узкая схема блокировок.
 - HTTPS reverse-proxy configurations и CSP не проверены внешним security audit.
-- Миграция имеет downgrade для разработки, но production rollback после schema
-  upgrade не гарантирован; нужен проверенный backup.
+- Data-bearing downgrade `0004 → 0003` проверен и сохраняет обязательное legacy
+  description. Production rollback приложения всё равно не гарантирован из-за
+  сохранённых PostgreSQL enum values и требует проверенного backup.
 
 ## Outside current scope
 
-- Доходы, расходы, переводы, общий журнал и редактирование/удаление операций.
-- Реальный categorized-operation scenario с архивной категорией; подготовлен
-  только immutable validation/reference contract для `alpha.3`.
+- Поиск, saved filters, running balance, bulk actions и immutable audit trail.
+- Account-specific overdraft, pending bank transactions, полноценный
+  reconciliation workflow и currency-specific precision/rounding.
 - Фонды, расписания, календарь, прогнозы, liabilities и debts.
 - Импорт CSV/Excel, versioned JSON backup/restore и password recovery.
 - Несколько пользователей, роли, permissions, organizations и tenants.
@@ -172,9 +209,7 @@
 
 ## Recommended next action
 
-Перед реализацией `0.1.0-alpha.3` подтвердить модель проводок для дохода,
-расхода и перевода, balancing semantics, timezone и порядок операций одной
-даты, конкурентное редактирование и политику отрицательного остатка. Затем
-проверить low-fidelity прототип серийного ввода с категорией перед суммой.
-Расширять существующий operations-owned ledger без прямых записей из
-accounts/categories.
+Провести owner review alpha-допущений ADR 0001 по отрицательному остатку и audit
+history, затем отдельно спроектировать виртуальные движения `alpha.4`: покрытие
+физическим остатком, rounding remainder и атомарное участие фонда в
+expense/transfer. Не добавлять fund writes вокруг публичной границы operations.

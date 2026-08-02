@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.categories.models import Category, CategoryType
@@ -37,3 +38,15 @@ def validate_category_reference(
         type=category.type,
         archived=category.archived_at is not None,
     )
+
+
+def category_name(session: Session, category_id: UUID) -> str | None:
+    return session.scalar(select(Category.name).where(Category.id == category_id))
+
+
+__all__ = [
+    "CategoryReferenceError",
+    "CategoryType",
+    "category_name",
+    "validate_category_reference",
+]

@@ -21,6 +21,10 @@ class CategoryHasChildrenError(RuntimeError):
     pass
 
 
+class CategoryTypeHasHistoryError(RuntimeError):
+    pass
+
+
 def lock_category_tree(session: Session) -> None:
     """Serialize tree reads that guard mutations and new operation references."""
     session.execute(select(func.pg_advisory_xact_lock(CATEGORY_TREE_LOCK_ID)))
@@ -92,9 +96,12 @@ def update_category(
     name: str,
     description: str | None,
     parent_id: UUID | None,
+    has_financial_history: bool,
 ) -> Category:
     lock_category_tree(session)
     category = get_category(session, category_id)
+    if category.type != type and has_financial_history:
+        raise CategoryTypeHasHistoryError
     children = session.scalars(select(Category).where(Category.parent_id == category_id)).all()
     if parent_id is not None and children:
         raise InvalidCategoryParentError
