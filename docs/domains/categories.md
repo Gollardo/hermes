@@ -6,6 +6,9 @@ Categories may contain subcategories. Release `0.1.0-alpha.2` supports exactly
 two levels in both API and UI: `category → subcategory`. Arbitrary depth is not
 claimed and can be reconsidered only with a UI and migration strategy.
 
+Every new `income` and `expense` operation requires an active category of the
+matching type.
+
 ## Boundary and invariants
 
 Categories owns tree structure and category lifecycle. Operations may reference
@@ -15,8 +18,7 @@ technical invariants implied by any tree model.
 
 ## Assumptions
 
-- Categories classify income/expense-style operations, while a pure transfer is
-  normally uncategorized.
+- A pure transfer is normally uncategorized.
 - Deleting a category with historical operations should not silently erase
   classification history.
 

@@ -22,6 +22,21 @@
 - Mark assumptions explicitly; never present them as owner-approved decisions.
 - Never commit secrets.
 
+## UI/UX rules
+
+- Before creating or changing screens, study `docs/ui-ux/` and the relevant
+  domain documents.
+- Use owner-approved UX principles. Until approval, use the principles in
+  `docs/ui-ux/` to guide prototypes while preserving their status as product
+  hypotheses and distinguishing them from confirmed behavior and future roadmap
+  scenarios.
+- Reuse established interface patterns; do not introduce a new pattern without
+  a demonstrated need.
+- Do not treat the preliminary visual direction as an approved design system or
+  choose a final design without owner approval.
+- Document changes to shared interface patterns and update affected screen
+  directions in the same change.
+
 ```text
 Update documentation in the same change when modifying architecture,
 domain invariants, module ownership, data flows or deployment.

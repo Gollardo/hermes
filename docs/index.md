@@ -41,6 +41,24 @@ question by itself.
 - [Liabilities and debts](domains/liabilities-and-debts.md)
 - [Import and export](domains/import-export.md)
 
+## UI/UX foundation
+
+- [Vision](ui-ux/vision.md)
+- [Design principles](ui-ux/design-principles.md)
+- [Preliminary visual direction](ui-ux/visual-direction.md)
+- [Information architecture](ui-ux/information-architecture.md)
+- Screen directions:
+  [dashboard](ui-ux/screens/dashboard.md),
+  [operation entry](ui-ux/screens/operation-entry.md),
+  [funds](ui-ux/screens/funds.md),
+  [forecast](ui-ux/screens/forecast.md),
+  [transactions](ui-ux/screens/transactions.md)
+- [Open UI/UX questions](ui-ux/open-questions.md)
+
+These documents record research-backed product hypotheses and interface rules.
+They do not override confirmed domain invariants or constitute an approved
+design system.
+
 ## Decisions and operations
 
 - [ADR registry and candidates](decisions/README.md)

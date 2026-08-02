@@ -9,6 +9,14 @@ Operations may be freely edited and deleted. Every change to one financial
 operation—including its physical and virtual consequences—must complete
 atomically in one database transaction.
 
+For the first ordinary-operation model:
+
+- `income` and `expense` require a category;
+- the user records the calendar date when the financial fact occurred;
+- exact time is not collected;
+- ordinary operations do not require a separate payee field in the MVP;
+- whether description is required remains open.
+
 ## Ledger semantics
 
 An operation is the user-meaningful fact; associated money movements are its
@@ -41,7 +49,7 @@ that design remains part of `0.1.0-alpha.3`.
 ## Open questions
 
 - Exact movement model and balancing rule for income/expense versus transfers.
-- Date/time, timezone, booking date and ordering semantics.
+- Timezone interpretation and stable ordering of operations on the same date.
 - How concurrent edits detect lost updates.
 - Whether reconciliation or an optional audit trail is required.
 - Rounding policy once currency precision is chosen.
