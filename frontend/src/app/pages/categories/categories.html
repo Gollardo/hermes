@@ -1,15 +1,99 @@
 <section class="directory-page">
-  <header>
-    <p class="eyebrow">Финансовая структура</p>
-    <h1>Категории</h1>
-    <p>Разделяйте доходы и расходы, добавляйте подкатегории и сохраняйте историю архивированием.</p>
+  <header class="page-header">
+    <div class="page-header-copy">
+      <p class="eyebrow">Финансовая структура</p>
+      <h1>Категории</h1>
+      <p>Понятная классификация доходов и расходов в два уровня — категория и подкатегория.</p>
+    </div>
+    <span class="status-pill">Два независимых дерева</span>
   </header>
+
   <div class="directory-grid">
-    <section class="panel">
-      <h2>{{ editingId() ? 'Редактировать' : 'Новая категория' }}</h2>
+    <section class="panel directory-list-panel" aria-labelledby="categories-list-title">
+      <div class="panel-heading">
+        <div>
+          <h2 id="categories-list-title">Дерево категорий</h2>
+          <p>Архивирование сохраняет названия для будущей истории операций.</p>
+        </div>
+        <span class="count-pill">{{ categories().length }}</span>
+      </div>
+
+      @if (loading()) {
+        <p class="empty-state" aria-live="polite">Загружаем категории…</p>
+      } @else if (categories().length === 0) {
+        <div class="empty-state">
+          <strong>Категорий пока нет</strong>
+          <p>Начните с одной понятной категории дохода или расхода.</p>
+        </div>
+      } @else {
+        <div class="item-list">
+          @for (category of roots(); track category.id) {
+            <article class="directory-item category-item" [class.archived]="category.archived">
+              <div class="category-header">
+                <div class="directory-item-main">
+                  <span class="item-symbol neutral" aria-hidden="true">{{
+                    category.name.slice(0, 1)
+                  }}</span>
+                  <div class="item-copy">
+                    <span class="badge">{{ categoryTypeLabel(category.type) }}</span>
+                    <h3>{{ category.name }}</h3>
+                    @if (category.description) {
+                      <p>{{ category.description }}</p>
+                    }
+                  </div>
+                </div>
+                <div class="item-actions">
+                  <button type="button" class="secondary" (click)="edit(category)">Изменить</button>
+                  <button type="button" class="secondary" (click)="toggleArchive(category)">
+                    {{ category.archived ? 'Восстановить' : 'Архивировать' }}
+                  </button>
+                </div>
+              </div>
+
+              @if (children(category.id).length > 0) {
+                <div class="subcategory-list">
+                  @for (child of children(category.id); track child.id) {
+                    <div class="subcategory" [class.archived]="child.archived">
+                      <span><i aria-hidden="true"></i>{{ child.name }}</span>
+                      <div class="item-actions">
+                        <button type="button" class="secondary" (click)="edit(child)">
+                          Изменить
+                        </button>
+                        <button type="button" class="secondary" (click)="toggleArchive(child)">
+                          {{ child.archived ? 'Восстановить' : 'Архивировать' }}
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </article>
+          }
+        </div>
+      }
+    </section>
+
+    <section
+      class="panel form-panel"
+      [class.editing]="editingId()"
+      aria-labelledby="category-form-title"
+    >
+      <div class="panel-heading">
+        <div>
+          <p class="section-label">{{ editingId() ? 'Изменение' : 'Новое' }}</p>
+          <h2 id="category-form-title">
+            {{ editingId() ? 'Редактировать' : 'Добавить категорию' }}
+          </h2>
+        </div>
+      </div>
       <form [formGroup]="form" (ngSubmit)="submit()">
         <label for="category-name">Название</label>
-        <input id="category-name" formControlName="name" maxlength="120" />
+        <input
+          id="category-name"
+          formControlName="name"
+          maxlength="120"
+          placeholder="Например, Продукты"
+        />
         <label for="category-type">Назначение</label>
         <select id="category-type" formControlName="type">
           <option value="expense">Расход</option>
@@ -27,53 +111,18 @@
           id="category-description"
           formControlName="description"
           maxlength="2000"
+          placeholder="Необязательное пояснение"
         ></textarea>
         @if (error(); as message) {
           <p class="form-error" role="alert">{{ message }}</p>
         }
         <button type="submit" [disabled]="saving()">
-          {{ saving() ? 'Сохраняем…' : editingId() ? 'Сохранить' : 'Создать категорию' }}
+          {{ saving() ? 'Сохраняем…' : editingId() ? 'Сохранить изменения' : 'Создать категорию' }}
         </button>
         @if (editingId()) {
-          <button type="button" class="secondary" (click)="cancelEdit()">Отмена</button>
+          <button type="button" class="secondary" (click)="cancelEdit()">Отменить изменение</button>
         }
       </form>
-    </section>
-    <section class="panel">
-      <h2>Дерево категорий</h2>
-      @if (loading()) {
-        <p>Загружаем…</p>
-      } @else if (categories().length === 0) {
-        <p class="hint">Создайте первую категорию доходов или расходов.</p>
-      } @else {
-        <div class="item-list">
-          @for (category of roots(); track category.id) {
-            <article class="directory-item" [class.archived]="category.archived">
-              <div>
-                <span class="badge">{{ category.type }}</span>
-                <h3>{{ category.name }}</h3>
-              </div>
-              <div class="item-actions">
-                <button type="button" class="secondary" (click)="edit(category)">Изменить</button>
-                <button type="button" class="secondary" (click)="toggleArchive(category)">
-                  {{ category.archived ? 'Восстановить' : 'Архивировать' }}
-                </button>
-              </div>
-              @for (child of children(category.id); track child.id) {
-                <div class="subcategory" [class.archived]="child.archived">
-                  <span>↳ {{ child.name }}</span>
-                  <div class="item-actions">
-                    <button type="button" class="secondary" (click)="edit(child)">Изменить</button>
-                    <button type="button" class="secondary" (click)="toggleArchive(child)">
-                      {{ child.archived ? 'Восстановить' : 'Архивировать' }}
-                    </button>
-                  </div>
-                </div>
-              }
-            </article>
-          }
-        </div>
-      }
     </section>
   </div>
 </section>

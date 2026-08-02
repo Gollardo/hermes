@@ -1,33 +1,63 @@
 .status-card {
-  background: #fffdf7;
-  border: 1px solid #d8ded9;
-  border-radius: 1rem;
+  margin: 4rem auto;
   max-width: 42rem;
-  padding: clamp(1.25rem, 5vw, 3rem);
 }
 
-.eyebrow {
-  color: #68756e;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.8rem;
+.status-heading {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
 }
 
-h1 {
-  margin-top: 0.35rem;
+.status-heading h1 {
+  font-size: clamp(1.8rem, 5vw, 2.7rem);
+  font-weight: 580;
+  letter-spacing: -0.045em;
+  margin: 0.25rem 0;
+}
+
+.status-heading code {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.status-icon {
+  align-items: center;
+  background: var(--surface-accent);
+  border-radius: 0.9rem;
+  color: var(--accent-strong);
+  display: flex;
+  font-size: 1.25rem;
+  height: 3.25rem;
+  justify-content: center;
+  width: 3.25rem;
+}
+
+.status-message {
+  align-items: center;
+  background: var(--surface-soft);
+  border-radius: 0.8rem;
+  display: flex;
+  gap: 0.55rem;
+  margin: 1.5rem 0;
+  padding: 0.85rem;
+}
+
+.status-message span {
+  background: currentColor;
+  border-radius: 999px;
+  height: 0.5rem;
+  width: 0.5rem;
 }
 
 .checking {
-  color: #6c5b3b;
+  color: var(--warning);
 }
 
 .success {
-  color: #17613e;
+  color: var(--accent-strong);
 }
 
 .failure {
-  color: #9a3227;
-}
-
-button {
-  margin-top: 1rem;
+  color: var(--danger);
 }

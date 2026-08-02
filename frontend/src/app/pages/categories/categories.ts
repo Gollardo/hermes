@@ -63,6 +63,10 @@ export class CategoriesPage implements OnInit {
     return this.categories().filter((item) => item.parent_id === parentId);
   }
 
+  protected categoryTypeLabel(type: CategoryType): string {
+    return type === 'income' ? 'Доход' : 'Расход';
+  }
+
   protected submit(): void {
     this.error.set(null);
     if (this.form.invalid) {

@@ -1,23 +1,41 @@
 <main class="access-layout">
-  <section class="access-card compact" aria-labelledby="login-title">
-    <p class="eyebrow">Hermes</p>
-    <h1 id="login-title">Вход в приложение</h1>
-    <p class="intro">Введите мастер-пароль владельца. Пароль не покидает этот сервер.</p>
+  <div class="access-shell">
+    <aside class="access-aside">
+      <div>
+        <span class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">H</span>
+          <span>Hermes</span>
+        </span>
+        <h2>Деньги под вашим контролем.</h2>
+        <p>
+          Личное финансовое пространство, которое работает на вашем сервере и по вашим правилам.
+        </p>
+      </div>
+      <p class="access-note">Защищённый локальный вход</p>
+    </aside>
 
-    <form [formGroup]="form" (ngSubmit)="submit()">
-      <label for="login-password">Мастер-пароль</label>
-      <input
-        id="login-password"
-        type="password"
-        formControlName="password"
-        autocomplete="current-password"
-      />
-      @if (error(); as message) {
-        <p class="form-error" role="alert">{{ message }}</p>
-      }
-      <button type="submit" [disabled]="submitting()">
-        {{ submitting() ? 'Проверяем…' : 'Войти' }}
-      </button>
-    </form>
-  </section>
+    <section class="access-card compact" aria-labelledby="login-title">
+      <p class="eyebrow">С возвращением</p>
+      <h1 id="login-title">Войдите в Hermes</h1>
+      <p class="intro">Используйте мастер-пароль владельца для доступа к финансовым данным.</p>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <label for="login-password">Мастер-пароль</label>
+        <input
+          id="login-password"
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+          placeholder="Введите мастер-пароль"
+        />
+        <p class="hint">Пароль проверяется вашим экземпляром и не передаётся внешним сервисам.</p>
+        @if (error(); as message) {
+          <p class="form-error" role="alert">{{ message }}</p>
+        }
+        <button type="submit" [disabled]="submitting()">
+          {{ submitting() ? 'Проверяем…' : 'Войти в приложение' }}
+        </button>
+      </form>
+    </section>
+  </div>
 </main>

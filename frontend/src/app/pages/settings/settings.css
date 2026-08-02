@@ -1,39 +1,86 @@
-.settings-page > header {
-  margin-bottom: 2rem;
-}
-
-.settings-page h1 {
-  font-size: clamp(2rem, 5vw, 3.5rem);
-  margin: 0.25rem 0 0.5rem;
-}
-
 .settings-grid {
+  align-items: start;
   display: grid;
-  gap: 1.25rem;
+  gap: 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.panel {
-  background: #fffdf7;
-  border: 1px solid #d8ded9;
-  border-radius: 1rem;
-  padding: clamp(1.25rem, 4vw, 2rem);
+.setting-heading {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  justify-content: start;
 }
 
-.panel h2 {
-  margin-top: 0;
+.setting-icon {
+  align-items: center;
+  background: var(--accent);
+  border-radius: 0.8rem;
+  color: #fff;
+  display: flex;
+  font-size: 1rem;
+  font-weight: 760;
+  height: 2.75rem;
+  justify-content: center;
+  width: 2.75rem;
+}
+
+.setting-icon.soft {
+  background: var(--surface-soft);
+  color: var(--accent-strong);
+  letter-spacing: 0.08em;
+}
+
+.settings-grid form {
+  border-top: 1px solid var(--line);
+  padding-top: 0.15rem;
+}
+
+.locked-note {
+  align-items: start;
+  background: var(--surface-accent);
+  border-radius: 0.65rem;
+  color: var(--accent-strong);
+  display: flex;
+  font-size: 0.78rem;
+  gap: 0.45rem;
+  margin: 0.55rem 0;
+  padding: 0.6rem 0.7rem;
 }
 
 .danger-zone {
-  margin-top: 1.25rem;
+  align-items: center;
+  background: rgb(255 255 255 / 76%);
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+  margin-top: 1rem;
 }
 
-.danger {
-  background: #9a3227;
+.danger-copy h2 {
+  font-size: 1.05rem;
+  margin: 0.25rem 0 0.35rem;
 }
 
-@media (max-width: 48rem) {
+.danger-copy p:not(.section-label) {
+  color: var(--ink-soft);
+  font-size: 0.83rem;
+  margin: 0;
+}
+
+.danger-section-label {
+  color: var(--danger);
+}
+
+@media (max-width: 54rem) {
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 38rem) {
+  .danger-zone {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 1rem;
   }
 }

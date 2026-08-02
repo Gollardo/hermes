@@ -1,64 +1,80 @@
 <main class="access-layout">
-  <section class="access-card" aria-labelledby="setup-title">
-    <p class="eyebrow">Первый запуск</p>
-    <h1 id="setup-title">Настройте личный Hermes</h1>
-    <p class="intro">
-      Создайте мастер-пароль и выберите параметры, от которых будут зависеть будущие финансовые
-      записи. Повторно открыть этот мастер после сохранения нельзя.
-    </p>
-
-    <form [formGroup]="form" (ngSubmit)="submit()">
-      <label for="setup-password">Мастер-пароль</label>
-      <input
-        id="setup-password"
-        type="password"
-        formControlName="password"
-        autocomplete="new-password"
-      />
-      @if (form.controls.password.touched && form.controls.password.invalid) {
-        <p class="field-error">Используйте от 12 до 1024 символов.</p>
-      }
-
-      <label for="setup-password-confirmation">Повторите пароль</label>
-      <input
-        id="setup-password-confirmation"
-        type="password"
-        formControlName="passwordConfirmation"
-        autocomplete="new-password"
-      />
-
-      <div class="field-grid">
-        <div>
-          <label for="setup-currency">Основная валюта</label>
-          <input
-            id="setup-currency"
-            formControlName="baseCurrency"
-            list="setup-currency-options"
-            maxlength="3"
-            autocapitalize="characters"
-          />
-          <datalist id="setup-currency-options">
-            @for (currency of currencies; track currency) {
-              <option [value]="currency">{{ currency }}</option>
-            }
-          </datalist>
-        </div>
-        <div>
-          <label for="setup-timezone">Часовой пояс</label>
-          <select id="setup-timezone" formControlName="timezone">
-            @for (timezone of timezones; track timezone) {
-              <option [value]="timezone">{{ timezone }}</option>
-            }
-          </select>
-        </div>
+  <div class="access-shell setup-shell">
+    <aside class="access-aside">
+      <div>
+        <span class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">H</span>
+          <span>Hermes</span>
+        </span>
+        <h2>Ваш финансовый центр начинается здесь.</h2>
+        <p>Один локальный владелец, точные денежные данные и никакой зависимости от облака.</p>
       </div>
+      <p class="access-note">Первоначальная настройка выполняется один раз</p>
+    </aside>
 
-      @if (error(); as message) {
-        <p class="form-error" role="alert">{{ message }}</p>
-      }
-      <button type="submit" [disabled]="submitting()">
-        {{ submitting() ? 'Создаём…' : 'Создать приложение' }}
-      </button>
-    </form>
-  </section>
+    <section class="access-card" aria-labelledby="setup-title">
+      <p class="eyebrow">Первый запуск</p>
+      <h1 id="setup-title">Настройте Hermes</h1>
+      <p class="intro">
+        Создайте мастер-пароль и выберите базовые параметры финансового пространства.
+      </p>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <label for="setup-password">Мастер-пароль</label>
+        <input
+          id="setup-password"
+          type="password"
+          formControlName="password"
+          autocomplete="new-password"
+          placeholder="Не менее 12 символов"
+        />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <p class="field-error">Используйте от 12 до 1024 символов.</p>
+        }
+
+        <label for="setup-password-confirmation">Повторите пароль</label>
+        <input
+          id="setup-password-confirmation"
+          type="password"
+          formControlName="passwordConfirmation"
+          autocomplete="new-password"
+          placeholder="Введите пароль ещё раз"
+        />
+
+        <div class="field-grid">
+          <div>
+            <label for="setup-currency">Основная валюта</label>
+            <input
+              id="setup-currency"
+              formControlName="baseCurrency"
+              list="setup-currency-options"
+              maxlength="3"
+              autocapitalize="characters"
+            />
+            <datalist id="setup-currency-options">
+              @for (currency of currencies; track currency) {
+                <option [value]="currency">{{ currency }}</option>
+              }
+            </datalist>
+          </div>
+          <div>
+            <label for="setup-timezone">Часовой пояс</label>
+            <select id="setup-timezone" formControlName="timezone">
+              @for (timezone of timezones; track timezone) {
+                <option [value]="timezone">{{ timezone }}</option>
+              }
+            </select>
+          </div>
+        </div>
+        <p class="hint">Основную валюту можно изменить только до появления финансовых данных.</p>
+
+        @if (error(); as message) {
+          <p class="form-error" role="alert">{{ message }}</p>
+        }
+        <button type="submit" [disabled]="submitting()">
+          {{ submitting() ? 'Создаём пространство…' : 'Создать приложение' }}
+        </button>
+      </form>
+    </section>
+  </div>
 </main>

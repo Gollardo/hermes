@@ -89,6 +89,10 @@ export class AccountsPage implements OnInit {
     this.form.controls.initialBalance.enable();
   }
 
+  protected accountTypeLabel(type: AccountType): string {
+    return { cash: 'Наличные', debit: 'Дебетовый', savings: 'Сберегательный' }[type];
+  }
+
   protected toggleArchive(account: Account): void {
     const action = account.archived ? 'restore' : 'archive';
     this.http

@@ -1,16 +1,26 @@
 <section class="settings-page">
-  <header>
-    <p class="eyebrow">Приложение</p>
-    <h1>Настройки</h1>
-    <p>Основные параметры и безопасность локального владельца.</p>
+  <header class="page-header">
+    <div class="page-header-copy">
+      <p class="eyebrow">Управление экземпляром</p>
+      <h1>Настройки</h1>
+      <p>Базовые финансовые параметры, локальная безопасность и активные сессии.</p>
+    </div>
+    <span class="status-pill positive">Self-hosted</span>
   </header>
 
   @if (loading()) {
-    <p aria-live="polite">Загружаем настройки…</p>
+    <p class="empty-state" aria-live="polite">Загружаем настройки…</p>
   } @else {
     <div class="settings-grid">
       <section class="panel" aria-labelledby="preferences-title">
-        <h2 id="preferences-title">Основные параметры</h2>
+        <div class="panel-heading setting-heading">
+          <span class="setting-icon" aria-hidden="true">¤</span>
+          <div>
+            <p class="section-label">Финансовая основа</p>
+            <h2 id="preferences-title">Основные параметры</h2>
+            <p>Валюта отчётности и календарный контекст приложения.</p>
+          </div>
+        </div>
         <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()">
           <label for="settings-currency">Основная валюта</label>
           <input
@@ -26,7 +36,10 @@
             }
           </datalist>
           @if (currencyLocked()) {
-            <p class="hint">Валюта зафиксирована, потому что финансовые данные уже созданы.</p>
+            <p class="locked-note">
+              <span aria-hidden="true">✓</span>
+              Валюта зафиксирована после появления финансовых данных.
+            </p>
           }
 
           <label for="settings-timezone">Часовой пояс</label>
@@ -49,7 +62,14 @@
       </section>
 
       <section class="panel" aria-labelledby="password-title">
-        <h2 id="password-title">Мастер-пароль</h2>
+        <div class="panel-heading setting-heading">
+          <span class="setting-icon soft" aria-hidden="true">•••</span>
+          <div>
+            <p class="section-label">Безопасность</p>
+            <h2 id="password-title">Мастер-пароль</h2>
+            <p>Изменение пароля завершит все остальные сессии.</p>
+          </div>
+        </div>
         <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
           <label for="current-password">Текущий пароль</label>
           <input
@@ -64,6 +84,7 @@
             type="password"
             formControlName="newPassword"
             autocomplete="new-password"
+            placeholder="Не менее 12 символов"
           />
           <label for="new-password-confirmation">Повторите новый пароль</label>
           <input
@@ -86,8 +107,11 @@
     </div>
 
     <section class="panel danger-zone" aria-labelledby="sessions-title">
-      <h2 id="sessions-title">Активные сессии</h2>
-      <p>Завершить все входы, включая текущий. После этого потребуется мастер-пароль.</p>
+      <div class="danger-copy">
+        <p class="section-label danger-section-label">Сессии</p>
+        <h2 id="sessions-title">Завершить все активные входы</h2>
+        <p>Текущая сессия тоже завершится. Для продолжения потребуется мастер-пароль.</p>
+      </div>
       <button type="button" class="danger" (click)="logoutAll()">Завершить все сессии</button>
     </section>
   }

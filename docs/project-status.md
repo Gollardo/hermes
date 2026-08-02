@@ -25,6 +25,10 @@
 - Для первого прототипа подтверждены light neutral premium-minimalism,
   приглушённый зелёный акцент и Quixotic как главный визуальный ориентир;
   тёмная тема отложена.
+- Текущий Angular frontend приведён к этому направлению: access/setup,
+  адаптивная shell-навигация, обзор, счета, категории, настройки и системные
+  состояния используют общую иерархию поверхностей и действий. Нереализованные
+  операции, фонды и прогноз не имитируются dashboard-заглушками.
 - Для будущих доходов и расходов подтверждены обязательная категория, дата
   финансового факта без времени, серийный ручной ввод и отсутствие отдельного
   payee в MVP. Конкретная posting model всё ещё не реализована и не утверждена.
@@ -123,6 +127,9 @@
   reparent/archive-create races.
 - Frontend Vitest: 11 тестов для access shell, session expiry, setup, settings,
   health UI, счетов и категорий.
+- Обновлённый frontend визуально проверен в локальном браузере на desktop и
+  mobile breakpoint для access/setup, обзора, счетов и категорий; browser
+  console без ошибок.
 - Ruff, Ruff format, strict mypy, ESLint, Prettier, strict TypeScript и docs check.
 - Production Angular/backend Docker image build.
 - Production-like Compose e2e на отдельном clean volume: setup → authenticated

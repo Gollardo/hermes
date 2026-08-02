@@ -1,17 +1,87 @@
 <section class="directory-page">
-  <header>
-    <p class="eyebrow">Финансовая структура</p>
-    <h1>Счета</h1>
-    <p>Текущий остаток рассчитывается из операций и не редактируется напрямую.</p>
+  <header class="page-header">
+    <div class="page-header-copy">
+      <p class="eyebrow">Финансовая структура</p>
+      <h1>Счета</h1>
+      <p>Физическое местонахождение денег. Остаток всегда рассчитывается из журнала движений.</p>
+    </div>
+    <span class="status-pill">Баланс нельзя изменить напрямую</span>
   </header>
 
   <div class="directory-grid">
-    <section class="panel">
-      <h2>{{ editingId() ? 'Редактировать счёт' : 'Новый счёт' }}</h2>
+    <section class="panel directory-list-panel" aria-labelledby="accounts-list-title">
+      <div class="panel-heading">
+        <div>
+          <h2 id="accounts-list-title">Все счета</h2>
+          <p>Активные и архивные счета сохраняют финансовую историю.</p>
+        </div>
+        <span class="count-pill">{{ accounts().length }}</span>
+      </div>
+
+      @if (loading()) {
+        <p class="empty-state" aria-live="polite">Загружаем счета…</p>
+      } @else if (accounts().length === 0) {
+        <div class="empty-state">
+          <strong>Счетов пока нет</strong>
+          <p>Создайте первый счёт и укажите известный начальный остаток.</p>
+        </div>
+      } @else {
+        <div class="item-list">
+          @for (account of accounts(); track account.id) {
+            <article class="directory-item" [class.archived]="account.archived">
+              <div class="directory-item-main">
+                <span class="item-symbol" aria-hidden="true">{{ account.name.slice(0, 1) }}</span>
+                <div class="item-copy">
+                  <span class="badge">{{ accountTypeLabel(account.type) }}</span>
+                  <h3>{{ account.name }}</h3>
+                  @if (account.description) {
+                    <p>{{ account.description }}</p>
+                  } @else if (account.archived) {
+                    <p>Счёт находится в архиве</p>
+                  }
+                </div>
+              </div>
+              <div class="directory-item-side">
+                <div class="balance-block">
+                  <span>Текущий остаток</span>
+                  <strong class="balance">{{ account.balance }}</strong>
+                </div>
+                <div class="item-actions">
+                  <button type="button" class="secondary" (click)="edit(account)">Изменить</button>
+                  <button type="button" class="secondary" (click)="toggleArchive(account)">
+                    {{ account.archived ? 'Восстановить' : 'Архивировать' }}
+                  </button>
+                  <button type="button" class="danger" (click)="remove(account)">Удалить</button>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+
+    <section
+      class="panel form-panel"
+      [class.editing]="editingId()"
+      aria-labelledby="account-form-title"
+    >
+      <div class="panel-heading">
+        <div>
+          <p class="section-label">{{ editingId() ? 'Изменение' : 'Новое' }}</p>
+          <h2 id="account-form-title">
+            {{ editingId() ? 'Редактировать счёт' : 'Добавить счёт' }}
+          </h2>
+        </div>
+      </div>
       <form [formGroup]="form" (ngSubmit)="submit()">
         <label for="account-name">Название</label>
-        <input id="account-name" formControlName="name" maxlength="120" />
-        <label for="account-type">Тип</label>
+        <input
+          id="account-name"
+          formControlName="name"
+          maxlength="120"
+          placeholder="Например, Наличные"
+        />
+        <label for="account-type">Тип счёта</label>
         <select id="account-type" formControlName="type">
           <option value="cash">Наличные</option>
           <option value="debit">Дебетовый</option>
@@ -22,53 +92,28 @@
           id="account-description"
           formControlName="description"
           maxlength="2000"
+          placeholder="Необязательный контекст счёта"
         ></textarea>
         <label for="initial-balance">Начальный остаток</label>
-        <input id="initial-balance" formControlName="initialBalance" inputmode="decimal" />
+        <input
+          id="initial-balance"
+          formControlName="initialBalance"
+          inputmode="decimal"
+          placeholder="0"
+        />
         <p class="hint">
-          Создаётся как отдельная операция корректировки. До 4 знаков после запятой.
+          Будет записан отдельной корректировкой. Допустимо до 4 знаков после запятой.
         </p>
         @if (error(); as message) {
           <p class="form-error" role="alert">{{ message }}</p>
         }
         <button type="submit" [disabled]="saving()">
-          {{ saving() ? 'Сохраняем…' : editingId() ? 'Сохранить' : 'Создать счёт' }}
+          {{ saving() ? 'Сохраняем…' : editingId() ? 'Сохранить изменения' : 'Создать счёт' }}
         </button>
         @if (editingId()) {
-          <button type="button" class="secondary" (click)="cancelEdit()">Отмена</button>
+          <button type="button" class="secondary" (click)="cancelEdit()">Отменить изменение</button>
         }
       </form>
-    </section>
-
-    <section class="panel">
-      <h2>Все счета</h2>
-      @if (loading()) {
-        <p>Загружаем…</p>
-      } @else if (accounts().length === 0) {
-        <p class="hint">Создайте первый счёт.</p>
-      } @else {
-        <div class="item-list">
-          @for (account of accounts(); track account.id) {
-            <article class="directory-item" [class.archived]="account.archived">
-              <div>
-                <span class="badge">{{ account.type }}</span>
-                <h3>{{ account.name }}</h3>
-                @if (account.description) {
-                  <p>{{ account.description }}</p>
-                }
-              </div>
-              <strong class="balance">{{ account.balance }}</strong>
-              <div class="item-actions">
-                <button type="button" class="secondary" (click)="edit(account)">Изменить</button>
-                <button type="button" class="secondary" (click)="toggleArchive(account)">
-                  {{ account.archived ? 'Восстановить' : 'Архивировать' }}
-                </button>
-                <button type="button" class="danger" (click)="remove(account)">Удалить</button>
-              </div>
-            </article>
-          }
-        </div>
-      }
     </section>
   </div>
 </section>

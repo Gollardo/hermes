@@ -1,15 +1,58 @@
 @import '../directory.css';
 
-.subcategory {
-  align-items: center;
-  border-left: 3px solid #d8ded9;
-  display: flex;
-  gap: 0.75rem;
-  justify-content: space-between;
-  margin-left: 0.5rem;
-  padding: 0.65rem 0 0.65rem 0.8rem;
+.category-item {
+  display: block;
 }
 
-.subcategory.archived {
-  opacity: 0.62;
+.category-header,
+.subcategory {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.subcategory-list {
+  border-left: 1px solid var(--line-strong);
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.85rem 0 0 1.35rem;
+  padding-left: 1.35rem;
+}
+
+.subcategory {
+  border-radius: 0.75rem;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.subcategory:hover {
+  background: var(--surface-soft);
+}
+
+.subcategory > span {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.6rem;
+}
+
+.subcategory i {
+  background: var(--line-strong);
+  border-radius: 999px;
+  height: 0.35rem;
+  width: 0.35rem;
+}
+
+@media (max-width: 38rem) {
+  .category-header,
+  .subcategory {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .subcategory-list {
+    margin-left: 0.85rem;
+    padding-left: 0.85rem;
+  }
 }

@@ -1,8 +1,101 @@
-<section class="hero">
-  <p class="eyebrow">Финансовая структура</p>
-  <h1>Настройте счета и категории</h1>
-  <p>
-    Создайте счета с точным начальным остатком и подготовьте дерево категорий доходов и расходов.
-  </p>
-  <a routerLink="/accounts">Создать первый счёт</a>
+<section class="overview-page">
+  <header class="page-header">
+    <div class="page-header-copy">
+      <p class="eyebrow">Обзор</p>
+      <h1>Финансовая основа без лишнего шума</h1>
+      <p>
+        Подготовьте счета и категории — они станут надёжной основой для операций, фондов и будущего
+        прогноза.
+      </p>
+    </div>
+    <a class="button-link" routerLink="/accounts">Добавить счёт</a>
+  </header>
+
+  <div class="overview-grid">
+    <article class="welcome-card">
+      <div class="welcome-copy">
+        <span class="status-pill positive">Основа доступна</span>
+        <h2>Начните с реальной картины ваших денег</h2>
+        <p>
+          Создайте физические счета с точными начальными остатками, затем настройте категории
+          доходов и расходов.
+        </p>
+        <div class="welcome-actions">
+          <a class="button-link" routerLink="/accounts">Перейти к счетам</a>
+          <a class="button-link secondary" routerLink="/categories">Настроить категории</a>
+        </div>
+      </div>
+      <div class="balance-orbit" aria-hidden="true">
+        <span class="orbit orbit-one"></span>
+        <span class="orbit orbit-two"></span>
+        <span class="orbit orbit-three"></span>
+        <strong>H</strong>
+      </div>
+    </article>
+
+    <div class="overview-stack">
+      <div class="quick-grid" aria-label="Доступные разделы">
+        <a class="entity-card" routerLink="/accounts">
+          <span class="entity-icon" aria-hidden="true">₽</span>
+          <div>
+            <span class="section-label">Где деньги</span>
+            <h2>Счета</h2>
+            <p>Наличные, дебетовые и сберегательные счета с остатком из журнала движений.</p>
+          </div>
+          <span class="card-arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="entity-card" routerLink="/categories">
+          <span class="entity-icon soft" aria-hidden="true">⌗</span>
+          <div>
+            <span class="section-label">Как классифицировать</span>
+            <h2>Категории</h2>
+            <p>Два отдельных дерева для понятной структуры доходов и расходов.</p>
+          </div>
+          <span class="card-arrow" aria-hidden="true">↗</span>
+        </a>
+      </div>
+
+      <section class="trust-card panel" aria-labelledby="trust-title">
+        <span class="trust-icon" aria-hidden="true">✓</span>
+        <div>
+          <p class="section-label">Self-hosted</p>
+          <h2 id="trust-title">Ваши данные остаются вашими</h2>
+          <p>Hermes работает в вашем экземпляре и не зависит от внешних финансовых сервисов.</p>
+        </div>
+      </section>
+    </div>
+
+    <section class="foundation-card panel" aria-labelledby="foundation-title">
+      <div class="panel-heading">
+        <div>
+          <p class="section-label">Текущий этап</p>
+          <h2 id="foundation-title">0.1.0-alpha.2</h2>
+        </div>
+        <span class="count-pill">Финансовая структура</span>
+      </div>
+      <ol class="foundation-steps">
+        <li class="done">
+          <span>01</span>
+          <div>
+            <strong>Доступ и настройки</strong
+            ><small>Локальный владелец защищён мастер-паролем</small>
+          </div>
+        </li>
+        <li class="current">
+          <span>02</span>
+          <div>
+            <strong>Счета и категории</strong
+            ><small>Создайте структуру для ежедневного учёта</small>
+          </div>
+        </li>
+        <li>
+          <span>03</span>
+          <div>
+            <strong>Операции</strong
+            ><small>Следующий этап после утверждения финансовой модели</small>
+          </div>
+        </li>
+      </ol>
+    </section>
+  </div>
 </section>

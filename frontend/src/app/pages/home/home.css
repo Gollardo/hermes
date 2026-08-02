@@ -1,35 +1,231 @@
-.hero {
-  background: #fffdf7;
-  border: 1px solid #d8ded9;
-  border-radius: 1rem;
-  box-shadow: 0 1rem 2.5rem rgb(23 37 31 / 8%);
-  padding: clamp(1.4rem, 5vw, 4rem);
+.overview-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.45fr) minmax(17rem, 0.55fr);
 }
 
-.eyebrow {
-  color: #8b5d18;
-  font-size: 0.78rem;
-  font-weight: 750;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.welcome-card {
+  align-items: center;
+  background:
+    radial-gradient(circle at 80% 10%, rgb(181 225 194 / 60%), transparent 15rem),
+    linear-gradient(140deg, #edf6ef, #dceee1);
+  border: 1px solid #d5e8db;
+  border-radius: 1.5rem;
+  display: grid;
+  gap: 2rem;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 0.55fr);
+  min-height: 23rem;
+  overflow: hidden;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  position: relative;
 }
 
-h1 {
-  font-size: clamp(2rem, 6vw, 4rem);
-  line-height: 1.05;
-  margin: 0.45rem 0 1rem;
-  max-width: 16ch;
+.welcome-copy {
+  position: relative;
+  z-index: 1;
 }
 
-p:not(.eyebrow) {
-  color: #4b5952;
-  font-size: 1.05rem;
-  max-width: 62ch;
+.welcome-copy h2 {
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-weight: 560;
+  letter-spacing: -0.055em;
+  line-height: 1.02;
+  margin: 1rem 0;
+  max-width: 15ch;
 }
 
-a {
-  color: #245c43;
-  display: inline-block;
-  font-weight: 700;
-  margin-top: 1rem;
+.welcome-copy > p {
+  color: var(--ink-soft);
+  max-width: 52ch;
+}
+
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.5rem;
+}
+
+.balance-orbit {
+  aspect-ratio: 1;
+  display: grid;
+  margin: auto;
+  max-width: 18rem;
+  place-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.balance-orbit strong {
+  align-items: center;
+  background: var(--accent);
+  border-radius: 1.5rem;
+  box-shadow: 0 1.25rem 3rem rgb(23 115 79 / 22%);
+  color: #fff;
+  display: flex;
+  font-size: 2rem;
+  height: 5rem;
+  justify-content: center;
+  transform: rotate(-8deg);
+  width: 5rem;
+}
+
+.orbit {
+  border: 1px solid rgb(23 115 79 / 24%);
+  border-radius: 50%;
+  position: absolute;
+}
+
+.orbit-one {
+  inset: 10%;
+}
+
+.orbit-two {
+  border-style: dashed;
+  inset: 23%;
+}
+
+.orbit-three {
+  background: rgb(255 255 255 / 38%);
+  inset: 35%;
+}
+
+.overview-stack,
+.quick-grid {
+  align-self: start;
+  display: grid;
+  gap: 1rem;
+}
+
+.entity-card {
+  align-items: start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  color: var(--ink);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: auto 1fr auto;
+  padding: 1.3rem;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.entity-card:hover {
+  border-color: #b9cec0;
+  box-shadow: var(--shadow-card);
+  transform: translateY(-2px);
+}
+
+.entity-card h2 {
+  font-size: 1.25rem;
+  margin: 0.2rem 0 0.35rem;
+}
+
+.entity-card p {
+  color: var(--ink-soft);
+  font-size: 0.83rem;
+  margin: 0;
+}
+
+.entity-icon,
+.trust-icon {
+  align-items: center;
+  background: var(--accent);
+  border-radius: 0.8rem;
+  color: #fff;
+  display: flex;
+  font-weight: 720;
+  height: 2.6rem;
+  justify-content: center;
+  width: 2.6rem;
+}
+
+.entity-icon.soft {
+  background: #edf1ee;
+  color: var(--accent-strong);
+}
+
+.card-arrow {
+  color: var(--muted);
+}
+
+.foundation-steps {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.foundation-card {
+  align-self: start;
+}
+
+.foundation-card .panel-heading {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.foundation-steps li {
+  align-items: center;
+  border-radius: 0.85rem;
+  color: var(--muted);
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: auto 1fr;
+  padding: 0.7rem;
+}
+
+.foundation-steps li.current {
+  background: var(--surface-accent);
+  color: var(--ink);
+}
+
+.foundation-steps li > span {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.foundation-steps strong,
+.foundation-steps small {
+  display: block;
+}
+
+.foundation-steps small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-top: 0.15rem;
+}
+
+.trust-card {
+  align-items: start;
+  display: flex;
+  gap: 1rem;
+}
+
+.trust-card h2 {
+  font-size: 1.2rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.trust-card p:not(.section-label) {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+@media (max-width: 62rem) {
+  .overview-grid,
+  .welcome-card {
+    grid-template-columns: 1fr;
+  }
+
+  .balance-orbit {
+    display: none;
+  }
 }
