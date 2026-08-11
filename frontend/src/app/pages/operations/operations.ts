@@ -29,6 +29,32 @@ interface Movement {
   amount: string;
 }
 
+interface Fund {
+  id: string;
+  name: string;
+  total_balance: string;
+  archived: boolean;
+}
+
+interface FundPosition {
+  fund_id: string;
+  account_id: string;
+  balance: string;
+}
+
+interface FundSummary {
+  funds: Fund[];
+  positions: FundPosition[];
+}
+
+interface OperationFundMovement {
+  fund_id: string;
+  fund_name: string;
+  account_id: string;
+  account_name: string;
+  amount: string;
+}
+
 interface Operation {
   id: string;
   type: OperationType;
@@ -41,6 +67,9 @@ interface Operation {
   account_id: string;
   destination_account_id: string | null;
   movements: Movement[];
+  fund_id: string | null;
+  fund_amount: string | null;
+  fund_movements: OperationFundMovement[];
   version: number;
 }
 
@@ -72,6 +101,8 @@ export class OperationsPage implements OnInit {
   protected readonly Math = Math;
   protected readonly accounts = signal<Account[]>([]);
   protected readonly categories = signal<Category[]>([]);
+  protected readonly funds = signal<Fund[]>([]);
+  private readonly fundPositions = signal<FundPosition[]>([]);
   protected readonly total = signal(0);
   protected readonly totalAmount = signal('0.0000');
   protected readonly baseCurrency = signal('RUB');
@@ -94,6 +125,8 @@ export class OperationsPage implements OnInit {
     destinationAccountId: [''],
     description: ['', Validators.maxLength(2000)],
     reason: ['', Validators.maxLength(2000)],
+    fundId: [''],
+    fundAmount: ['', Validators.pattern(/^\d{1,16}(?:\.\d{1,4})?$/)],
   });
 
   protected readonly filters = this.builder.group({
@@ -129,6 +162,22 @@ export class OperationsPage implements OnInit {
       (category) =>
         category.type === type && (!category.archived || category.id === current?.category_id),
     );
+  }
+
+  protected availableFunds(): Fund[] {
+    const currentFundId = this.currentOperation()?.fund_id;
+    const accountId = this.form.controls.accountId.value;
+    return this.funds().filter(
+      (fund) =>
+        fund.id === currentFundId ||
+        (!fund.archived && this.fundAvailableOnSource(fund.id, accountId) > 0n),
+    );
+  }
+
+  protected fundPositionLabel(fund: Fund): string {
+    return `${fund.name} · доступно ${formatMoneyUnits(
+      this.fundAvailableOnSource(fund.id, this.form.controls.accountId.value),
+    )} ${this.baseCurrency()}${fund.archived ? ' · в архиве' : ''}`;
   }
 
   protected operationTypeLabel(type: OperationType): string {
@@ -204,6 +253,16 @@ export class OperationsPage implements OnInit {
         value.categoryId,
         value.destinationAccountId,
         value.reason,
+        value.fundId,
+        value.fundAmount,
+        value.amount,
+      ) &&
+      this.fundSelectionIsValid(
+        value.type,
+        value.accountId,
+        value.fundId,
+        value.amount,
+        value.fundAmount,
       )
     );
   }
@@ -243,6 +302,8 @@ export class OperationsPage implements OnInit {
       category_id: value.type === 'income' || value.type === 'expense' ? value.categoryId : null,
       description: value.description || null,
       reason: value.type === 'balance_adjustment' ? value.reason : null,
+      fund_id: value.type === 'expense' || value.type === 'transfer' ? value.fundId || null : null,
+      fund_amount: value.type === 'transfer' && value.fundId ? value.fundAmount || null : null,
     };
     const id = this.editingId();
     const existing = this.operations().find((item) => item.id === id);
@@ -279,6 +340,8 @@ export class OperationsPage implements OnInit {
       destinationAccountId: operation.destination_account_id ?? '',
       description: operation.description ?? '',
       reason: operation.reason ?? '',
+      fundId: operation.fund_id ?? '',
+      fundAmount: operation.type === 'transfer' ? (operation.fund_amount ?? '') : '',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -294,6 +357,8 @@ export class OperationsPage implements OnInit {
       destinationAccountId: '',
       description: '',
       reason: '',
+      fundId: '',
+      fundAmount: '',
     });
   }
 
@@ -359,6 +424,9 @@ export class OperationsPage implements OnInit {
     categoryId: string,
     destinationAccountId: string,
     reason: string,
+    fundId: string,
+    fundAmount: string,
+    physicalAmount: string,
   ): boolean {
     if (!type || !accountId) return false;
     if ((type === 'income' || type === 'expense') && !categoryId) return false;
@@ -366,9 +434,50 @@ export class OperationsPage implements OnInit {
       return false;
     }
     if (type === 'balance_adjustment' && !reason.trim()) return false;
+    if (type === 'transfer' && fundId) {
+      const virtualUnits = moneyUnits(fundAmount);
+      const physicalUnits = moneyUnits(physicalAmount);
+      if (
+        virtualUnits === null ||
+        physicalUnits === null ||
+        virtualUnits <= 0n ||
+        virtualUnits > physicalUnits
+      ) {
+        return false;
+      }
+    }
     const units = moneyUnits(amount);
     if (units === null) return false;
     return type === 'balance_adjustment' ? units !== 0n : units > 0n;
+  }
+
+  private fundSelectionIsValid(
+    type: OperationType | '',
+    accountId: string,
+    fundId: string,
+    physicalAmount: string,
+    fundAmount: string,
+  ): boolean {
+    if (!fundId || (type !== 'expense' && type !== 'transfer')) return true;
+    const required = moneyUnits(type === 'expense' ? physicalAmount : fundAmount);
+    return (
+      required !== null &&
+      required > 0n &&
+      required <= this.fundAvailableOnSource(fundId, accountId)
+    );
+  }
+
+  private fundAvailableOnSource(fundId: string, accountId: string): bigint {
+    const current =
+      moneyUnits(
+        this.fundPositions().find(
+          (position) => position.fund_id === fundId && position.account_id === accountId,
+        )?.balance ?? '0',
+      ) ?? 0n;
+    const oldMovement = this.currentOperation()?.fund_movements.find(
+      (movement) => movement.fund_id === fundId && movement.account_id === accountId,
+    );
+    return current - (moneyUnits(oldMovement?.amount ?? '0') ?? 0n);
   }
 
   private loadSettings(): void {
@@ -397,6 +506,14 @@ export class OperationsPage implements OnInit {
       next: (categories) => this.categories.set(categories),
       error: (error: unknown) =>
         this.error.set(apiErrorMessage(error, 'Не удалось загрузить категории.')),
+    });
+    this.http.get<FundSummary>(`${environment.apiBaseUrl}/funds/summary`).subscribe({
+      next: (summary) => {
+        this.funds.set(summary.funds);
+        this.fundPositions.set(summary.positions);
+      },
+      error: (error: unknown) =>
+        this.error.set(apiErrorMessage(error, 'Не удалось загрузить фонды.')),
     });
   }
 

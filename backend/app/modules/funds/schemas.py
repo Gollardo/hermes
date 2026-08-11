@@ -1,0 +1,207 @@
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
+from typing import Annotated, Literal, Self
+from uuid import UUID
+
+from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
+
+
+def _parse_decimal(value: object, *, scale: int, maximum: Decimal) -> Decimal:
+    if isinstance(value, float):
+        raise ValueError("binary floating-point values are not accepted")
+    try:
+        result = Decimal(str(value))
+    except (InvalidOperation, ValueError) as error:
+        raise ValueError("invalid decimal value") from error
+    exponent = result.as_tuple().exponent
+    if (
+        not result.is_finite()
+        or not isinstance(exponent, int)
+        or exponent < -scale
+        or abs(result) > maximum
+    ):
+        raise ValueError(f"value must have at most {scale} decimal places")
+    return result
+
+
+def parse_money(value: object) -> Decimal:
+    return _parse_decimal(value, scale=4, maximum=Decimal("9999999999999999.9999"))
+
+
+def parse_percentage(value: object) -> Decimal:
+    return _parse_decimal(value, scale=4, maximum=Decimal("100"))
+
+
+Money = Annotated[Decimal, BeforeValidator(parse_money)]
+Percentage = Annotated[Decimal, BeforeValidator(parse_percentage)]
+
+
+class FundCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=2000)
+    allocation_percentage: Percentage
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        if not (name := value.strip()):
+            raise ValueError("name must not be blank")
+        return name
+
+    @field_validator("description")
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+    @field_validator("allocation_percentage")
+    @classmethod
+    def percentage_range(cls, value: Decimal) -> Decimal:
+        if value < 0 or value > 100:
+            raise ValueError("percentage must be between 0 and 100")
+        return value
+
+
+class FundUpdateRequest(FundCreateRequest):
+    version: int = Field(ge=1)
+
+
+class FundLifecycleRequest(BaseModel):
+    version: int = Field(ge=1)
+
+
+class FundResponse(BaseModel):
+    id: UUID
+    name: str
+    description: str | None
+    allocation_percentage: str
+    total_balance: str
+    archived: bool
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class FundPositionResponse(BaseModel):
+    fund_id: UUID
+    fund_name: str
+    account_id: UUID
+    account_name: str
+    balance: str
+
+
+class AccountCoverageResponse(BaseModel):
+    account_id: UUID
+    account_name: str
+    physical_balance: str
+    reserved_balance: str
+    free_balance: str
+    archived: bool
+
+
+class FundSummaryResponse(BaseModel):
+    funds: list[FundResponse]
+    positions: list[FundPositionResponse]
+    accounts: list[AccountCoverageResponse]
+    active_percentage: str
+    total_reserved: str
+    total_free: str
+
+
+class AllocationPreviewRequest(BaseModel):
+    account_id: UUID
+    amount: Money
+
+    @field_validator("amount")
+    @classmethod
+    def positive_amount(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("amount must be positive")
+        return value
+
+
+class AllocationItem(BaseModel):
+    fund_id: UUID
+    amount: Money
+
+    @field_validator("amount")
+    @classmethod
+    def non_negative_amount(cls, value: Decimal) -> Decimal:
+        if value < 0:
+            raise ValueError("allocation cannot be negative")
+        return value
+
+
+class AllocationPreviewResponse(BaseModel):
+    account_id: UUID
+    amount: str
+    allocations: list[AllocationItem]
+    allocated_amount: str
+    unallocated_amount: str
+    free_before: str
+    free_after: str
+
+
+class AllocationCreateRequest(AllocationPreviewRequest):
+    occurred_on: date
+    description: str | None = Field(default=None, max_length=2000)
+    allocations: list[AllocationItem] = Field(min_length=1)
+
+    @field_validator("description")
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+    @model_validator(mode="after")
+    def unique_funds(self) -> Self:
+        ids = [item.fund_id for item in self.allocations]
+        if len(ids) != len(set(ids)):
+            raise ValueError("each fund may occur once")
+        if not any(item.amount > 0 for item in self.allocations):
+            raise ValueError("allocation must reserve a positive amount")
+        return self
+
+
+class RedistributionCreateRequest(BaseModel):
+    occurred_on: date
+    fund_id: UUID
+    source_account_id: UUID
+    destination_account_id: UUID
+    amount: Money
+    description: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("description")
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> Self:
+        if self.source_account_id == self.destination_account_id:
+            raise ValueError("accounts must differ")
+        if self.amount <= 0:
+            raise ValueError("amount must be positive")
+        return self
+
+
+class FundMovementResponse(BaseModel):
+    fund_id: UUID
+    fund_name: str
+    account_id: UUID
+    account_name: str
+    amount: str
+
+
+class FundEventResponse(BaseModel):
+    id: UUID
+    type: Literal["allocation", "redistribution", "expense", "transfer"]
+    occurred_on: date
+    description: str | None
+    movements: list[FundMovementResponse]
+    created_at: datetime
+
+
+class FundHistoryResponse(BaseModel):
+    items: list[FundEventResponse]
+    page: int
+    page_size: int
+    total: int

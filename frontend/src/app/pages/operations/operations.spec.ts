@@ -16,6 +16,15 @@ interface TestOperation {
   account_id: string;
   destination_account_id: string | null;
   movements: { account_id: string; account_name: string; amount: string }[];
+  fund_id: string | null;
+  fund_amount: string | null;
+  fund_movements: {
+    fund_id: string;
+    fund_name: string;
+    account_id: string;
+    account_name: string;
+    amount: string;
+  }[];
   version: number;
 }
 
@@ -41,6 +50,8 @@ describe('OperationsPage', () => {
   function flushInitial(options?: {
     accounts?: object[];
     categories?: object[];
+    funds?: object[];
+    positions?: object[];
     operations?: TestOperation[];
     total?: number;
     totalAmount?: string;
@@ -69,6 +80,10 @@ describe('OperationsPage', () => {
         },
       ],
     );
+    http.expectOne('/api/v1/funds/summary').flush({
+      funds: options?.funds ?? [],
+      positions: options?.positions ?? [],
+    });
     const journal = http.expectOne(
       (request) => request.url === '/api/v1/operations' && request.params.get('page') === '1',
     );
@@ -110,9 +125,69 @@ describe('OperationsPage', () => {
     request.flush({});
     http.expectOne('/api/v1/accounts').flush([]);
     http.expectOne('/api/v1/categories').flush([]);
+    http.expectOne('/api/v1/funds/summary').flush({ funds: [], positions: [] });
     http
       .expectOne((candidate) => candidate.url === '/api/v1/operations')
       .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+  });
+
+  it('posts an expense from the explicitly selected fund', () => {
+    flushInitial({
+      funds: [
+        {
+          id: 'fund-1',
+          name: 'Reserve',
+          total_balance: '30.0000',
+          archived: false,
+        },
+      ],
+      positions: [{ fund_id: 'fund-1', account_id: 'account-1', balance: '30.0000' }],
+    });
+    setValue('#operation-type', 'expense');
+    setValue('#operation-category', 'category-1');
+    setValue('#operation-amount', '12.0000');
+    setValue('#operation-account', 'account-1');
+    setValue('#operation-fund', 'fund-1');
+    fixture.nativeElement.querySelector('.entry-panel form').dispatchEvent(new Event('submit'));
+
+    const request = http.expectOne('/api/v1/operations');
+    expect(request.request.body.fund_id).toBe('fund-1');
+    expect(request.request.body.fund_amount).toBeNull();
+    request.flush({});
+    http.expectOne('/api/v1/accounts').flush([]);
+    http.expectOne('/api/v1/categories').flush([]);
+    http.expectOne('/api/v1/funds/summary').flush({ funds: [], positions: [] });
+    http
+      .expectOne((candidate) => candidate.url === '/api/v1/operations')
+      .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+  });
+
+  it('offers a fund only when it has a position on the selected source account', () => {
+    flushInitial({
+      accounts: [
+        { id: 'account-1', name: 'Main', balance: '100.0000', archived: false },
+        { id: 'account-2', name: 'Savings', balance: '30.0000', archived: false },
+      ],
+      funds: [
+        {
+          id: 'fund-1',
+          name: 'Reserve',
+          total_balance: '30.0000',
+          archived: false,
+        },
+      ],
+      positions: [{ fund_id: 'fund-1', account_id: 'account-2', balance: '30.0000' }],
+    });
+    setValue('#operation-type', 'expense');
+    setValue('#operation-account', 'account-1');
+    expect(
+      (fixture.nativeElement.querySelector('#operation-fund') as HTMLSelectElement).textContent,
+    ).not.toContain('Reserve');
+
+    setValue('#operation-account', 'account-2');
+    expect(
+      (fixture.nativeElement.querySelector('#operation-fund') as HTMLSelectElement).textContent,
+    ).toContain('Reserve · доступно 30.0000 RUB');
   });
 
   it('posts an exact adjustment delta from the expected balance', () => {
@@ -139,6 +214,7 @@ describe('OperationsPage', () => {
     request.flush({});
     http.expectOne('/api/v1/accounts').flush([]);
     http.expectOne('/api/v1/categories').flush([]);
+    http.expectOne('/api/v1/funds/summary').flush({ funds: [], positions: [] });
     http
       .expectOne((candidate) => candidate.url === '/api/v1/operations')
       .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
@@ -158,6 +234,9 @@ describe('OperationsPage', () => {
       account_id: 'account-1',
       destination_account_id: null,
       movements: [{ account_id: 'account-1', account_name: 'Main', amount: '20.0000' }],
+      fund_id: null,
+      fund_amount: null,
+      fund_movements: [],
       version: 1,
     };
     flushInitial({
@@ -179,6 +258,7 @@ describe('OperationsPage', () => {
     request.flush(adjustment);
     http.expectOne('/api/v1/accounts').flush([]);
     http.expectOne('/api/v1/categories').flush([]);
+    http.expectOne('/api/v1/funds/summary').flush({ funds: [], positions: [] });
     http
       .expectOne((candidate) => candidate.url === '/api/v1/operations')
       .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
@@ -201,6 +281,9 @@ describe('OperationsPage', () => {
         { account_id: 'account-1', account_name: 'Main', amount: '-25.0000' },
         { account_id: 'account-2', account_name: 'Old savings', amount: '25.0000' },
       ],
+      fund_id: null,
+      fund_amount: null,
+      fund_movements: [],
       version: 1,
     };
     flushInitial({
@@ -244,6 +327,9 @@ describe('OperationsPage', () => {
       account_id: 'account-1',
       destination_account_id: null,
       movements: [{ account_id: 'account-1', account_name: 'Main', amount: '-10.0000' }],
+      fund_id: null,
+      fund_amount: null,
+      fund_movements: [],
       version: 1,
     };
     flushInitial({ operations: [expense], total: 26, totalAmount: '-260.0000' });

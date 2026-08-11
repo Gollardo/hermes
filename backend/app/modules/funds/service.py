@@ -1,0 +1,496 @@
+from datetime import UTC, date, datetime
+from decimal import ROUND_DOWN, Decimal
+from uuid import UUID
+
+from sqlalchemy import delete, func, select, text
+from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
+
+from app.modules.accounts.contracts import account_names, list_account_identities
+from app.modules.funds.models import Fund, FundEvent, FundEventType, FundMovement
+from app.modules.funds.schemas import (
+    AccountCoverageResponse,
+    AllocationCreateRequest,
+    AllocationItem,
+    AllocationPreviewResponse,
+    FundEventResponse,
+    FundMovementResponse,
+    FundPositionResponse,
+    FundResponse,
+    FundSummaryResponse,
+    FundUpdateRequest,
+    RedistributionCreateRequest,
+)
+
+MONEY_QUANTUM = Decimal("0.0001")
+FUND_DEFINITION_LOCK = 4_621_083_119
+
+
+class FundNotFoundError(RuntimeError):
+    pass
+
+
+class FundConflictError(RuntimeError):
+    pass
+
+
+class FundPercentageLimitError(RuntimeError):
+    pass
+
+
+class FundBalanceError(RuntimeError):
+    pass
+
+
+class FundCoverageError(RuntimeError):
+    pass
+
+
+class FundArchiveBalanceError(RuntimeError):
+    pass
+
+
+class FundArchivedMutationError(RuntimeError):
+    pass
+
+
+def _lock_definitions(session: Session) -> None:
+    session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": FUND_DEFINITION_LOCK})
+
+
+def _get_fund(session: Session, fund_id: UUID, *, lock: bool = False) -> Fund:
+    query = select(Fund).where(Fund.id == fund_id)
+    if lock:
+        query = query.with_for_update()
+    fund = session.scalar(query)
+    if fund is None:
+        raise FundNotFoundError
+    return fund
+
+
+def _percentage_total(session: Session, *, excluding: UUID | None = None) -> Decimal:
+    conditions: list[ColumnElement[bool]] = [Fund.archived_at.is_(None)]
+    if excluding is not None:
+        conditions.append(Fund.id != excluding)
+    value = session.scalar(
+        select(func.coalesce(func.sum(Fund.allocation_percentage), 0)).where(*conditions)
+    )
+    return Decimal(value or 0)
+
+
+def _check_percentage(session: Session, value: Decimal, *, excluding: UUID | None = None) -> None:
+    if _percentage_total(session, excluding=excluding) + value > 100:
+        raise FundPercentageLimitError
+
+
+def create_fund(
+    session: Session, *, name: str, description: str | None, percentage: Decimal
+) -> Fund:
+    _lock_definitions(session)
+    _check_percentage(session, percentage)
+    now = datetime.now(UTC)
+    fund = Fund(
+        name=name,
+        description=description,
+        allocation_percentage=percentage,
+        created_at=now,
+        updated_at=now,
+        version=1,
+    )
+    session.add(fund)
+    session.flush()
+    return fund
+
+
+def update_fund(session: Session, fund_id: UUID, payload: FundUpdateRequest) -> Fund:
+    _lock_definitions(session)
+    fund = _get_fund(session, fund_id, lock=True)
+    if fund.version != payload.version:
+        raise FundConflictError
+    if fund.archived_at is None:
+        _check_percentage(session, payload.allocation_percentage, excluding=fund.id)
+    fund.name = payload.name
+    fund.description = payload.description
+    fund.allocation_percentage = payload.allocation_percentage
+    fund.updated_at = datetime.now(UTC)
+    fund.version += 1
+    session.flush()
+    return fund
+
+
+def fund_balance(session: Session, fund_id: UUID, account_id: UUID | None = None) -> Decimal:
+    conditions = [FundMovement.fund_id == fund_id]
+    if account_id is not None:
+        conditions.append(FundMovement.account_id == account_id)
+    value = session.scalar(
+        select(func.coalesce(func.sum(FundMovement.amount), 0)).where(*conditions)
+    )
+    return Decimal(value or 0)
+
+
+def reserved_balance(session: Session, account_id: UUID) -> Decimal:
+    value = session.scalar(
+        select(func.coalesce(func.sum(FundMovement.amount), 0)).where(
+            FundMovement.account_id == account_id
+        )
+    )
+    return Decimal(value or 0)
+
+
+def account_has_fund_history(session: Session, account_id: UUID) -> bool:
+    return (
+        session.scalar(
+            select(FundMovement.id).where(FundMovement.account_id == account_id).limit(1)
+        )
+        is not None
+    )
+
+
+def archive_fund(
+    session: Session,
+    fund_id: UUID,
+    *,
+    restore: bool,
+    expected_version: int,
+) -> Fund:
+    _lock_definitions(session)
+    fund = _get_fund(session, fund_id, lock=True)
+    if fund.version != expected_version:
+        raise FundConflictError
+    if restore:
+        if fund.archived_at is None:
+            return fund
+        _check_percentage(session, fund.allocation_percentage)
+        fund.archived_at = None
+    else:
+        if fund.archived_at is not None:
+            return fund
+        if fund_balance(session, fund.id) != 0:
+            raise FundArchiveBalanceError
+        fund.archived_at = datetime.now(UTC)
+    fund.updated_at = datetime.now(UTC)
+    fund.version += 1
+    session.flush()
+    return fund
+
+
+def _fund_response(session: Session, fund: Fund) -> FundResponse:
+    return FundResponse(
+        id=fund.id,
+        name=fund.name,
+        description=fund.description,
+        allocation_percentage=format(fund.allocation_percentage, "f"),
+        total_balance=format(fund_balance(session, fund.id), "f"),
+        archived=fund.archived_at is not None,
+        version=fund.version,
+        created_at=fund.created_at,
+        updated_at=fund.updated_at,
+    )
+
+
+def list_funds(session: Session, *, include_archived: bool = True) -> list[FundResponse]:
+    query = select(Fund)
+    if not include_archived:
+        query = query.where(Fund.archived_at.is_(None))
+    funds = session.scalars(
+        query.order_by(Fund.archived_at.nulls_first(), Fund.name, Fund.id)
+    ).all()
+    return [_fund_response(session, fund) for fund in funds]
+
+
+def get_fund_response(session: Session, fund_id: UUID) -> FundResponse:
+    return _fund_response(session, _get_fund(session, fund_id))
+
+
+def validate_account_coverage(session: Session, physical_balances: dict[UUID, Decimal]) -> None:
+    for account_id, physical in physical_balances.items():
+        reserved = reserved_balance(session, account_id)
+        if reserved < 0 or reserved > physical:
+            raise FundCoverageError
+        rows = session.execute(
+            select(FundMovement.fund_id, func.sum(FundMovement.amount))
+            .where(FundMovement.account_id == account_id)
+            .group_by(FundMovement.fund_id)
+        )
+        if any(Decimal(value) < 0 for _, value in rows):
+            raise FundBalanceError
+
+
+def summary_with_physical_balances(
+    session: Session, physical_balances: dict[UUID, Decimal]
+) -> FundSummaryResponse:
+    funds = list_funds(session)
+    position_rows = session.execute(
+        select(FundMovement.fund_id, FundMovement.account_id, func.sum(FundMovement.amount))
+        .group_by(FundMovement.fund_id, FundMovement.account_id)
+        .having(func.sum(FundMovement.amount) != 0)
+    ).all()
+    fund_names = {fund.id: fund.name for fund in session.scalars(select(Fund)).all()}
+    account_ids = {account_id for _, account_id, _ in position_rows}
+    account_ids.update(
+        account_id for (account_id,) in session.execute(select(FundMovement.account_id).distinct())
+    )
+    names = account_names(session, account_ids) if account_ids else {}
+    positions = [
+        FundPositionResponse(
+            fund_id=fund_id,
+            fund_name=fund_names[fund_id],
+            account_id=account_id,
+            account_name=names[account_id],
+            balance=format(Decimal(value), "f"),
+        )
+        for fund_id, account_id, value in position_rows
+    ]
+    accounts = list_account_identities(session)
+    coverage: list[AccountCoverageResponse] = []
+    for account in accounts:
+        physical = physical_balances[account.id]
+        reserved = reserved_balance(session, account.id)
+        coverage.append(
+            AccountCoverageResponse(
+                account_id=account.id,
+                account_name=account.name,
+                physical_balance=format(physical, "f"),
+                reserved_balance=format(reserved, "f"),
+                free_balance=format(physical - reserved, "f"),
+                archived=account.archived,
+            )
+        )
+    return FundSummaryResponse(
+        funds=funds,
+        positions=positions,
+        accounts=coverage,
+        active_percentage=format(_percentage_total(session), "f"),
+        total_reserved=format(sum((Decimal(f.total_balance) for f in funds), Decimal(0)), "f"),
+        total_free=format(sum((Decimal(a.free_balance) for a in coverage), Decimal(0)), "f"),
+    )
+
+
+def percentage_allocations(
+    amount: Decimal, percentages: list[tuple[UUID, Decimal]]
+) -> list[AllocationItem]:
+    """Apply the documented independent round-down rule without float arithmetic."""
+    return [
+        AllocationItem(
+            fund_id=fund_id,
+            amount=(amount * percentage / 100).quantize(MONEY_QUANTUM, rounding=ROUND_DOWN),
+        )
+        for fund_id, percentage in percentages
+    ]
+
+
+def allocation_preview_with_free_balance(
+    session: Session, account_id: UUID, amount: Decimal, free: Decimal
+) -> AllocationPreviewResponse:
+    funds = session.scalars(select(Fund).where(Fund.archived_at.is_(None)).order_by(Fund.id)).all()
+    allocations = percentage_allocations(
+        amount, [(fund.id, fund.allocation_percentage) for fund in funds]
+    )
+    allocated = sum((item.amount for item in allocations), Decimal(0))
+    return AllocationPreviewResponse(
+        account_id=account_id,
+        amount=format(amount, "f"),
+        allocations=allocations,
+        allocated_amount=format(allocated, "f"),
+        unallocated_amount=format(amount - allocated, "f"),
+        free_before=format(free, "f"),
+        free_after=format(free - allocated, "f"),
+    )
+
+
+def create_allocation_with_free_balance(
+    session: Session, payload: AllocationCreateRequest, free: Decimal
+) -> FundEvent:
+    funds = _lock_fund_references(session, {item.fund_id for item in payload.allocations})
+    if any(fund.archived_at is not None for fund in funds.values()):
+        raise FundNotFoundError
+    allocated = sum((item.amount for item in payload.allocations), Decimal(0))
+    if allocated > payload.amount or allocated > free:
+        raise FundCoverageError
+    event = _event(session, FundEventType.ALLOCATION, payload.occurred_on, payload.description)
+    _add_fund_movements(
+        session,
+        [
+            FundMovement(
+                fund_id=item.fund_id,
+                account_id=payload.account_id,
+                event_id=event.id,
+                operation_id=None,
+                amount=item.amount,
+            )
+            for item in payload.allocations
+            if item.amount != 0
+        ],
+    )
+    session.flush()
+    return event
+
+
+def create_redistribution_with_physical_balances(
+    session: Session,
+    payload: RedistributionCreateRequest,
+    physical_balances: dict[UUID, Decimal],
+) -> FundEvent:
+    fund = _lock_fund_references(session, {payload.fund_id})[payload.fund_id]
+    if fund.archived_at is not None:
+        raise FundNotFoundError
+    event = _event(session, FundEventType.REDISTRIBUTION, payload.occurred_on, payload.description)
+    _add_fund_movements(
+        session,
+        [
+            FundMovement(
+                fund_id=fund.id,
+                account_id=payload.source_account_id,
+                event_id=event.id,
+                operation_id=None,
+                amount=-payload.amount,
+            ),
+            FundMovement(
+                fund_id=fund.id,
+                account_id=payload.destination_account_id,
+                event_id=event.id,
+                operation_id=None,
+                amount=payload.amount,
+            ),
+        ],
+    )
+    session.flush()
+    validate_account_coverage(session, physical_balances)
+    return event
+
+
+def _event(
+    session: Session, event_type: FundEventType, occurred_on: date, description: str | None
+) -> FundEvent:
+    now = datetime.now(UTC)
+    event = FundEvent(
+        type=event_type,
+        occurred_on=occurred_on,
+        description=description,
+        created_at=now,
+    )
+    session.add(event)
+    session.flush()
+    return event
+
+
+def _add_fund_movements(session: Session, movements: list[FundMovement]) -> None:
+    session.add_all(movements)
+
+
+def _lock_fund_references(session: Session, fund_ids: set[UUID]) -> dict[UUID, Fund]:
+    if not fund_ids:
+        return {}
+    funds = session.scalars(
+        select(Fund).where(Fund.id.in_(fund_ids)).order_by(Fund.id).with_for_update()
+    ).all()
+    if len(funds) != len(fund_ids):
+        raise FundNotFoundError
+    return {fund.id: fund for fund in funds}
+
+
+def replace_operation_movements(
+    session: Session,
+    operation_id: UUID,
+    movements: dict[tuple[UUID, UUID], Decimal],
+    *,
+    allow_archived_fund_ids: set[UUID],
+) -> None:
+    fund_ids = {fund_id for fund_id, _ in movements} | allow_archived_fund_ids
+    funds = _lock_fund_references(session, fund_ids)
+    if any(
+        fund.archived_at is not None and fund.id not in allow_archived_fund_ids
+        for fund in funds.values()
+    ):
+        raise FundNotFoundError
+    session.execute(delete(FundMovement).where(FundMovement.operation_id == operation_id))
+    _add_fund_movements(
+        session,
+        [
+            FundMovement(
+                fund_id=fund_id,
+                account_id=account_id,
+                operation_id=operation_id,
+                event_id=None,
+                amount=amount,
+            )
+            for (fund_id, account_id), amount in movements.items()
+        ],
+    )
+    session.flush()
+    if any(
+        fund.archived_at is not None and fund_balance(session, fund.id) != 0
+        for fund in funds.values()
+    ):
+        raise FundArchivedMutationError
+
+
+def operation_fund_movements(
+    session: Session, operation_id: UUID
+) -> dict[tuple[UUID, UUID], Decimal]:
+    return {
+        (fund_id, account_id): Decimal(amount)
+        for fund_id, account_id, amount in session.execute(
+            select(FundMovement.fund_id, FundMovement.account_id, FundMovement.amount).where(
+                FundMovement.operation_id == operation_id
+            )
+        )
+    }
+
+
+def fund_names(session: Session, fund_ids: set[UUID]) -> dict[UUID, str]:
+    return {
+        fund.id: fund.name
+        for fund in session.scalars(select(Fund).where(Fund.id.in_(fund_ids))).all()
+    }
+
+
+def event_response(session: Session, event: FundEvent) -> FundEventResponse:
+    rows = session.execute(
+        select(FundMovement.fund_id, FundMovement.account_id, FundMovement.amount)
+        .where(FundMovement.event_id == event.id)
+        .order_by(FundMovement.amount, FundMovement.id)
+    ).all()
+    fund_names = {
+        fund.id: fund.name
+        for fund in session.scalars(select(Fund).where(Fund.id.in_({row[0] for row in rows}))).all()
+    }
+    names = account_names(session, {row[1] for row in rows})
+    return FundEventResponse(
+        id=event.id,
+        type=event.type,
+        occurred_on=event.occurred_on,
+        description=event.description,
+        movements=[
+            FundMovementResponse(
+                fund_id=fund_id,
+                fund_name=fund_names[fund_id],
+                account_id=account_id,
+                account_name=names[account_id],
+                amount=format(amount, "f"),
+            )
+            for fund_id, account_id, amount in rows
+        ],
+        created_at=event.created_at,
+    )
+
+
+def history_source_ids(
+    session: Session, *, fund_id: UUID | None, account_id: UUID | None
+) -> tuple[set[UUID], set[UUID]]:
+    conditions = []
+    if fund_id is not None:
+        conditions.append(FundMovement.fund_id == fund_id)
+    if account_id is not None:
+        conditions.append(FundMovement.account_id == account_id)
+    sources = session.execute(
+        select(FundMovement.event_id, FundMovement.operation_id).where(*conditions)
+    ).all()
+    event_ids = {event_id for event_id, _ in sources if event_id is not None}
+    operation_ids = {operation_id for _, operation_id in sources if operation_id is not None}
+    return event_ids, operation_ids
+
+
+def event_responses(session: Session, event_ids: set[UUID]) -> list[FundEventResponse]:
+    events = session.scalars(select(FundEvent).where(FundEvent.id.in_(event_ids))).all()
+    return [event_response(session, event) for event in events]

@@ -10,6 +10,9 @@ accepted without an explicit project-owner decision.
 - [ADR 0001: Financial posting model for 0.1.0-alpha.3](0001-financial-posting-model.md)
   records the separately reviewed alpha model and explicitly labels the
   remaining owner-confirmation assumptions.
+- [ADR 0002: Virtual fund ledger and allocation policy](0002-virtual-fund-ledger.md)
+  records the separately reviewed alpha.4 virtual posting, coverage, rounding
+  and archive model.
 
 ## Template for a future ADR
 

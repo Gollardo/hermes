@@ -9,6 +9,13 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Virtual fund definitions, per-account ledger positions and coverage summary.
+- Exact allocation preview with manual correction and documented round-down
+  remainder policy.
+- Atomic fund-aware expenses/transfers, virtual redistribution and complete
+  fund movement history.
+- Migration `0005_virtual_funds` plus upgrade/downgrade, rollback, concurrency,
+  integration and frontend coverage for the alpha.4 invariants.
 - Financial posting model ADR with explicit alpha assumptions and invariants.
 - Atomic income, expense, transfer and balance-adjustment CRUD.
 - Filtered, paginated operation journal with details and responsive Angular UI.

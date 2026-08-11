@@ -26,6 +26,10 @@ Transfers decrease one physical account and increase another. An adjustment is
 explicit history, including initial balance, rather than direct balance mutation.
 
 If a fund participates, its virtual movement shares the operation transaction.
+In `0.1.0-alpha.4`, an expense may consume one complete fund amount and a
+transfer may carry one explicitly smaller or equal virtual part. Create, replace
+and delete recheck both physical and virtual resulting balances through Funds'
+public posting contract.
 The ordinary posting flow is documented in [data flows](../architecture/data-flow.md).
 
 ## Boundary and consistency

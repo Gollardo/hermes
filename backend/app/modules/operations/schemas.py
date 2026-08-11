@@ -35,6 +35,8 @@ class OperationCreateRequest(BaseModel):
     account_id: UUID
     destination_account_id: UUID | None = None
     category_id: UUID | None = None
+    fund_id: UUID | None = None
+    fund_amount: Money | None = None
 
     @field_validator("description", "reason")
     @classmethod
@@ -48,20 +50,38 @@ class OperationCreateRequest(BaseModel):
         if self.type == OperationType.BALANCE_ADJUSTMENT:
             if self.amount == 0 or self.reason is None:
                 raise ValueError("adjustment requires a non-zero amount and reason")
-            if self.category_id is not None or self.destination_account_id is not None:
-                raise ValueError("adjustment cannot have category or destination account")
+            if (
+                self.category_id is not None
+                or self.destination_account_id is not None
+                or self.fund_id is not None
+                or self.fund_amount is not None
+            ):
+                raise ValueError("adjustment cannot have category, destination account or fund")
             return self
         if self.amount <= 0:
             raise ValueError("ordinary operation amount must be positive")
         if self.type in {OperationType.INCOME, OperationType.EXPENSE}:
             if self.category_id is None or self.destination_account_id is not None:
                 raise ValueError("income and expense require category and one account")
+            if self.type == OperationType.INCOME and (
+                self.fund_id is not None or self.fund_amount is not None
+            ):
+                raise ValueError("income allocation is an explicit fund action")
+            if self.type == OperationType.EXPENSE and self.fund_amount is not None:
+                raise ValueError("fund expense consumes the complete expense amount")
         elif self.type == OperationType.TRANSFER and (
             self.category_id is not None
             or self.destination_account_id is None
             or self.destination_account_id == self.account_id
         ):
             raise ValueError("transfer requires two different accounts and no category")
+        if self.type == OperationType.TRANSFER:
+            if (self.fund_id is None) != (self.fund_amount is None):
+                raise ValueError("fund transfer requires fund and virtual amount together")
+            if self.fund_amount is not None and (
+                self.fund_amount <= 0 or self.fund_amount > self.amount
+            ):
+                raise ValueError("virtual amount must be positive and no greater than transfer")
         return self
 
 
@@ -70,6 +90,14 @@ class OperationUpdateRequest(OperationCreateRequest):
 
 
 class MovementResponse(BaseModel):
+    account_id: UUID
+    account_name: str
+    amount: str
+
+
+class OperationFundMovementResponse(BaseModel):
+    fund_id: UUID
+    fund_name: str
     account_id: UUID
     account_name: str
     amount: str
@@ -87,6 +115,9 @@ class OperationResponse(BaseModel):
     account_id: UUID
     destination_account_id: UUID | None
     movements: list[MovementResponse]
+    fund_id: UUID | None
+    fund_amount: str | None
+    fund_movements: list[OperationFundMovementResponse]
     version: int
     created_at: datetime
     updated_at: datetime

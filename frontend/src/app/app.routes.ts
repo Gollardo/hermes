@@ -16,6 +16,10 @@ export const routes: Routes = [
       import('./pages/operations/operations').then((module) => module.OperationsPage),
   },
   {
+    path: 'funds',
+    loadComponent: () => import('./pages/funds/funds').then((module) => module.FundsPage),
+  },
+  {
     path: 'accounts',
     loadComponent: () => import('./pages/accounts/accounts').then((module) => module.AccountsPage),
   },

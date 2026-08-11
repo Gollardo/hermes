@@ -1,0 +1,98 @@
+from datetime import date, datetime
+from decimal import Decimal
+from enum import StrEnum
+from uuid import UUID, uuid4
+
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.core.database import Base
+
+
+class FundEventType(StrEnum):
+    ALLOCATION = "allocation"
+    REDISTRIBUTION = "redistribution"
+
+
+class Fund(Base):
+    __tablename__ = "funds"
+    __table_args__ = (
+        CheckConstraint("length(btrim(name)) > 0", name="ck_funds_name_not_blank"),
+        CheckConstraint(
+            "allocation_percentage >= 0 AND allocation_percentage <= 100",
+            name="ck_funds_allocation_percentage_range",
+        ),
+        CheckConstraint("version > 0", name="ck_funds_version_positive"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    allocation_percentage: Mapped[Decimal] = mapped_column(Numeric(7, 4), nullable=False)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(default=1)
+
+
+class FundEvent(Base):
+    __tablename__ = "fund_events"
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    type: Mapped[FundEventType] = mapped_column(
+        Enum(
+            FundEventType,
+            name="fund_event_type",
+            values_callable=lambda values: [value.value for value in values],
+        )
+    )
+    occurred_on: Mapped[date]
+    description: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class FundMovement(Base):
+    __tablename__ = "fund_movements"
+    __table_args__ = (
+        CheckConstraint("amount <> 0", name="ck_fund_movements_amount_nonzero"),
+        CheckConstraint(
+            "(operation_id IS NOT NULL)::int + (event_id IS NOT NULL)::int = 1",
+            name="ck_fund_movements_one_source",
+        ),
+        UniqueConstraint(
+            "operation_id",
+            "fund_id",
+            "account_id",
+            name="uq_fund_movements_operation_position",
+        ),
+        UniqueConstraint(
+            "event_id", "fund_id", "account_id", name="uq_fund_movements_event_position"
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    fund_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("funds.id", ondelete="RESTRICT"), index=True
+    )
+    account_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("accounts.id", ondelete="RESTRICT"), index=True
+    )
+    operation_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("financial_operations.id", ondelete="CASCADE"),
+        index=True,
+    )
+    event_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("fund_events.id", ondelete="CASCADE"), index=True
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(20, 4), nullable=False)

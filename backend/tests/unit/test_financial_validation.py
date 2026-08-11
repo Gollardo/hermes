@@ -1,11 +1,14 @@
 from datetime import UTC, datetime
 from decimal import Decimal
+from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
 
 from app.application.accounts import calendar_date_at
 from app.modules.accounts.schemas import AccountCreateRequest
+from app.modules.funds.schemas import AllocationCreateRequest
+from app.modules.funds.service import percentage_allocations
 from app.modules.operations.schemas import OperationCreateRequest
 
 
@@ -85,3 +88,35 @@ def test_financial_calendar_date_uses_application_timezone() -> None:
     instant = datetime(2026, 8, 1, 22, 30, tzinfo=UTC)
     assert str(calendar_date_at(instant, "Europe/Moscow")) == "2026-08-02"
     assert str(calendar_date_at(instant, "America/New_York")) == "2026-08-01"
+
+
+def test_fund_percentage_rounding_is_exact_independent_and_reproducible() -> None:
+    first = UUID("10000000-0000-0000-0000-000000000001")
+    second = UUID("20000000-0000-0000-0000-000000000001")
+    percentages = [(first, Decimal("33.3333")), (second, Decimal("20"))]
+
+    forward = percentage_allocations(Decimal("10"), percentages)
+    reverse = percentage_allocations(Decimal("10"), list(reversed(percentages)))
+
+    assert {item.fund_id: item.amount for item in forward} == {
+        first: Decimal("3.3333"),
+        second: Decimal("2.0000"),
+    }
+    assert {item.fund_id: item.amount for item in reverse} == {
+        item.fund_id: item.amount for item in forward
+    }
+
+
+@pytest.mark.parametrize(
+    "allocations", [[], [{"fund_id": "10000000-0000-0000-0000-000000000001", "amount": "0"}]]
+)
+def test_allocation_rejects_empty_or_noop_movements(allocations: list[dict[str, str]]) -> None:
+    with pytest.raises(ValidationError):
+        AllocationCreateRequest.model_validate(
+            {
+                "account_id": "10000000-0000-0000-0000-000000000002",
+                "amount": "10",
+                "occurred_on": "2026-08-11",
+                "allocations": allocations,
+            }
+        )

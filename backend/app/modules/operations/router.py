@@ -6,6 +6,12 @@ from fastapi import APIRouter, HTTPException, Query, Response, status
 from app.core.database import DatabaseSession
 from app.modules.accounts.contracts import AccountReferenceError
 from app.modules.categories.contracts import CategoryReferenceError
+from app.modules.funds.contracts import (
+    FundArchivedMutationError,
+    FundBalanceError,
+    FundCoverageError,
+    FundNotFoundError,
+)
 from app.modules.operations.models import OperationType
 from app.modules.operations.schemas import (
     OperationCreateRequest,
@@ -51,6 +57,28 @@ def _raise_domain_error(error: RuntimeError) -> None:
             409,
             detail={"code": "invalid_category_reference", "message": "Category is unavailable"},
         )
+    if isinstance(error, FundNotFoundError):
+        raise HTTPException(
+            409, detail={"code": "invalid_fund_reference", "message": "Fund is unavailable"}
+        )
+    if isinstance(error, FundArchivedMutationError):
+        raise HTTPException(
+            409,
+            detail={
+                "code": "archived_fund_balance",
+                "message": "Operation would restore a balance in an archived fund",
+            },
+        )
+    if isinstance(error, FundBalanceError):
+        raise HTTPException(
+            409,
+            detail={"code": "insufficient_fund_balance", "message": "Insufficient fund balance"},
+        )
+    if isinstance(error, FundCoverageError):
+        raise HTTPException(
+            409,
+            detail={"code": "insufficient_free_balance", "message": "Fund coverage is invalid"},
+        )
     raise error
 
 
@@ -91,7 +119,15 @@ def add_operation(payload: OperationCreateRequest, session: DatabaseSession) -> 
     try:
         operation = create_operation(session, payload)
         return get_operation_response(session, operation.id)
-    except (AccountReferenceError, CategoryReferenceError, InsufficientBalanceError) as error:
+    except (
+        AccountReferenceError,
+        CategoryReferenceError,
+        FundBalanceError,
+        FundArchivedMutationError,
+        FundCoverageError,
+        FundNotFoundError,
+        InsufficientBalanceError,
+    ) as error:
         _raise_domain_error(error)
         raise AssertionError from error
 
@@ -108,6 +144,10 @@ def replace_operation(
     except (
         AccountReferenceError,
         CategoryReferenceError,
+        FundBalanceError,
+        FundArchivedMutationError,
+        FundCoverageError,
+        FundNotFoundError,
         InsufficientBalanceError,
         OperationConflictError,
         OperationNotFoundError,
@@ -126,6 +166,10 @@ def remove_operation(
         delete_operation(session, operation_id, expected_version=version)
     except (
         AccountReferenceError,
+        FundBalanceError,
+        FundArchivedMutationError,
+        FundCoverageError,
+        FundNotFoundError,
         InsufficientBalanceError,
         OperationConflictError,
         OperationNotFoundError,

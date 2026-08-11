@@ -1,0 +1,352 @@
+<section class="directory-page funds-page">
+  <header class="page-header">
+    <div class="page-header-copy">
+      <p class="eyebrow">Виртуальные назначения</p>
+      <h1>Фонды</h1>
+      <p>Фонд резервирует часть реальных денег на счёте, но не является отдельным счётом.</p>
+    </div>
+    @if (summary(); as data) {
+      <span class="status-pill">Активные проценты: {{ data.active_percentage }}%</span>
+    }
+  </header>
+
+  @if (error(); as message) {
+    <p class="form-error global-error" role="alert">{{ message }}</p>
+  }
+
+  @if (loading()) {
+    <p class="empty-state" aria-live="polite">Восстанавливаем остатки фондов из журнала…</p>
+  } @else if (summary(); as data) {
+    <section class="fund-summary" aria-label="Сводка фондов">
+      <article>
+        <span>В фондах</span><strong>{{ data.total_reserved }} {{ baseCurrency() }}</strong>
+      </article>
+      <article>
+        <span>Свободно</span><strong>{{ data.total_free }} {{ baseCurrency() }}</strong>
+      </article>
+      <article>
+        <span>Нераспределённая доля</span><strong>{{ remainingPercentage() }}%</strong>
+      </article>
+    </section>
+
+    <div class="directory-grid">
+      <section class="panel directory-list-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Назначения денег</h2>
+            <p>Общий итог и физическая разбивка.</p>
+          </div>
+          <span class="count-pill">{{ data.funds.length }}</span>
+        </div>
+        @if (data.funds.length === 0) {
+          <div class="empty-state">
+            <strong>Фондов пока нет</strong>
+            <p>Например, 20% от выбранной суммы можно назначить резерву.</p>
+          </div>
+        } @else {
+          <div class="item-list">
+            @for (fund of data.funds; track fund.id) {
+              <article class="directory-item" [class.archived]="fund.archived">
+                <div class="directory-item-main">
+                  <span class="item-symbol" aria-hidden="true">{{ fund.name.slice(0, 1) }}</span>
+                  <div class="item-copy">
+                    <span class="badge">{{ fund.allocation_percentage }}%</span>
+                    <h3>{{ fund.name }}</h3>
+                    <p>
+                      {{
+                        fund.description ||
+                          (fund.archived ? 'Фонд находится в архиве' : 'Без описания')
+                      }}
+                    </p>
+                    @for (position of positionsFor(fund.id); track position.account_id) {
+                      <small
+                        >{{ position.account_name }} · {{ position.balance }}
+                        {{ baseCurrency() }}</small
+                      >
+                    }
+                  </div>
+                </div>
+                <div class="directory-item-side">
+                  <div class="balance-block">
+                    <span>Общий остаток</span
+                    ><strong class="balance">{{ fund.total_balance }} {{ baseCurrency() }}</strong>
+                  </div>
+                  <div class="item-actions">
+                    <button type="button" class="secondary" (click)="edit(fund)">Изменить</button
+                    ><button
+                      type="button"
+                      class="secondary"
+                      (click)="toggleArchive(fund)"
+                      [disabled]="!fund.archived && !fundIsEmpty(fund)"
+                      [attr.title]="
+                        !fund.archived && !fundIsEmpty(fund)
+                          ? 'Сначала обнулите остаток фонда'
+                          : null
+                      "
+                    >
+                      {{ fund.archived ? 'Восстановить' : 'Архивировать' }}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="panel form-panel" [class.editing]="editingId()">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">{{ editingId() ? 'Изменение' : 'Новое назначение' }}</p>
+            <h2>{{ editingId() ? 'Редактировать фонд' : 'Создать фонд' }}</h2>
+          </div>
+        </div>
+        <form [formGroup]="fundForm" (ngSubmit)="submitFund()">
+          <label for="fund-name">Название</label
+          ><input
+            id="fund-name"
+            formControlName="name"
+            maxlength="120"
+            placeholder="Например, Резерв"
+          />
+          <label for="fund-description">Описание</label
+          ><textarea
+            id="fund-description"
+            formControlName="description"
+            maxlength="2000"
+          ></textarea>
+          <label for="fund-percentage">Процент явного распределения</label
+          ><input id="fund-percentage" formControlName="percentage" inputmode="decimal" />
+          <p class="hint">
+            Доступно для этого фонда: {{ availablePercentage() }}%. Изменение процента не
+            перераспределяет уже накопленные деньги.
+          </p>
+          @if (fundForm.controls.percentage.touched && !canSaveFund()) {
+            <p class="field-error">Сумма процентов активных фондов не может превышать 100%.</p>
+          }
+          <button type="submit" [disabled]="saving() || !canSaveFund()">
+            {{ saving() ? 'Сохраняем…' : editingId() ? 'Сохранить' : 'Создать фонд' }}
+          </button>
+          @if (editingId()) {
+            <button type="button" class="secondary" (click)="cancelEdit()">Отменить</button>
+          }
+        </form>
+      </section>
+    </div>
+
+    <section class="coverage panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Физическое покрытие</h2>
+          <p>Физический остаток = в фондах + свободно.</p>
+        </div>
+      </div>
+      <div class="coverage-grid">
+        @for (account of data.accounts; track account.account_id) {
+          <article>
+            <strong>{{ account.account_name }}{{ account.archived ? ' · в архиве' : '' }}</strong>
+            <dl>
+              <div>
+                <dt>Физически</dt>
+                <dd>{{ account.physical_balance }} {{ baseCurrency() }}</dd>
+              </div>
+              <div>
+                <dt>В фондах</dt>
+                <dd>{{ account.reserved_balance }} {{ baseCurrency() }}</dd>
+              </div>
+              <div>
+                <dt>Свободно</dt>
+                <dd>{{ account.free_balance }} {{ baseCurrency() }}</dd>
+              </div>
+            </dl>
+          </article>
+        }
+      </div>
+    </section>
+
+    <div class="fund-actions-grid">
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Preview → commit</p>
+            <h2>Распределить сумму</h2>
+          </div>
+        </div>
+        <form [formGroup]="allocationForm" (ngSubmit)="saveAllocation()">
+          <label for="allocation-account">Счёт</label
+          ><select id="allocation-account" formControlName="accountId">
+            <option value="">Выберите счёт</option>
+            @for (account of activeAccounts(); track account.account_id) {
+              <option [value]="account.account_id">
+                {{ account.account_name }} · свободно {{ account.free_balance }}
+                {{ baseCurrency() }}
+              </option>
+            }
+          </select>
+          <label for="allocation-amount">Распределяемая сумма</label
+          ><input id="allocation-amount" formControlName="amount" inputmode="decimal" />
+          <label for="allocation-date">Дата</label
+          ><input id="allocation-date" type="date" formControlName="occurredOn" />
+          <button
+            type="button"
+            class="secondary"
+            (click)="requestPreview()"
+            [disabled]="
+              !allocationForm.controls.accountId.value || !allocationForm.controls.amount.value
+            "
+          >
+            Предварительный просмотр
+          </button>
+          @if (preview(); as result) {
+            <div class="preview-box">
+              <strong>Предложенное распределение</strong>
+              <p>До распределения свободно: {{ result.free_before }} {{ baseCurrency() }}</p>
+              <div formArrayName="allocations">
+                @for (control of allocationControls.controls; track $index) {
+                  <div class="allocation-row" [formGroupName]="$index">
+                    <label [for]="'allocation-' + $index">{{
+                      fundName(control.value.fundId)
+                    }}</label
+                    ><input
+                      [id]="'allocation-' + $index"
+                      formControlName="amount"
+                      inputmode="decimal"
+                    />
+                  </div>
+                }
+              </div>
+              @if (allocationTotals(); as totals) {
+                <p>
+                  Будет распределено: {{ totals.allocated }} {{ baseCurrency() }} · останется от
+                  выбранной суммы: {{ totals.unallocated }} {{ baseCurrency() }}
+                </p>
+                <p>Свободно после сохранения: {{ totals.freeAfter }} {{ baseCurrency() }}</p>
+                @if (!totals.valid) {
+                  <p class="field-error">
+                    Распределите положительную сумму не больше выбранной и свободной.
+                  </p>
+                }
+              }
+            </div>
+            <label for="allocation-description">Описание</label
+            ><input id="allocation-description" formControlName="description" />
+            <button type="submit" [disabled]="saving() || !canSaveAllocation()">
+              Зафиксировать распределение
+            </button>
+          }
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Без физического перевода</p>
+            <h2>Перераспределить фонд</h2>
+          </div>
+        </div>
+        <form [formGroup]="redistributionForm" (ngSubmit)="redistribute()">
+          <label for="redistribution-fund">Фонд</label
+          ><select id="redistribution-fund" formControlName="fundId">
+            <option value="">Выберите фонд</option>
+            @for (fund of activeFunds(); track fund.id) {
+              <option [value]="fund.id">
+                {{ fund.name }} · {{ fund.total_balance }} {{ baseCurrency() }}
+              </option>
+            }
+          </select>
+          <label for="redistribution-source">Со счёта</label
+          ><select id="redistribution-source" formControlName="sourceAccountId">
+            <option value="">Выберите счёт</option>
+            @for (account of sourceAccounts(); track account.account_id) {
+              <option [value]="account.account_id">
+                {{ account.account_name }} · фонд
+                {{ positionBalance(redistributionForm.controls.fundId.value, account.account_id) }}
+                {{ baseCurrency() }}
+              </option>
+            }
+          </select>
+          <label for="redistribution-target">На счёт</label
+          ><select id="redistribution-target" formControlName="destinationAccountId">
+            <option value="">Выберите счёт</option>
+            @for (account of activeAccounts(); track account.account_id) {
+              @if (account.account_id !== redistributionForm.controls.sourceAccountId.value) {
+                <option [value]="account.account_id">
+                  {{ account.account_name }} · свободно {{ account.free_balance }}
+                  {{ baseCurrency() }}
+                </option>
+              }
+            }
+          </select>
+          <label for="redistribution-amount">Сумма</label
+          ><input id="redistribution-amount" formControlName="amount" inputmode="decimal" />
+          <label for="redistribution-date">Дата</label
+          ><input id="redistribution-date" type="date" formControlName="occurredOn" />
+          <label for="redistribution-description">Описание</label
+          ><input id="redistribution-description" formControlName="description" />
+          @if (redistributionForm.touched && !canRedistribute()) {
+            <p class="field-error">Проверьте доступную сумму фонда и выберите разные счета.</p>
+          }
+          <button type="submit" [disabled]="saving() || !canRedistribute()">
+            Перераспределить
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <section class="panel history-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>История движений фондов</h2>
+          <p>Распределения и виртуальные перемещения восстанавливают остатки.</p>
+        </div>
+      </div>
+      @if (history().length === 0) {
+        <p class="empty-state">Движений фондов пока нет.</p>
+      } @else {
+        <div class="history-list">
+          @for (event of history(); track event.id) {
+            <article>
+              <div>
+                <span class="badge">{{ eventLabel(event) }}</span
+                ><strong>{{ event.occurred_on }}</strong>
+                <p>{{ event.description || 'Без описания' }}</p>
+              </div>
+              <ul>
+                @for (movement of event.movements; track movement.fund_id + movement.account_id) {
+                  <li>
+                    {{ movement.fund_name }} · {{ movement.account_name }}
+                    <strong>{{ movement.amount }} {{ baseCurrency() }}</strong>
+                  </li>
+                }
+              </ul>
+            </article>
+          }
+        </div>
+      }
+      @if (historyTotal() > historyPageSize || historyPage() > 1) {
+        <nav class="pagination" aria-label="Страницы истории фондов">
+          <button
+            type="button"
+            class="secondary"
+            (click)="previousHistoryPage()"
+            [disabled]="historyPage() === 1"
+          >
+            Назад
+          </button>
+          <span>
+            Страница {{ historyPage() }} из
+            {{ Math.max(1, Math.ceil(historyTotal() / historyPageSize)) }}
+          </span>
+          <button
+            type="button"
+            class="secondary"
+            (click)="nextHistoryPage()"
+            [disabled]="historyPage() * historyPageSize >= historyTotal()"
+          >
+            Далее
+          </button>
+        </nav>
+      }
+    </section>
+  }
+</section>

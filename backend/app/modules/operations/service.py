@@ -13,11 +13,18 @@ from app.modules.categories.contracts import (
     category_name,
     validate_category_reference,
 )
+from app.modules.funds.contracts import (
+    fund_names,
+    operation_fund_movements,
+    replace_operation_movements,
+    validate_account_coverage,
+)
 from app.modules.operations.contracts import account_balance
 from app.modules.operations.models import AccountMovement, FinancialOperation, OperationType
 from app.modules.operations.schemas import (
     MovementResponse,
     OperationCreateRequest,
+    OperationFundMovementResponse,
     OperationPageResponse,
     OperationResponse,
 )
@@ -45,6 +52,8 @@ class OperationDraft:
     account_id: UUID
     destination_account_id: UUID | None
     category_id: UUID | None
+    fund_id: UUID | None
+    fund_amount: Decimal | None
 
 
 def _draft(payload: OperationCreateRequest) -> OperationDraft:
@@ -60,6 +69,20 @@ def _movement_amounts(draft: OperationDraft) -> dict[UUID, Decimal]:
         assert draft.destination_account_id is not None
         return {draft.account_id: -draft.amount, draft.destination_account_id: draft.amount}
     return {draft.account_id: draft.amount}
+
+
+def _fund_movement_amounts(draft: OperationDraft) -> dict[tuple[UUID, UUID], Decimal]:
+    if draft.fund_id is None:
+        return {}
+    if draft.type == OperationType.EXPENSE:
+        return {(draft.fund_id, draft.account_id): -draft.amount}
+    assert draft.type == OperationType.TRANSFER
+    assert draft.destination_account_id is not None
+    assert draft.fund_amount is not None
+    return {
+        (draft.fund_id, draft.account_id): -draft.fund_amount,
+        (draft.fund_id, draft.destination_account_id): draft.fund_amount,
+    }
 
 
 def _validate_category(
@@ -125,6 +148,15 @@ def create_operation(session: Session, payload: OperationCreateRequest) -> Finan
     session.flush()
     _add_movements(session, operation.id, amounts)
     session.flush()
+    replace_operation_movements(
+        session,
+        operation.id,
+        _fund_movement_amounts(draft),
+        allow_archived_fund_ids=set(),
+    )
+    validate_account_coverage(
+        session, {account_id: account_balance(session, account_id) for account_id in amounts}
+    )
     return operation
 
 
@@ -160,6 +192,7 @@ def update_operation(
     if operation.version != expected_version:
         raise OperationConflictError
     old_amounts = _amounts_for_operation(session, operation.id)
+    old_fund_amounts = operation_fund_movements(session, operation.id)
     draft = _draft(payload)
     _validate_category(session, draft, operation.category_id)
     new_amounts = _movement_amounts(draft)
@@ -174,6 +207,16 @@ def update_operation(
     operation.version += 1
     _add_movements(session, operation.id, new_amounts)
     session.flush()
+    replace_operation_movements(
+        session,
+        operation.id,
+        _fund_movement_amounts(draft),
+        allow_archived_fund_ids={fund_id for fund_id, _ in old_fund_amounts},
+    )
+    affected_ids = set(old_amounts) | set(new_amounts)
+    validate_account_coverage(
+        session, {account_id: account_balance(session, account_id) for account_id in affected_ids}
+    )
     return operation
 
 
@@ -182,9 +225,19 @@ def delete_operation(session: Session, operation_id: UUID, *, expected_version: 
     if operation.version != expected_version:
         raise OperationConflictError
     old_amounts = _amounts_for_operation(session, operation.id)
+    old_fund_amounts = operation_fund_movements(session, operation.id)
     _lock_and_check_balances(session, old_amounts=old_amounts, new_amounts={})
+    replace_operation_movements(
+        session,
+        operation.id,
+        {},
+        allow_archived_fund_ids={fund_id for fund_id, _ in old_fund_amounts},
+    )
     session.delete(operation)
     session.flush()
+    validate_account_coverage(
+        session, {account_id: account_balance(session, account_id) for account_id in old_amounts}
+    )
 
 
 def _response(session: Session, operation: FinancialOperation) -> OperationResponse:
@@ -209,6 +262,25 @@ def _response(session: Session, operation: FinancialOperation) -> OperationRespo
     resolved_category_name = (
         category_name(session, operation.category_id) if operation.category_id is not None else None
     )
+    raw_fund_rows = operation_fund_movements(session, operation.id)
+    names_by_fund = fund_names(session, {fund_id for fund_id, _ in raw_fund_rows})
+    fund_rows = [
+        OperationFundMovementResponse(
+            fund_id=movement_fund_id,
+            fund_name=names_by_fund[movement_fund_id],
+            account_id=account_id,
+            account_name=names[account_id],
+            amount=format(amount, "f"),
+        )
+        for (movement_fund_id, account_id), amount in sorted(
+            raw_fund_rows.items(), key=lambda item: (item[1], item[0][1])
+        )
+    ]
+    fund_id = fund_rows[0].fund_id if fund_rows else None
+    fund_amount: str | None = None
+    if fund_rows:
+        negative_fund = next((item for item in fund_rows if Decimal(item.amount) < 0), fund_rows[0])
+        fund_amount = format(abs(Decimal(negative_fund.amount)), "f")
     return OperationResponse(
         id=operation.id,
         type=operation.type,
@@ -221,6 +293,9 @@ def _response(session: Session, operation: FinancialOperation) -> OperationRespo
         account_id=negative.account_id,
         destination_account_id=(positive.account_id if len(movements) == 2 and positive else None),
         movements=movements,
+        fund_id=fund_id,
+        fund_amount=fund_amount,
+        fund_movements=fund_rows,
         version=operation.version,
         created_at=operation.created_at,
         updated_at=operation.updated_at,

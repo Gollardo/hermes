@@ -88,6 +88,31 @@
           <p class="impact-preview">Одна операция: списание и зачисление сохранятся вместе.</p>
         }
 
+        @if (form.controls.type.value === 'expense' || form.controls.type.value === 'transfer') {
+          <label for="operation-fund">Фонд</label>
+          <select id="operation-fund" formControlName="fundId">
+            <option value="">Без фонда</option>
+            @for (fund of availableFunds(); track fund.id) {
+              <option [value]="fund.id">{{ fundPositionLabel(fund) }}</option>
+            }
+          </select>
+          @if (form.controls.type.value === 'expense' && form.controls.fundId.value) {
+            <p class="impact-preview">Расход полностью уменьшит выбранный фонд на этом счёте.</p>
+          }
+          @if (form.controls.type.value === 'transfer' && form.controls.fundId.value) {
+            <label for="operation-fund-amount">Виртуальная часть перевода</label>
+            <input
+              id="operation-fund-amount"
+              formControlName="fundAmount"
+              inputmode="decimal"
+              placeholder="0.00"
+            />
+            <p class="impact-preview">
+              Эта часть фонда сменит физический счёт, но общий остаток фонда не изменится.
+            </p>
+          }
+        }
+
         <label for="operation-date">Дата факта</label>
         <input id="operation-date" type="date" formControlName="occurredOn" />
 
@@ -236,6 +261,19 @@
                           >
                         }
                       </div>
+                      @if (operation.fund_movements.length > 0) {
+                        <div class="movement-list fund-movement-list">
+                          @for (
+                            movement of operation.fund_movements;
+                            track movement.fund_id + movement.account_id
+                          ) {
+                            <span
+                              >Фонд «{{ movement.fund_name }}» · {{ movement.account_name }}
+                              <strong>{{ movement.amount }}</strong></span
+                            >
+                          }
+                        </div>
+                      }
                       <div class="row-actions">
                         <button type="button" class="secondary" (click)="edit(operation)">
                           Изменить</button

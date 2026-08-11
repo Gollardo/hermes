@@ -20,6 +20,13 @@ class AccountReference:
     archived: bool
 
 
+@dataclass(frozen=True, slots=True)
+class AccountIdentity:
+    id: UUID
+    name: str
+    archived: bool
+
+
 def create_account_identity(
     session: Session,
     *,
@@ -71,10 +78,20 @@ def account_names(session: Session, account_ids: set[UUID]) -> dict[UUID, str]:
     return {account_id: name for account_id, name in rows}
 
 
+def list_account_identities(session: Session) -> list[AccountIdentity]:
+    return [
+        AccountIdentity(account.id, account.name, account.archived_at is not None)
+        for account in session.scalars(
+            select(Account).order_by(Account.archived_at.nulls_first(), Account.name, Account.id)
+        ).all()
+    ]
+
+
 __all__ = [
     "AccountReferenceError",
     "AccountType",
     "account_names",
+    "list_account_identities",
     "create_account_identity",
     "delete_account_identity",
     "lock_account_identity",

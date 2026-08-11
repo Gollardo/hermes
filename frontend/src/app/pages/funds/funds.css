@@ -1,0 +1,108 @@
+.funds-page {
+  display: grid;
+  gap: 1.25rem;
+}
+.global-error {
+  margin: 0;
+}
+.fund-summary,
+.fund-actions-grid,
+.coverage-grid {
+  display: grid;
+  gap: 1rem;
+}
+.fund-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.fund-summary article,
+.coverage-grid article,
+.preview-box {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+.fund-summary span,
+dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.fund-summary strong {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.45rem;
+}
+.item-copy small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+}
+.coverage-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.coverage dl {
+  margin: 0.75rem 0 0;
+}
+.coverage dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.45rem;
+}
+.coverage dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.fund-actions-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.preview-box {
+  margin: 0.75rem 0;
+  background: var(--surface-soft);
+}
+.allocation-row {
+  display: grid;
+  grid-template-columns: 1fr minmax(8rem, 0.5fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+.allocation-row label {
+  margin: 0;
+}
+.history-list article {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.75fr) 1fr;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+}
+.history-list ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+.history-list li {
+  margin-bottom: 0.35rem;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+.pagination span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 820px) {
+  .fund-summary,
+  .fund-actions-grid {
+    grid-template-columns: 1fr;
+  }
+  .history-list article {
+    grid-template-columns: 1fr;
+  }
+}

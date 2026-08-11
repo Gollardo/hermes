@@ -9,7 +9,7 @@
 | `accounts` | account identity and account rules | account references and balance read contract |
 | `categories` | category tree | category reference validation |
 | `operations` | posted operations and physical money movements | atomic posting commands and ledger reads |
-| `funds` | fund definitions, percentages, virtual movements | atomic coordination with operations/accounts |
+| `funds` | fund definitions, percentages, virtual movements | fund posting contracts and application coordination with physical ledger reads |
 | `scheduling` | recurrence rules and expected occurrences | confirmation command into operations |
 | `forecasting` | future-balance calculations | read contracts from ledger and plans |
 | `liabilities` | credits and installment plans | planned/payment integration contracts |
@@ -36,13 +36,15 @@ flowchart TB
     Application --> Settings
     Application --> Accounts
     Application --> Operations
+    Application --> Funds
     Auth --> Settings
     API --> Operations
+    API --> Funds
     API --> Scheduling
     API --> Reports
     Operations --> Accounts
     Operations --> Categories
-    Funds --> Operations
+    Operations --> Funds
     Funds --> Accounts
     Scheduling --> Operations
     Liabilities --> Scheduling
@@ -77,8 +79,10 @@ composed by `app.api`, so the settings module does not depend on auth internals.
 
 - A module owns writes to its state and defines any public commands or reads.
 - Cross-module changes that must stay consistent share one database transaction.
-- Cross-module orchestration belongs to `app.application`, not a participating
-  domain module, so the dependency graph stays acyclic.
+- Cross-module orchestration normally belongs to `app.application`. A module
+  that owns a source record's lifecycle may call another module's explicit
+  public posting contract when the dependency remains one-way; operation-owned
+  fund movements use this narrower rule.
 - Read-oriented modules may query purpose-built public read models; this does not
   authorize writes around the owner module.
 - Avoid generic repository or service abstractions until repeated behaviour
@@ -89,6 +93,4 @@ composed by `app.api`, so the settings module does not depend on auth internals.
 
 - Whether liabilities and debts remain separate modules once detailed lifecycle
   use cases are designed.
-- Whether fund transfer should be an operation-owned composite command or a
-  fund-owned orchestrator sharing the operations transaction boundary.
 - Which stable public read contracts reporting and forecasting need.

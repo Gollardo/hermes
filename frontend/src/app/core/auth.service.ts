@@ -119,6 +119,8 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
       base_currency_locked: 'Основную валюту уже нельзя изменить.',
       account_has_history: 'Счёт с историей операций нельзя удалить. Архивируйте его.',
       account_not_found: 'Счёт не найден.',
+      archived_fund_balance:
+        'Изменение вернуло бы деньги в архивный фонд. Сначала восстановите фонд.',
       category_has_active_children: 'Сначала архивируйте активные подкатегории.',
       category_not_found: 'Категория не найдена.',
       category_type_has_history:
@@ -130,6 +132,13 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
       invalid_account_reference: 'Выбранный счёт недоступен для новой операции.',
       invalid_category_reference: 'Выбранная категория недоступна или имеет другой тип.',
       insufficient_balance: 'На счёте недостаточно денег. Отрицательный остаток запрещён.',
+      fund_not_found: 'Фонд не найден или находится в архиве.',
+      invalid_fund_reference: 'Выбранный фонд недоступен для новой операции.',
+      fund_conflict: 'Фонд уже изменён в другой вкладке. Обновите страницу.',
+      fund_percentage_limit: 'Сумма процентов активных фондов не может превышать 100%.',
+      fund_has_balance: 'Фонд можно архивировать только после обнуления остатка.',
+      insufficient_fund_balance: 'В выбранном фонде на этом счёте недостаточно денег.',
+      insufficient_free_balance: 'На счёте недостаточно свободных денег для резервирования.',
       login_rate_limited: 'Слишком много неудачных попыток. Повторите вход позже.',
       operation_conflict: 'Операция уже изменена в другой вкладке. Обновите журнал.',
       operation_not_found: 'Операция не найдена.',

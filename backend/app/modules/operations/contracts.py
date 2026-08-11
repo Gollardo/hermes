@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -6,6 +7,15 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modules.operations.models import AccountMovement, FinancialOperation, OperationType
+
+
+@dataclass(frozen=True, slots=True)
+class OperationHistoryReference:
+    id: UUID
+    type: OperationType
+    occurred_on: date
+    description: str | None
+    created_at: datetime
 
 
 def post_initial_balance(
@@ -56,3 +66,20 @@ def category_has_history(session: Session, category_id: UUID) -> bool:
         )
         is not None
     )
+
+
+def operation_history_references(
+    session: Session, operation_ids: set[UUID]
+) -> dict[UUID, OperationHistoryReference]:
+    return {
+        operation.id: OperationHistoryReference(
+            id=operation.id,
+            type=operation.type,
+            occurred_on=operation.occurred_on,
+            description=operation.description,
+            created_at=operation.created_at,
+        )
+        for operation in session.scalars(
+            select(FinancialOperation).where(FinancialOperation.id.in_(operation_ids))
+        ).all()
+    }

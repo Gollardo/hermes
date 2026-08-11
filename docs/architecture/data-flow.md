@@ -42,7 +42,7 @@ Editing or deleting follows the same transaction boundary: replace or remove all
 parts of the operation atomically, then derive balances from the resulting
 ledger. A balance adjustment is itself an operation, including initial balance.
 
-In `0.1.0-alpha.3`, affected account identities are locked in deterministic
+Since `0.1.0-alpha.3`, affected account identities are locked in deterministic
 order and their prospective ledger balances are checked before commit. Transfer
 movements net to zero; income and expense cross the boundary of modelled
 accounts and therefore do not.
@@ -89,9 +89,25 @@ flowchart LR
     SameTotal --> Commit["Commit"]
 ```
 
-The fund part cannot exceed the physical transfer amount without an explicitly
-designed alternative rule; this is currently an assumption, not an
-owner-confirmed invariant.
+The alpha.4 fund part cannot exceed the physical transfer amount. Accounts and
+then funds are locked in deterministic UUID order; physical and virtual
+movements are replaced together before coverage is verified.
+
+## Explicit fund allocation
+
+```mermaid
+flowchart LR
+    Amount["Selected account and amount"] --> Preview["Exact percentage preview"]
+    Preview --> Manual["Optional manual correction"]
+    Manual --> Tx["One transaction"]
+    Tx --> Locks["Lock account then funds"]
+    Locks --> Virtual["Post event and virtual movements"]
+    Virtual --> Coverage["Verify reserved does not exceed physical"]
+    Coverage --> Free["Remainder stays free"]
+```
+
+Virtual redistribution uses the same lock and coverage order but posts equal
+opposite fund movements and no account movement.
 
 ## Expected occurrence to actual operation
 

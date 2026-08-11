@@ -6,15 +6,15 @@
 
 ## Last updated
 
-2026-08-02
+2026-08-11
 
 ## Current phase
 
-**0.1.0-alpha.3 — финансовое ядро реализовано и проверено.**
+**0.1.0-alpha.4 — виртуальные фонды реализованы и проверены.**
 
-Следующий запланированный этап: **0.1.0-alpha.4 — виртуальные фонды**. До него
-требуется подтвердить правила распределения, округления и покрытия фондов
-физическим остатком.
+Следующий запланированный этап: **0.1.0-beta.1 — регулярные операции и
+календарь**. Alpha-политики ADR 0001 и ADR 0002 требуют owner review после
+реального использования.
 
 ## Product and UI/UX foundation
 
@@ -122,6 +122,8 @@
   indexes и уникальность движения операции по счёту. Старые timestamps
   преобразуются в дату через timezone приложения; downgrade заполняет обязательное
   legacy-описание для записей alpha.3.
+- Миграция `0005_virtual_funds` добавляет определения фондов, события,
+  виртуальные движения, source checks, внешние ключи и history indexes.
 
 ### Financial operations and journal
 
@@ -141,10 +143,25 @@
 - Удаление счёта блокирует identity до проверки истории, поэтому конкурентное
   проведение не превращается в необработанную FK-ошибку.
 
+### Virtual funds
+
+- Владелец может создавать, редактировать, архивировать и восстанавливать фонды;
+  активные проценты атомарно ограничены суммой 100%.
+- Остатки восстанавливаются из виртуального журнала и показаны общим итогом, по
+  счетам и через равенство physical = reserved + free.
+- Preview использует точную decimal-арифметику и округление вниз до четырёх
+  знаков; ручная коррекция и свободный remainder видимы до commit.
+- Расход может списать выбранный фонд или остаться без фонда. Перевод может
+  перенести одну виртуальную часть; перераспределение не меняет физические деньги.
+- CRUD fund-linked операции заменяет оба журнала в одной транзакции и повторно
+  проверяет coverage и non-negative positions.
+- История объединяет allocations, redistributions, expenses и transfers.
+- ADR 0002 отдельно фиксирует posting model, lock order, rounding и archive policy.
+
 ## Verification snapshot
 
-- Backend suite: 36 тестов: 18 unit/non-PostgreSQL и 18 PostgreSQL-dependent
-  integration scenarios.
+- Backend suite: 47 тестов: 21 unit/non-PostgreSQL и 26 PostgreSQL-dependent
+  scenarios; integration target выполняет 27 сценариев вместе с health-check.
 - PostgreSQL scenarios: clean migration/setup, protected API, CSRF/logout/login,
   password/session revocation, expired sessions, sequential and concurrent rate
   limiting, serialized settings currency lock and upgrade initialized data from
@@ -154,14 +171,24 @@
   reparent/archive-create races; immutable historical category type, operation
   CRUD, filters/totals, version conflict, concurrent expenses, concurrent
   account deletion, insufficient balance и injected rollback после первого
-  движения перевода. Проверены timezone-boundary upgrade и data-bearing downgrade.
-- Frontend Vitest: 17 тестов для access shell, session expiry, setup, settings,
+  движения перевода; fund lifecycle, deterministic allocation, manual remainder,
+  fund-aware CRUD, redistribution, history, concurrent allocation и concurrent
+  fund consumption, serialized concurrent percentage definitions; rollback
+  после первого виртуального движения, откат
+  физической операции при нарушении coverage, archive-инвариант, upgrade
+  существующей alpha.3 базы и downgrade схемы alpha.4. Проверены
+  timezone-boundary upgrade и data-bearing downgrade alpha.3.
+- Frontend Vitest: 22 теста для access shell, session expiry, setup, settings,
   health UI, счетов, категорий и журнала, включая timezone default, expected-balance
-  adjustment, archived edit reference, transfer direction и loading continuity.
-- Production-like frontend проверен в браузере на desktop и mobile: clean setup,
+  adjustment, archived edit reference, transfer direction, loading continuity,
+  точный manual allocation preview, invalidation устаревшего preview, процентный
+  лимит и выбор позиции фонда на физическом счёте.
+- Предыдущий alpha.3 frontend проверен в браузере на desktop и mobile: clean setup,
   счета, категории, расход, единый перевод и его два движения; console без ошибок.
 - Ruff, Ruff format, strict mypy, ESLint, Prettier, strict TypeScript и docs check.
-- Production Angular/backend Docker image build.
+- Production Angular alpha.4 build проходит. Повторная Docker image build была
+  запущена, но Docker Hub frontend resolver завершился внешним
+  `DeadlineExceeded`; локальная компиляция backend/frontend и тесты проходят.
 - Production-like Compose e2e на отдельном clean volume: setup → authenticated
   shell → settings update → logout → login; browser console без ошибок.
 
@@ -176,7 +203,8 @@
 - Throttle глобален для экземпляра, а не IP: это надёжно за неизвестным proxy,
   но позволяет локальный denial-of-service серией неверных попыток.
 - Currency validation проверяет форму ISO 4217-style кода, но не использует
-  внешний реестр. Scale, rounding и exchange rates ещё не спроектированы.
+  внешний реестр. Currency-specific scale и exchange rates не спроектированы;
+  фонды используют документированный общий alpha-scale 4.
 - Currency lock требует вызова публичного settings-контракта в транзакции первого
   monetary/account write; account creation выполняет этот контракт через
   application-layer use case, category creation не блокирует валюту.
@@ -186,6 +214,10 @@
   большом количестве счетов потребуется batch read model.
 - Journal response пока разрешает имена отдельными запросами на операцию; перед
   большими объёмами нужен batch read model.
+- Fund summary и объединённая history используют несколько агрегатных запросов
+  и Python-side pagination; при измеренном росте нужен read projection.
+- Alpha.4 поддерживает один фонд на расход/перевод и распределение на одном
+  счёте; автоматическое распределение дохода намеренно отсутствует.
 - Редактирование заменяет движения и увеличивает version, но immutable audit
   trail отсутствует. Описание обычной операции остаётся опциональным.
 - Запрет отрицательного остатка един для всех типов счетов и должен быть
@@ -193,23 +225,24 @@
 - Advisory lock намеренно сериализует редкие мутации всего category tree; при
   доказанной необходимости высокой write-concurrency потребуется более узкая схема блокировок.
 - HTTPS reverse-proxy configurations и CSP не проверены внешним security audit.
-- Data-bearing downgrade `0004 → 0003` проверен и сохраняет обязательное legacy
-  description. Production rollback приложения всё равно не гарантирован из-за
-  сохранённых PostgreSQL enum values и требует проверенного backup.
+- Upgrade существующей `0004 → 0005` и schema downgrade `0005 → 0004` проверены.
+  Downgrade удаляет фондовые данные, поэтому production rollback требует backup
+  и явного принятия потери alpha.4 ledger.
 
 ## Outside current scope
 
 - Поиск, saved filters, running balance, bulk actions и immutable audit trail.
 - Account-specific overdraft, pending bank transactions, полноценный
   reconciliation workflow и currency-specific precision/rounding.
-- Фонды, расписания, календарь, прогнозы, liabilities и debts.
+- Автоматическое/мультисчётное распределение, несколько фондов на одну операцию,
+  fund goals и immutable audit trail.
+- Расписания, календарь, прогнозы, liabilities и debts.
 - Импорт CSV/Excel, versioned JSON backup/restore и password recovery.
 - Несколько пользователей, роли, permissions, organizations и tenants.
 - Внешняя инфраструктура, Redis, broker, background workers и cloud identity.
 
 ## Recommended next action
 
-Провести owner review alpha-допущений ADR 0001 по отрицательному остатку и audit
-history, затем отдельно спроектировать виртуальные движения `alpha.4`: покрытие
-физическим остатком, rounding remainder и атомарное участие фонда в
-expense/transfer. Не добавлять fund writes вокруг публичной границы operations.
+Провести owner review ADR 0001/0002 на реальных сценариях, затем отдельно
+спроектировать materialization и lifecycle ожидаемых операций для
+`0.1.0-beta.1`, не смешивая планы с фактическими ledger balances.
