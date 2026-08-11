@@ -1,29 +1,11 @@
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
-from typing import Annotated, Self
+from typing import Self
 from uuid import UUID
 
-from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.core.validation import Money
 from app.modules.operations.models import OperationType
-
-
-def parse_money(value: object) -> Decimal:
-    if isinstance(value, float):
-        raise ValueError("binary floating-point money is not accepted")
-    try:
-        amount = Decimal(str(value))
-    except (InvalidOperation, ValueError) as error:
-        raise ValueError("invalid monetary value") from error
-    exponent = amount.as_tuple().exponent
-    if not amount.is_finite() or not isinstance(exponent, int) or exponent < -4:
-        raise ValueError("money must be finite with at most 4 decimal places")
-    if abs(amount) > Decimal("9999999999999999.9999"):
-        raise ValueError("money is outside the supported range")
-    return amount
-
-
-Money = Annotated[Decimal, BeforeValidator(parse_money)]
 
 
 class OperationCreateRequest(BaseModel):

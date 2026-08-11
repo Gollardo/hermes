@@ -6,15 +6,15 @@
 
 ## Last updated
 
-2026-08-11
+2026-08-12
 
 ## Current phase
 
-**0.1.0-alpha.4 — виртуальные фонды реализованы и проверены.**
+**0.1.0-beta.1 — регулярные операции и календарь реализованы и проверены.**
 
-Следующий запланированный этап: **0.1.0-beta.1 — регулярные операции и
-календарь**. Alpha-политики ADR 0001 и ADR 0002 требуют owner review после
-реального использования.
+Следующий запланированный этап: **0.1.0-beta.2 — прогнозирование остатков**.
+Политики ADR 0001, ADR 0002 и ADR 0003 требуют owner review после реального
+использования.
 
 ## Product and UI/UX foundation
 
@@ -67,13 +67,14 @@
 
 ### Settings
 
-- Владелец может просматривать и менять timezone.
+- Владелец может просматривать и менять timezone до создания первого
+  регулярного правила.
 - Основную валюту можно менять до первого счёта или денежной операции.
 - `settings.lock_base_currency()` является публичным транзакционным контрактом
-  будущих финансовых модулей; после lock смена валюты запрещена, timezone остаётся
-  изменяемым.
-- Currency update и lock сериализуются row-level lock на singleton settings,
-  включая конкурентные транзакции.
+  будущих финансовых модулей; после lock смена валюты запрещена. Scheduling
+  отдельно блокирует смену timezone после появления первого правила.
+- Currency/timezone update и соответствующие locks сериализуются row-level lock
+  на singleton settings, включая конкурентные транзакции.
 - Backend валидирует трёхбуквенный currency code и IANA timezone независимо от UI.
 
 ### Schema and delivery
@@ -124,6 +125,9 @@
   legacy-описание для записей alpha.3.
 - Миграция `0005_virtual_funds` добавляет определения фондов, события,
   виртуальные движения, source checks, внешние ключи и history indexes.
+- Миграция `0006_recurring_operations` добавляет регулярные правила, ожидаемые
+  экземпляры, recurrence/status enum-типы, уникальный identity правила/даты,
+  confirmation link и calendar indexes.
 
 ### Financial operations and journal
 
@@ -158,10 +162,37 @@
 - История объединяет allocations, redistributions, expenses и transfers.
 - ADR 0002 отдельно фиксирует posting model, lock order, rounding и archive policy.
 
+### Recurring rules and calendar
+
+- Владелец может создавать и редактировать регулярные доходы, расходы и
+  переводы с `daily`, `weekly`, `monthly` или `yearly` периодичностью, датой
+  начала и необязательной включительной датой окончания.
+- Явная materialization-команда синхронизирует экземпляры от текущей даты на
+  один календарный год вперёд. Rule lock и unique `(rule_id, scheduled_on)`
+  делают повторный и конкурентный запуск идемпотентным.
+- Изменение или отключение правила затрагивает только текущие/будущие
+  нетронутые экземпляры. Подтверждённые, перенесённые, вручную отменённые и
+  просроченные экземпляры не исчезают.
+- Подтверждение создаёт ровно одну фактическую операцию и записывает связь в той
+  же транзакции. Перенос и отмена не создают физических движений.
+- Календарь показывает месяц, ближайшие 30 дней, overdue, фильтры по счёту и
+  типу, а также быстрые confirm/postpone/cancel действия.
+- Месячная сетка загружает все страницы ограниченного диапазона; список действий
+  честно показывает первые 12 и полный размер выборки. Подтверждённый экземпляр
+  открывает точную связанную операцию, а mobile сначала показывает action list.
+- Rule edit блокирует экземпляры до category/account references; confirmation
+  берёт те же reference locks после экземпляра. Гонка сериализуется, а stale
+  confirmation получает optimistic conflict вместо проведения старого снимка.
+- Monthly правила ограничены днями 1–28, yearly не принимает 29 февраля;
+  после первого правила timezone заблокирован, а домен хранит calendar date без
+  времени.
+- ADR 0003 фиксирует recurrence, materialization, synchronization и
+  confirmation policies.
+
 ## Verification snapshot
 
-- Backend suite: 47 тестов: 21 unit/non-PostgreSQL и 26 PostgreSQL-dependent
-  scenarios; integration target выполняет 27 сценариев вместе с health-check.
+- Backend suite: 64 теста: 33 unit/non-PostgreSQL и 31 PostgreSQL-dependent
+  scenario; integration target выполняет 32 сценария вместе с health-check.
 - PostgreSQL scenarios: clean migration/setup, protected API, CSRF/logout/login,
   password/session revocation, expired sessions, sequential and concurrent rate
   limiting, serialized settings currency lock and upgrade initialized data from
@@ -177,16 +208,31 @@
   после первого виртуального движения, откат
   физической операции при нарушении coverage, archive-инвариант, upgrade
   существующей alpha.3 базы и downgrade схемы alpha.4. Проверены
-  timezone-boundary upgrade и data-bearing downgrade alpha.3.
-- Frontend Vitest: 22 теста для access shell, session expiry, setup, settings,
+  timezone-boundary upgrade и data-bearing downgrade alpha.3; recurrence rule
+  lifecycle, exact bounded dates (включая 367-дневное leap-year окно), all
+  operation types, no-balance-before-confirm,
+  idempotent confirmation, protected manual edits, overdue preservation,
+  concurrent materialization, concurrent confirmation/rule edit, duplicate
+  confirmation, scheduling auth/CSRF, injected confirmation rollback, alpha.4
+  upgrade и beta.1 downgrade.
+- Frontend Vitest: 29 тестов для access shell, session expiry, setup, settings,
   health UI, счетов, категорий и журнала, включая timezone default, expected-balance
   adjustment, archived edit reference, transfer direction, loading continuity,
   точный manual allocation preview, invalidation устаревшего preview, процентный
-  лимит и выбор позиции фонда на физическом счёте.
-- Предыдущий alpha.3 frontend проверен в браузере на desktop и mobile: clean setup,
-  счета, категории, расход, единый перевод и его два движения; console без ошибок.
+  лимит и выбор позиции фонда на физическом счёте; monthly calendar, overdue
+  state, missing-day validation, exact rule payload, quick confirmation, полную
+  пагинацию месяца, честный upcoming count, archived-reference edit state и
+  exact-operation link.
+- Beta.1 calendar flow проверен в браузере на desktop и mobile: все пункты
+  narrow-навигации видимы, action list предшествует календарной сетке, статусы
+  выражены текстом, ограниченный список показывает `12 из 30`, а переход из
+  confirmed occurrence открывает точную операцию в начале страницы.
 - Ruff, Ruff format, strict mypy, ESLint, Prettier, strict TypeScript и docs check.
-- Production Angular alpha.4 build проходит. Повторная Docker image build была
+- `alembic check` не обнаруживает drift между model metadata и схемой head;
+  migration env явно загружает Operations, Funds и Scheduling indexes/constraints.
+- Production Angular beta.1 build проходит; остаётся прежнее warning превышения
+  `anyComponentStyle` budget общим `directory.css` (5.27 KiB при пороге 4 KiB).
+  Повторная Docker image build была
   запущена, но Docker Hub frontend resolver завершился внешним
   `DeadlineExceeded`; локальная компиляция backend/frontend и тесты проходят.
 - Production-like Compose e2e на отдельном clean volume: setup → authenticated
@@ -228,6 +274,17 @@
 - Upgrade существующей `0004 → 0005` и schema downgrade `0005 → 0004` проверены.
   Downgrade удаляет фондовые данные, поэтому production rollback требует backup
   и явного принятия потери alpha.4 ledger.
+- Материализация запускается календарём или явным API-вызовом; background worker
+  намеренно отсутствует. Если календарь долго не открывать, новый дальний край
+  годового окна появится при следующем запуске, а ранее созданные overdue
+  экземпляры сохранятся.
+- Rule/occurrence responses пока разрешают имена отдельными запросами; перед
+  большим числом ежедневных правил потребуется batch calendar read model.
+- Архивация счёта или категории не отключает правило автоматически. При
+  подтверждении такого экземпляра backend вернёт понятную invalid-reference
+  ошибку; автоматическая lifecycle policy отложена.
+- Timezone migration расписания не реализована: после первого правила смена
+  timezone отклоняется, а явный migration flow отложен.
 
 ## Outside current scope
 
@@ -236,13 +293,15 @@
   reconciliation workflow и currency-specific precision/rounding.
 - Автоматическое/мультисчётное распределение, несколько фондов на одну операцию,
   fund goals и immutable audit trail.
-- Расписания, календарь, прогнозы, liabilities и debts.
+- Прогнозы, liabilities и debts.
+- Custom recurrence intervals, weekdays, дни 29–31, leap-day policy,
+  drag-and-drop, уведомления и background materialization.
 - Импорт CSV/Excel, versioned JSON backup/restore и password recovery.
 - Несколько пользователей, роли, permissions, organizations и tenants.
 - Внешняя инфраструктура, Redis, broker, background workers и cloud identity.
 
 ## Recommended next action
 
-Провести owner review ADR 0001/0002 на реальных сценариях, затем отдельно
-спроектировать materialization и lifecycle ожидаемых операций для
-`0.1.0-beta.1`, не смешивая планы с фактическими ledger balances.
+Провести owner review ADR 0003 на реальном месяце регулярных платежей, затем
+спроектировать read-only forecasting engine beta.2 поверх ledger-derived
+остатков и ожидаемых экземпляров, не проводя планы автоматически.

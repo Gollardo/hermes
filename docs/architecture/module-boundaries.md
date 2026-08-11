@@ -37,6 +37,7 @@ flowchart TB
     Application --> Accounts
     Application --> Operations
     Application --> Funds
+    Application --> Scheduling
     Auth --> Settings
     API --> Operations
     API --> Funds
@@ -47,6 +48,9 @@ flowchart TB
     Operations --> Funds
     Funds --> Accounts
     Scheduling --> Operations
+    Scheduling --> Accounts
+    Scheduling --> Categories
+    Scheduling --> Settings
     Liabilities --> Scheduling
     Liabilities --> Operations
     Debts --> Scheduling
@@ -66,6 +70,10 @@ flowchart TB
 Authentication guards every API except setup, login and health. It does not own
 financial data. Backup may orchestrate all modules, but must not duplicate their
 validation rules.
+
+Scheduling validates account/category snapshots and the application timezone
+through those modules' public contracts. It posts confirmed occurrences only
+through the Operations contract and never writes the physical ledger directly.
 
 The auth setup use case calls the settings module's public initialization
 command with the same SQLAlchemy session so credential, preferences and first

@@ -5,9 +5,11 @@
 `income`, `expense`, `transfer`, `balance_adjustment`, `loan_disbursement`,
 `loan_payment`, `debt_issuance` and `debt_repayment`.
 
-Operations may be freely edited and deleted. Every change to one financial
-operation—including its physical and virtual consequences—must complete
-atomically in one database transaction.
+Operations may be edited and deleted unless another accepted domain fact must
+retain its identity. In beta.1, an operation linked from a confirmed expected
+occurrence cannot be deleted independently. Every allowed change to one
+financial operation—including its physical and virtual consequences—must
+complete atomically in one database transaction.
 
 For the first ordinary-operation model:
 
@@ -38,6 +40,13 @@ Operations owns the journal and posted physical movements. It validates public
 references to accounts and categories. Other modules request posting through an
 operations-owned command or shared use case; they do not insert ledger rows
 directly.
+
+Scheduling confirmation uses that public posting command and writes the
+expected-occurrence link in the same transaction. A retry receives the existing
+link. Operations does not read Scheduling's private tables; a restrictive
+named foreign key protects the confirmed link on deletion. Only violation of
+that exact constraint is translated to the linked-operation domain conflict;
+unrelated integrity failures are not hidden behind it.
 
 The ability to edit/delete is owner-confirmed, but the audit representation is
 not. Soft deletion, immutable revision history and direct replacement are still

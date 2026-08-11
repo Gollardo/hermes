@@ -6,6 +6,21 @@
   gap: 1rem;
   grid-template-columns: minmax(19rem, 0.62fr) minmax(0, 1.38fr);
 }
+.focused-operation {
+  align-items: center;
+  border-color: #b7d4c0;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.focused-operation h2,
+.focused-operation p {
+  margin: 0.2rem 0 0;
+}
+.focused-operation > strong {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .entry-panel {
   position: sticky;
   top: 1rem;
@@ -184,6 +199,11 @@
   }
 }
 @media (max-width: 42rem) {
+  .focused-operation {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
   .filter-grid {
     grid-template-columns: 1fr;
   }

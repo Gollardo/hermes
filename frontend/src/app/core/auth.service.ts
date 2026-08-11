@@ -117,6 +117,7 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
       already_initialized: 'Первоначальная настройка уже завершена.',
       authentication_required: 'Сессия завершена. Войдите снова.',
       base_currency_locked: 'Основную валюту уже нельзя изменить.',
+      timezone_locked_by_schedule: 'Часовой пояс нельзя изменить после создания регулярных правил.',
       account_has_history: 'Счёт с историей операций нельзя удалить. Архивируйте его.',
       account_not_found: 'Счёт не найден.',
       archived_fund_balance:
@@ -142,6 +143,12 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
       login_rate_limited: 'Слишком много неудачных попыток. Повторите вход позже.',
       operation_conflict: 'Операция уже изменена в другой вкладке. Обновите журнал.',
       operation_not_found: 'Операция не найдена.',
+      operation_linked_to_occurrence:
+        'Подтверждённую операцию из календаря нельзя удалить отдельно.',
+      recurring_rule_not_found: 'Регулярное правило не найдено.',
+      expected_occurrence_not_found: 'Ожидаемая операция не найдена.',
+      scheduling_conflict: 'Расписание уже изменено в другой вкладке. Обновите календарь.',
+      invalid_occurrence_transition: 'Это действие больше недоступно для ожидаемой операции.',
     };
     return localized[detail.code] ?? fallback;
   }

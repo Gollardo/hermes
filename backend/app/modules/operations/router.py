@@ -22,6 +22,7 @@ from app.modules.operations.schemas import (
 from app.modules.operations.service import (
     InsufficientBalanceError,
     OperationConflictError,
+    OperationLinkedError,
     OperationNotFoundError,
     create_operation,
     delete_operation,
@@ -42,6 +43,14 @@ def _raise_domain_error(error: RuntimeError) -> None:
     if isinstance(error, OperationConflictError):
         raise HTTPException(
             409, detail={"code": "operation_conflict", "message": "Operation was changed"}
+        )
+    if isinstance(error, OperationLinkedError):
+        raise HTTPException(
+            409,
+            detail={
+                "code": "operation_linked_to_occurrence",
+                "message": "Confirmed scheduled operation cannot be deleted",
+            },
         )
     if isinstance(error, InsufficientBalanceError):
         raise HTTPException(
@@ -172,6 +181,7 @@ def remove_operation(
         FundNotFoundError,
         InsufficientBalanceError,
         OperationConflictError,
+        OperationLinkedError,
         OperationNotFoundError,
     ) as error:
         _raise_domain_error(error)

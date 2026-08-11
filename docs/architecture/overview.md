@@ -39,6 +39,9 @@ flowchart LR
   session digests, login throttling and base settings.
 - Angular 22 uses standalone, lazy-routed pages, strict TypeScript, a development
   proxy and no third-party UI component library.
+- Scheduling materializes a bounded year of expected occurrences on an explicit
+  authenticated command used by the calendar. No worker, queue or external
+  scheduler is introduced.
 - Angular CLI's persistent LMDB build cache is disabled after a reproducible
   native crash on the initialization macOS/Node combination. Clean local and
   container builds remain deterministic without it.

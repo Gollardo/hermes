@@ -1,38 +1,17 @@
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Annotated, Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
 
-
-def _parse_decimal(value: object, *, scale: int, maximum: Decimal) -> Decimal:
-    if isinstance(value, float):
-        raise ValueError("binary floating-point values are not accepted")
-    try:
-        result = Decimal(str(value))
-    except (InvalidOperation, ValueError) as error:
-        raise ValueError("invalid decimal value") from error
-    exponent = result.as_tuple().exponent
-    if (
-        not result.is_finite()
-        or not isinstance(exponent, int)
-        or exponent < -scale
-        or abs(result) > maximum
-    ):
-        raise ValueError(f"value must have at most {scale} decimal places")
-    return result
-
-
-def parse_money(value: object) -> Decimal:
-    return _parse_decimal(value, scale=4, maximum=Decimal("9999999999999999.9999"))
+from app.core.validation import Money, parse_decimal
 
 
 def parse_percentage(value: object) -> Decimal:
-    return _parse_decimal(value, scale=4, maximum=Decimal("100"))
+    return parse_decimal(value, scale=4, maximum=Decimal("100"))
 
 
-Money = Annotated[Decimal, BeforeValidator(parse_money)]
 Percentage = Annotated[Decimal, BeforeValidator(parse_percentage)]
 
 

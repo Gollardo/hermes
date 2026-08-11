@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Numeric,
     String,
     Text,
@@ -47,6 +48,7 @@ class Fund(Base):
 
 class FundEvent(Base):
     __tablename__ = "fund_events"
+    __table_args__ = (Index("ix_fund_events_history_order", "occurred_on", "created_at", "id"),)
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
     type: Mapped[FundEventType] = mapped_column(

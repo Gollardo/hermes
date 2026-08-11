@@ -13,6 +13,7 @@ from app.modules.accounts.contracts import (
 )
 from app.modules.funds.contracts import account_has_fund_history
 from app.modules.operations.contracts import account_has_history, post_initial_balance
+from app.modules.scheduling.contracts import account_has_schedule_reference
 from app.modules.settings.contracts import application_timezone, lock_base_currency
 
 
@@ -45,6 +46,10 @@ def create_account_with_initial_balance(
 
 def delete_account_without_history(session: Session, account_id: UUID) -> None:
     lock_account_identity(session, account_id)
-    if account_has_history(session, account_id) or account_has_fund_history(session, account_id):
+    if (
+        account_has_history(session, account_id)
+        or account_has_fund_history(session, account_id)
+        or account_has_schedule_reference(session, account_id)
+    ):
         raise AccountHasHistoryError
     delete_account_identity(session, account_id)

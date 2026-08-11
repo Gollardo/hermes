@@ -9,6 +9,16 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Recurring income, expense and transfer rules with daily, weekly, monthly and
+  yearly frequencies, inclusive date bounds and optimistic editing.
+- One-calendar-year idempotent occurrence materialization with persistent
+  pending, postponed, cancelled and confirmed states.
+- Monthly calendar, account/type filters, upcoming and overdue list, plus quick
+  confirm, postpone and cancel actions.
+- Atomic occurrence confirmation through the Operations posting contract and a
+  durable link to the actual financial operation.
+- Migration `0006_recurring_operations`, ADR 0003 and unit/integration/frontend
+  coverage for recurrence, rule synchronization, concurrency and rollback.
 - Virtual fund definitions, per-account ledger positions and coverage summary.
 - Exact allocation preview with manual correction and documented round-down
   remainder policy.
@@ -29,6 +39,18 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Calendar month reads now consume every bounded API page, while the limited
+  upcoming list exposes its complete result count.
+- Confirmed calendar items open their exact posted operation; narrow layouts
+  show the action list first and keep all current navigation destinations visible.
+- Scheduling and Operations now use explicit public posting/ledger contracts,
+  deterministic concurrent lock ordering and constraint-specific delete errors.
+- Common exact-money validation moved to `app.core` so Accounts, Operations,
+  Funds and Scheduling share one no-float input contract.
+- Account deletion and category type changes now preserve recurring-rule and
+  expected-occurrence references.
+- Posted operations linked to confirmed expected occurrences cannot be deleted
+  independently.
 - Account balances now include all ordinary journal movements; the conservative
   alpha policy rejects mutations that would leave an affected account negative.
 - Base currency now locks on the first account write; categories remain currency-independent.

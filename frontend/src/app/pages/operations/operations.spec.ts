@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute } from '@angular/router';
 
 import { OperationsPage } from './operations';
 
@@ -31,11 +32,22 @@ interface TestOperation {
 describe('OperationsPage', () => {
   let fixture: ComponentFixture<OperationsPage>;
   let http: HttpTestingController;
+  let focusedId: string | null;
 
   beforeEach(async () => {
+    focusedId = null;
     await TestBed.configureTestingModule({
       imports: [OperationsPage],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useFactory: () => ({
+            snapshot: { queryParamMap: { get: () => focusedId } },
+          }),
+        },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(OperationsPage);
     http = TestBed.inject(HttpTestingController);
@@ -56,8 +68,14 @@ describe('OperationsPage', () => {
     total?: number;
     totalAmount?: string;
     timezone?: string;
+    focusedOperation?: TestOperation;
   }): void {
     fixture.detectChanges();
+    if (focusedId) {
+      const focusedOperation = options?.focusedOperation ?? options?.operations?.[0];
+      expect(focusedOperation).toBeDefined();
+      http.expectOne(`/api/v1/operations/${focusedId}`).flush(focusedOperation!);
+    }
     http.expectOne('/api/v1/settings').flush({
       base_currency: 'RUB',
       timezone: options?.timezone ?? 'UTC',
@@ -129,6 +147,33 @@ describe('OperationsPage', () => {
     http
       .expectOne((candidate) => candidate.url === '/api/v1/operations')
       .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+  });
+
+  it('opens the exact actual operation linked from the calendar', () => {
+    const operation: TestOperation = {
+      id: 'operation-1',
+      type: 'expense',
+      occurred_on: '2026-08-11',
+      amount: '12.5000',
+      description: 'Интернет',
+      reason: null,
+      category_id: 'category-1',
+      category_name: 'Связь',
+      account_id: 'account-1',
+      destination_account_id: null,
+      movements: [{ account_id: 'account-1', account_name: 'Main', amount: '-12.5000' }],
+      fund_id: null,
+      fund_amount: null,
+      fund_movements: [],
+      version: 1,
+    };
+    focusedId = operation.id;
+    flushInitial({ operations: [], focusedOperation: operation });
+
+    const panel = fixture.nativeElement.querySelector('.focused-operation') as HTMLElement;
+    expect(panel.textContent).toContain('Связь с календарём');
+    expect(panel.textContent).toContain('Интернет');
+    expect(panel.textContent).toContain('−12.5000 RUB');
   });
 
   it('posts an expense from the explicitly selected fund', () => {

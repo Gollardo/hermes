@@ -51,6 +51,7 @@ question by itself.
   [dashboard](ui-ux/screens/dashboard.md),
   [operation entry](ui-ux/screens/operation-entry.md),
   [funds](ui-ux/screens/funds.md),
+  [calendar](ui-ux/screens/calendar.md),
   [forecast](ui-ux/screens/forecast.md),
   [transactions](ui-ux/screens/transactions.md)
 - [Open UI/UX questions](ui-ux/open-questions.md)

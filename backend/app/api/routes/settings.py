@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.core.database import DatabaseSession
-from app.modules.settings.models import ApplicationSettings
-from app.modules.settings.schemas import SettingsResponse, SettingsUpdateRequest
-from app.modules.settings.service import (
-    BaseCurrencyLockedError,
-    get_application_settings,
-    update_application_settings,
+from app.application.settings import (
+    TimezoneLockedByScheduleError,
+    replace_application_settings,
 )
+from app.core.database import DatabaseSession
+from app.modules.settings.contracts import ApplicationSettings
+from app.modules.settings.schemas import SettingsResponse, SettingsUpdateRequest
+from app.modules.settings.service import BaseCurrencyLockedError, get_application_settings
 
 read_router = APIRouter(prefix="/settings", tags=["settings"])
 write_router = APIRouter(prefix="/settings", tags=["settings"])
@@ -33,7 +33,7 @@ def replace_settings(
     session: DatabaseSession,
 ) -> SettingsResponse:
     try:
-        settings = update_application_settings(
+        settings = replace_application_settings(
             session,
             base_currency=payload.base_currency,
             timezone=payload.timezone,
@@ -44,6 +44,14 @@ def replace_settings(
             detail={
                 "code": "base_currency_locked",
                 "message": "Base currency cannot change after financial data exists",
+            },
+        ) from error
+    except TimezoneLockedByScheduleError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "timezone_locked_by_schedule",
+                "message": "Timezone cannot change after recurring rules exist",
             },
         ) from error
     return _response(settings)

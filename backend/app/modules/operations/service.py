@@ -4,6 +4,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -19,7 +20,7 @@ from app.modules.funds.contracts import (
     replace_operation_movements,
     validate_account_coverage,
 )
-from app.modules.operations.contracts import account_balance
+from app.modules.operations.ledger import account_balance
 from app.modules.operations.models import AccountMovement, FinancialOperation, OperationType
 from app.modules.operations.schemas import (
     MovementResponse,
@@ -40,6 +41,13 @@ class OperationConflictError(RuntimeError):
 
 class InsufficientBalanceError(RuntimeError):
     pass
+
+
+class OperationLinkedError(RuntimeError):
+    pass
+
+
+LINKED_OCCURRENCE_CONSTRAINT = "fk_expected_occurrences_actual_operation"
 
 
 @dataclass(frozen=True, slots=True)
@@ -234,7 +242,13 @@ def delete_operation(session: Session, operation_id: UUID, *, expected_version: 
         allow_archived_fund_ids={fund_id for fund_id, _ in old_fund_amounts},
     )
     session.delete(operation)
-    session.flush()
+    try:
+        session.flush()
+    except IntegrityError as error:
+        diagnostic = getattr(error.orig, "diag", None)
+        if getattr(diagnostic, "constraint_name", None) != LINKED_OCCURRENCE_CONSTRAINT:
+            raise
+        raise OperationLinkedError from error
     validate_account_coverage(
         session, {account_id: account_balance(session, account_id) for account_id in old_amounts}
     )

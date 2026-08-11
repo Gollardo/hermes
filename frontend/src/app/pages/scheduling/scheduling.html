@@ -1,0 +1,366 @@
+<section class="scheduling-page">
+  <header class="page-header">
+    <div class="page-header-copy">
+      <p class="eyebrow">Плановые события</p>
+      <h1>Календарь</h1>
+      <p>
+        Ожидаемые операции не меняют фактический остаток. Деньги проводятся только после
+        подтверждения.
+      </p>
+    </div>
+    <span class="status-pill">Горизонт планирования · 1 год</span>
+  </header>
+
+  @if (error(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+
+  <section class="panel calendar-panel" aria-labelledby="calendar-title">
+    <div class="calendar-toolbar">
+      <div>
+        <p class="section-label">Месячное представление</p>
+        <h2 id="calendar-title">{{ monthTitle() }}</h2>
+      </div>
+      <div class="month-actions" aria-label="Выбор месяца">
+        <button
+          type="button"
+          class="secondary"
+          (click)="moveMonth(-1)"
+          aria-label="Предыдущий месяц"
+        >
+          ←
+        </button>
+        <button type="button" class="secondary" (click)="resetMonth()">Сегодня</button>
+        <button type="button" class="secondary" (click)="moveMonth(1)" aria-label="Следующий месяц">
+          →
+        </button>
+      </div>
+    </div>
+
+    <form class="calendar-filters" [formGroup]="filters">
+      <label>
+        Счёт
+        <select formControlName="accountId">
+          <option value="">Все счета</option>
+          @for (account of accounts(); track account.id) {
+            <option [value]="account.id">
+              {{ account.name }}{{ account.archived ? ' · в архиве' : '' }}
+            </option>
+          }
+        </select>
+      </label>
+      <label>
+        Тип
+        <select formControlName="type">
+          <option value="">Все типы</option>
+          <option value="income">Доходы</option>
+          <option value="expense">Расходы</option>
+          <option value="transfer">Переводы</option>
+        </select>
+      </label>
+    </form>
+
+    <div class="calendar-scroll" tabindex="0" aria-label="Календарная сетка">
+      <div class="calendar-weekdays" aria-hidden="true">
+        <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span
+        ><span>Вс</span>
+      </div>
+      <div class="calendar-grid">
+        @for (day of calendarDays(); track day.iso) {
+          <article
+            class="calendar-day"
+            [class.outside]="!day.inMonth"
+            [class.today]="day.today"
+            [attr.aria-label]="day.iso"
+          >
+            <time [attr.datetime]="day.iso">{{ day.day }}</time>
+            <div class="day-events">
+              @for (occurrence of day.occurrences; track occurrence.id) {
+                @if (occurrence.status === 'confirmed' && occurrence.actual_operation_id) {
+                  <a
+                    class="calendar-event confirmed-link"
+                    [class]="'calendar-event confirmed-link ' + occurrence.type + ' confirmed'"
+                    routerLink="/operations"
+                    [queryParams]="{ focus: occurrence.actual_operation_id }"
+                    title="Открыть связанную фактическую операцию"
+                  >
+                    <span
+                      >{{ typeLabel(occurrence.type) }} · {{ statusLabel(occurrence.status) }}</span
+                    >
+                    <strong>{{ occurrence.amount }} {{ baseCurrency() }}</strong>
+                  </a>
+                } @else {
+                  <div
+                    class="calendar-event"
+                    [class]="'calendar-event ' + occurrence.type + ' ' + occurrence.status"
+                    [class.overdue]="occurrence.overdue"
+                    [title]="occurrenceTitle(occurrence)"
+                  >
+                    <span>
+                      {{ typeLabel(occurrence.type) }} ·
+                      {{ occurrence.overdue ? 'Просрочено' : statusLabel(occurrence.status) }}
+                    </span>
+                    <strong>{{ occurrence.amount }} {{ baseCurrency() }}</strong>
+                  </div>
+                }
+              }
+            </div>
+          </article>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="panel upcoming-panel" aria-labelledby="upcoming-title">
+    <div class="panel-heading">
+      <div>
+        <p class="section-label">Ближайшие 30 дней</p>
+        <h2 id="upcoming-title">Требуют внимания</h2>
+        <p>Просроченные события остаются сверху и выделяются независимо от цвета.</p>
+      </div>
+      <span class="count-pill">{{ upcoming().length }} из {{ upcomingTotal() }}</span>
+    </div>
+
+    @if (loading() && !upcoming().length) {
+      <p class="empty-state">Загружаем ожидаемые операции…</p>
+    } @else if (!upcoming().length) {
+      <p class="empty-state">В ближайшие 30 дней нет ожидаемых операций по выбранным фильтрам.</p>
+    } @else {
+      <div class="upcoming-list">
+        @for (occurrence of upcoming(); track occurrence.id) {
+          <article class="upcoming-item" [class.overdue]="occurrence.overdue">
+            <div class="occurrence-date">
+              <time [attr.datetime]="occurrence.due_on">{{ occurrence.due_on }}</time>
+              @if (occurrence.overdue) {
+                <strong>Просрочено</strong>
+              } @else {
+                <span>{{ statusLabel(occurrence.status) }}</span>
+              }
+            </div>
+            <div class="occurrence-copy">
+              <span class="badge">{{ typeLabel(occurrence.type) }}</span>
+              <h3>{{ occurrenceTitle(occurrence) }}</h3>
+              <p>
+                {{ accountDirection(occurrence) }} ·
+                {{ occurrence.category_name || 'Без категории' }}
+              </p>
+            </div>
+            <strong class="occurrence-amount">{{ occurrence.amount }} {{ baseCurrency() }}</strong>
+            @if (actionable(occurrence)) {
+              <div class="quick-actions">
+                <button
+                  type="button"
+                  (click)="confirm(occurrence)"
+                  [disabled]="busyOccurrenceId() === occurrence.id"
+                >
+                  Подтвердить
+                </button>
+                <div class="postpone-action">
+                  <label [for]="'postpone-' + occurrence.id">Новая дата</label>
+                  <input
+                    [id]="'postpone-' + occurrence.id"
+                    type="date"
+                    [value]="postponeDate(occurrence)"
+                    (input)="setPostponeDate(occurrence.id, $any($event.target).value)"
+                  />
+                  <button
+                    type="button"
+                    class="secondary"
+                    (click)="postpone(occurrence)"
+                    [disabled]="
+                      busyOccurrenceId() === occurrence.id ||
+                      postponeDate(occurrence) === occurrence.due_on
+                    "
+                  >
+                    Перенести
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="danger"
+                  (click)="cancel(occurrence)"
+                  [disabled]="busyOccurrenceId() === occurrence.id"
+                >
+                  Отменить
+                </button>
+              </div>
+            }
+          </article>
+        }
+      </div>
+      @if (upcomingTotal() > upcoming().length) {
+        <p class="list-limit-note">
+          Показаны первые {{ upcoming().length }} событий. Остальные доступны по фильтрам и в
+          месячной сетке.
+        </p>
+      }
+    }
+  </section>
+
+  <div class="directory-grid rules-grid">
+    <section class="panel directory-list-panel" aria-labelledby="rules-title">
+      <div class="panel-heading">
+        <div>
+          <p class="section-label">Шаблоны</p>
+          <h2 id="rules-title">Регулярные правила</h2>
+          <p>Изменения применяются только к нетронутым ожидаемым экземплярам.</p>
+        </div>
+        <span class="count-pill">{{ rules().length }}</span>
+      </div>
+
+      @if (!rules().length) {
+        <p class="empty-state">Создайте первое правило — экземпляры появятся на год вперёд.</p>
+      } @else {
+        <div class="item-list">
+          @for (rule of rules(); track rule.id) {
+            <article class="directory-item" [class.archived]="!rule.active">
+              <div class="directory-item-main">
+                <span class="item-symbol" [class.neutral]="!rule.active" aria-hidden="true">↻</span>
+                <div class="item-copy">
+                  <span class="badge"
+                    >{{ frequencyLabel(rule.frequency) }} · {{ typeLabel(rule.type) }}</span
+                  >
+                  <h3>{{ ruleTitle(rule) }}</h3>
+                  <p>
+                    {{ rule.account_name }}
+                    @if (rule.destination_account_name) {
+                      → {{ rule.destination_account_name }}
+                    }
+                    · с {{ rule.start_on }}{{ rule.end_on ? ' по ' + rule.end_on : '' }}
+                  </p>
+                </div>
+              </div>
+              <div class="directory-item-side">
+                <strong>{{ rule.amount }} {{ baseCurrency() }}</strong>
+                <span class="badge">{{ rule.active ? 'Активно' : 'Отключено' }}</span>
+                <div class="item-actions">
+                  <button
+                    type="button"
+                    class="secondary"
+                    (click)="editRule(rule)"
+                    [disabled]="saving()"
+                  >
+                    Изменить
+                  </button>
+                  <button
+                    type="button"
+                    [class.secondary]="!rule.active"
+                    [class.danger]="rule.active"
+                    (click)="toggleRule(rule)"
+                    [disabled]="saving()"
+                  >
+                    {{ rule.active ? 'Отключить' : 'Включить' }}
+                  </button>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+
+    <section id="rule-editor" class="panel form-panel" [class.editing]="editingId()">
+      <div class="panel-heading">
+        <div>
+          <p class="section-label">{{ editingId() ? 'Изменение' : 'Новое правило' }}</p>
+          <h2>{{ editingId() ? 'Обновить расписание' : 'Добавить регулярную операцию' }}</h2>
+        </div>
+      </div>
+
+      <form [formGroup]="ruleForm" (ngSubmit)="submitRule()">
+        <label>
+          Тип операции
+          <select formControlName="type">
+            <option value="income">Доход</option>
+            <option value="expense">Расход</option>
+            <option value="transfer">Перевод</option>
+          </select>
+        </label>
+        <label>
+          Периодичность
+          <select formControlName="frequency">
+            <option value="daily">Ежедневно</option>
+            <option value="weekly">Еженедельно</option>
+            <option value="monthly">Ежемесячно</option>
+            <option value="yearly">Ежегодно</option>
+          </select>
+        </label>
+        <div class="date-fields">
+          <label>
+            Дата начала
+            <input type="date" formControlName="startOn" />
+          </label>
+          <label>
+            Дата окончания
+            <input type="date" formControlName="endOn" />
+          </label>
+        </div>
+        @if (ruleForm.controls.frequency.value === 'monthly') {
+          <p class="hint">Для ежемесячного правила доступны дни с 1 по 28.</p>
+        }
+        <label>
+          Сумма, {{ baseCurrency() }}
+          <input type="text" inputmode="decimal" formControlName="amount" autocomplete="off" />
+        </label>
+        <label>
+          Счёт
+          <select formControlName="accountId">
+            <option value="">Выберите счёт</option>
+            @for (account of activeAccounts(); track account.id) {
+              <option [value]="account.id" [disabled]="account.archived && ruleWillBeActive()">
+                {{ accountLabel(account) }}
+              </option>
+            }
+          </select>
+        </label>
+        @if (ruleForm.controls.type.value === 'transfer') {
+          <label>
+            Счёт зачисления
+            <select formControlName="destinationAccountId">
+              <option value="">Выберите счёт</option>
+              @for (account of activeAccounts(); track account.id) {
+                <option
+                  [value]="account.id"
+                  [disabled]="
+                    account.id === ruleForm.controls.accountId.value ||
+                    (account.archived && ruleWillBeActive())
+                  "
+                >
+                  {{ accountLabel(account) }}
+                </option>
+              }
+            </select>
+          </label>
+        } @else {
+          <label>
+            Категория
+            <select formControlName="categoryId">
+              <option value="">Выберите категорию</option>
+              @for (category of availableCategories(); track category.id) {
+                <option [value]="category.id" [disabled]="category.archived && ruleWillBeActive()">
+                  {{ categoryLabel(category) }}
+                </option>
+              }
+            </select>
+          </label>
+          @if (editingId() && hasUnavailableReference()) {
+            <p class="hint">
+              Для активного правила выберите действующие счёт и категорию. Архивные ссылки показаны
+              только для объяснения текущего состояния.
+            </p>
+          }
+        }
+        <label>
+          Описание
+          <textarea formControlName="description"></textarea>
+        </label>
+        <button type="submit" [disabled]="saving() || !canSaveRule()">
+          {{ editingId() ? 'Сохранить изменения' : 'Создать правило' }}
+        </button>
+        @if (editingId()) {
+          <button type="button" class="secondary" (click)="cancelEdit()">Отменить изменение</button>
+        }
+      </form>
+    </section>
+  </div>
+</section>

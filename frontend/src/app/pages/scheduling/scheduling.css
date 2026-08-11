@@ -1,0 +1,280 @@
+.scheduling-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.calendar-panel,
+.upcoming-panel {
+  min-width: 0;
+}
+
+.calendar-toolbar,
+.calendar-filters,
+.month-actions,
+.quick-actions,
+.postpone-action {
+  align-items: center;
+  display: flex;
+  gap: 0.65rem;
+}
+
+.calendar-toolbar {
+  justify-content: space-between;
+}
+
+.calendar-toolbar h2 {
+  margin-bottom: 0;
+  text-transform: capitalize;
+}
+
+.month-actions button {
+  min-width: 2.75rem;
+}
+
+.calendar-filters {
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 0.15rem;
+}
+
+.calendar-filters label {
+  flex: 1;
+}
+
+.calendar-scroll {
+  margin-top: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(5.75rem, 1fr));
+  min-width: 42rem;
+}
+
+.calendar-weekdays span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 730;
+  padding: 0.5rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.calendar-day {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  min-height: 7.8rem;
+  padding: 0.55rem;
+}
+
+.calendar-day.outside {
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+.calendar-day.today {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.calendar-day > time {
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.day-events {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.calendar-event {
+  background: var(--surface-accent);
+  border-left: 3px solid var(--accent);
+  border-radius: 0.45rem;
+  display: grid;
+  font-size: 0.66rem;
+  line-height: 1.25;
+  padding: 0.35rem 0.4rem;
+  text-decoration: none;
+}
+
+.confirmed-link {
+  color: inherit;
+}
+
+.calendar-event.expense {
+  background: #faf3df;
+  border-left-color: var(--warning);
+}
+
+.calendar-event.transfer {
+  background: #eef1f5;
+  border-left-color: #607080;
+}
+
+.calendar-event.cancelled {
+  opacity: 0.48;
+  text-decoration: line-through;
+}
+
+.calendar-event.confirmed {
+  opacity: 0.65;
+}
+
+.calendar-event.overdue {
+  outline: 2px solid var(--danger);
+  outline-offset: 1px;
+}
+
+.upcoming-list {
+  display: grid;
+  gap: 0;
+}
+
+.list-limit-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin: 0.75rem 0 0;
+}
+
+.upcoming-item {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 8rem minmax(0, 1fr) auto minmax(15rem, 0.8fr);
+  padding: 1rem 0;
+}
+
+.upcoming-item.overdue {
+  background: linear-gradient(90deg, var(--danger-soft), transparent 65%);
+  box-shadow: inset 3px 0 var(--danger);
+  padding-left: 0.75rem;
+}
+
+.occurrence-date,
+.occurrence-copy {
+  display: grid;
+}
+
+.occurrence-date strong {
+  color: var(--danger);
+  font-size: 0.72rem;
+}
+
+.occurrence-date span,
+.occurrence-copy p {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.occurrence-copy h3,
+.occurrence-copy p {
+  margin: 0.1rem 0 0;
+}
+
+.occurrence-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.quick-actions {
+  align-items: stretch;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.quick-actions button {
+  font-size: 0.74rem;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.65rem;
+}
+
+.postpone-action {
+  display: grid;
+  grid-template-columns: minmax(8.5rem, 1fr) auto;
+}
+
+.postpone-action label {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.postpone-action input {
+  min-height: 2.35rem;
+  padding-block: 0.4rem;
+}
+
+.rules-grid {
+  grid-template-columns: minmax(0, 1.35fr) minmax(20rem, 0.65fr);
+}
+
+.date-fields {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 75rem) {
+  .upcoming-item {
+    grid-template-columns: 7rem minmax(0, 1fr) auto;
+  }
+
+  .quick-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 67rem) {
+  .rules-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 44rem) {
+  .upcoming-panel {
+    order: 1;
+  }
+
+  .calendar-panel {
+    order: 2;
+  }
+
+  .rules-grid {
+    order: 3;
+  }
+
+  .calendar-toolbar,
+  .calendar-filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .month-actions {
+    justify-content: space-between;
+  }
+
+  .upcoming-item {
+    align-items: start;
+    grid-template-columns: 1fr auto;
+  }
+
+  .occurrence-copy,
+  .quick-actions {
+    grid-column: 1 / -1;
+  }
+
+  .quick-actions,
+  .quick-actions > button,
+  .postpone-action {
+    width: 100%;
+  }
+
+  .date-fields {
+    grid-template-columns: 1fr;
+  }
+}

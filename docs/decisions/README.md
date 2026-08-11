@@ -13,6 +13,9 @@ accepted without an explicit project-owner decision.
 - [ADR 0002: Virtual fund ledger and allocation policy](0002-virtual-fund-ledger.md)
   records the separately reviewed alpha.4 virtual posting, coverage, rounding
   and archive model.
+- [ADR 0003: Recurring rules and expected occurrences](0003-recurring-rules-and-occurrences.md)
+  records the beta.1 recurrence, materialization, rule-edit and confirmation
+  policies.
 
 ## Template for a future ADR
 

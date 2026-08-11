@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.modules.categories.models import Category, CategoryType
 from app.modules.categories.service import lock_category_tree, update_category
 from app.modules.operations.contracts import category_has_history
+from app.modules.scheduling.contracts import category_has_schedule_reference
 
 
 def update_category_preserving_history(
@@ -25,5 +26,8 @@ def update_category_preserving_history(
         name=name,
         description=description,
         parent_id=parent_id,
-        has_financial_history=category_has_history(session, category_id),
+        has_financial_history=(
+            category_has_history(session, category_id)
+            or category_has_schedule_reference(session, category_id)
+        ),
     )

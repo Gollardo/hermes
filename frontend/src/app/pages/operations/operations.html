@@ -11,6 +11,24 @@
     <p class="form-error" role="alert">{{ message }}</p>
   }
 
+  @if (focusedOperation(); as operation) {
+    <section class="panel focused-operation" aria-labelledby="focused-operation-title">
+      <div>
+        <p class="section-label">Связь с календарём</p>
+        <h2 id="focused-operation-title">
+          {{
+            operation.description || operation.category_name || operationTypeLabel(operation.type)
+          }}
+        </h2>
+        <p>
+          Фактическая операция от {{ operation.occurred_on }} ·
+          {{ transferDirection(operation) }}
+        </p>
+      </div>
+      <strong>{{ signedAmount(operation) }} {{ baseCurrency() }}</strong>
+    </section>
+  }
+
   <div class="operation-layout">
     <section class="panel entry-panel" [class.editing]="editingId()" aria-labelledby="entry-title">
       <div class="panel-heading">

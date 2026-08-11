@@ -20,6 +20,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/funds/funds').then((module) => module.FundsPage),
   },
   {
+    path: 'calendar',
+    loadComponent: () =>
+      import('./pages/scheduling/scheduling').then((module) => module.SchedulingPage),
+  },
+  {
     path: 'accounts',
     loadComponent: () => import('./pages/accounts/accounts').then((module) => module.AccountsPage),
   },

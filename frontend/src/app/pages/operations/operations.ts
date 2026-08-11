@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
@@ -96,8 +97,10 @@ interface ApplicationSettings {
 export class OperationsPage implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly builder = inject(NonNullableFormBuilder);
+  private readonly route = inject(ActivatedRoute, { optional: true });
 
   protected readonly operations = signal<Operation[]>([]);
+  protected readonly focusedOperation = signal<Operation | null>(null);
   protected readonly Math = Math;
   protected readonly accounts = signal<Account[]>([]);
   protected readonly categories = signal<Category[]>([]);
@@ -138,6 +141,8 @@ export class OperationsPage implements OnInit {
   });
 
   ngOnInit(): void {
+    const focusedId = this.route?.snapshot.queryParamMap.get('focus');
+    if (focusedId) this.loadFocusedOperation(focusedId);
     this.loadSettings();
     this.loadDirectories();
     this.load();
@@ -493,6 +498,14 @@ export class OperationsPage implements OnInit {
       },
       error: (error: unknown) =>
         this.error.set(apiErrorMessage(error, 'Не удалось загрузить валюту и часовой пояс.')),
+    });
+  }
+
+  private loadFocusedOperation(operationId: string): void {
+    this.http.get<Operation>(`${environment.apiBaseUrl}/operations/${operationId}`).subscribe({
+      next: (operation) => this.focusedOperation.set(operation),
+      error: (error: unknown) =>
+        this.error.set(apiErrorMessage(error, 'Не удалось открыть связанную операцию.')),
     });
   }
 

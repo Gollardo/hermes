@@ -4,8 +4,8 @@ Hermes is an early-stage, single-owner, self-hosted web application for personal
 finance. It is intended for a home server or local computer and keeps its data
 independent of external cloud services.
 
-> **Alpha candidate:** `0.1.0-alpha.4` adds ledger-derived virtual funds, exact
-> allocation previews and atomic fund-aware expenses and transfers.
+> **Beta candidate:** `0.1.0-beta.1` adds recurring rules, a one-year expected
+> occurrence window and an actionable monthly calendar.
 
 ## Current capabilities
 
@@ -20,10 +20,13 @@ independent of external cloud services.
 - journal filters, details and pagination with optimistic edit protection.
 - virtual funds, physical/free coverage, explicit percentage allocation and
   virtual redistribution between accounts.
+- recurring income, expense and transfer rules with exact dated snapshots;
+- monthly calendar, upcoming/overdue list and confirm/postpone/cancel actions;
+- idempotent confirmation that atomically links one posted financial operation.
 
 ## Planned financial capabilities
 
-- expected and recurring operations, calendar and balance forecasts;
+- balance forecasts based on expected operations;
 - simplified loans, installment plans and two-way debts;
 - reports, staged CSV/Excel import and versioned JSON backup/restore;
 - one local owner authenticated by an Argon2id password and server-side session.

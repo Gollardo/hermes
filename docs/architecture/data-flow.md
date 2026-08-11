@@ -116,17 +116,24 @@ flowchart LR
     Rule["Recurrence rule"] --> Generate["Materialize expected occurrence"]
     Generate --> Pending["pending"]
     Pending -->|postpone| Postponed["postponed with new date"]
-    Postponed -->|due again| Pending
     Pending -->|cancel| Cancelled["cancelled"]
+    Postponed -->|cancel| Cancelled
     Pending -->|confirm| Tx["Operations transaction"]
+    Postponed -->|confirm| Tx
     Tx --> Actual["Posted financial operation"]
     Actual --> Confirmed["confirmed and linked"]
 ```
 
-Generating, postponing or cancelling an occurrence never changes the actual
-balance. Confirmation creates one actual operation and must be idempotent.
-Idempotency is a technical requirement inferred from safe retries and still
-needs a concrete design.
+Materialization locks each rule and uses unique `(rule_id, scheduled_on)`
+identity for a one-calendar-year window. Generating, postponing or cancelling
+an occurrence never changes the actual balance. Confirmation locks the
+occurrence, creates one actual operation through the Operations public contract
+and records its link in the same transaction. A retry returns that link instead
+of posting again. Sliding the window preserves overdue untouched occurrences.
+Rule replacement locks the rule and all of its occurrences before validating
+the category and deterministically ordered accounts. Confirmation already owns
+the occurrence before taking those same reference locks, so concurrent rule
+editing and posting serialize without a reverse lock dependency.
 
 ## Forecast calculation
 

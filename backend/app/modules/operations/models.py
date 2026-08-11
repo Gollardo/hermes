@@ -3,7 +3,16 @@ from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Numeric, Text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Numeric,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +33,12 @@ class FinancialOperation(Base):
         CheckConstraint(
             "reason IS NULL OR length(btrim(reason)) > 0",
             name="ck_financial_operations_reason_not_blank",
+        ),
+        Index(
+            "ix_financial_operations_journal_order",
+            "occurred_on",
+            "created_at",
+            "id",
         ),
     )
 
@@ -50,7 +65,14 @@ class FinancialOperation(Base):
 
 class AccountMovement(Base):
     __tablename__ = "account_movements"
-    __table_args__ = (CheckConstraint("amount <> 0", name="ck_account_movements_amount_nonzero"),)
+    __table_args__ = (
+        CheckConstraint("amount <> 0", name="ck_account_movements_amount_nonzero"),
+        UniqueConstraint(
+            "operation_id",
+            "account_id",
+            name="uq_account_movements_operation_account",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
     operation_id: Mapped[UUID] = mapped_column(

@@ -14,6 +14,16 @@ class BaseCurrencyLockedError(RuntimeError):
     pass
 
 
+def lock_application_timezone(session: Session) -> str:
+    """Serialize schedule creation with timezone changes."""
+    settings = session.scalar(
+        select(ApplicationSettings).where(ApplicationSettings.id == 1).with_for_update()
+    )
+    if settings is None:
+        raise SettingsNotInitializedError
+    return settings.timezone
+
+
 def initialize_settings(session: Session, *, base_currency: str, timezone: str) -> None:
     if session.get(ApplicationSettings, 1) is not None:
         raise RuntimeError("Application settings already exist")

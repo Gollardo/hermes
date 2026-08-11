@@ -265,8 +265,7 @@ footer {
   }
 
   .nav-group {
-    display: flex;
-    overflow-x: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .nav-group > p {
@@ -274,8 +273,9 @@ footer {
   }
 
   .primary-nav a {
-    flex: 1 0 auto;
     justify-content: center;
+    min-width: 0;
+    padding-inline: 0.45rem;
   }
 
   .sidebar-footer {
@@ -300,10 +300,6 @@ footer {
 }
 
 @media (max-width: 31rem) {
-  .primary-nav a {
-    padding-inline: 0.6rem;
-  }
-
   .primary-nav a span {
     font-size: 0.78rem;
   }
