@@ -101,6 +101,11 @@
   text-decoration: none;
 }
 
+.calendar-event:focus {
+  outline: 3px solid rgb(23 115 79 / 22%);
+  outline-offset: 2px;
+}
+
 .confirmed-link {
   color: inherit;
 }

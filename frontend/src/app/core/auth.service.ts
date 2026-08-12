@@ -147,6 +147,7 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
         'Подтверждённую операцию из календаря нельзя удалить отдельно.',
       recurring_rule_not_found: 'Регулярное правило не найдено.',
       expected_occurrence_not_found: 'Ожидаемая операция не найдена.',
+      forecast_account_not_found: 'Счёт для прогноза не найден.',
       scheduling_conflict: 'Расписание уже изменено в другой вкладке. Обновите календарь.',
       invalid_occurrence_transition: 'Это действие больше недоступно для ожидаемой операции.',
     };

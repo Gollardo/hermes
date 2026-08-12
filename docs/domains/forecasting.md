@@ -21,18 +21,44 @@ balances with public planned-occurrence and obligation contracts, orders their
 effects on a timeline and applies exact decimal arithmetic. It cannot confirm or
 post expected operations. See the [forecast diagram](../architecture/data-flow.md).
 
-## Assumptions requiring confirmation
+## Implemented beta.2 policy
 
-- “All accounts” sums only values in a compatible currency; cross-currency
-  aggregation is undefined until a currency model exists.
-- Cancelled and confirmed expected occurrences are excluded as future planned
-  effects; the confirmed actual operation is already in the ledger.
-- Multiple movements on one date use deterministic ordering but daily end
-  balance may be more meaningful than an arbitrary intraday sequence.
+- The series starts with today's ledger-derived actual balance. It includes
+  actionable `pending` and `postponed` occurrences from today through the
+  inclusive horizon end; `confirmed` and `cancelled` occurrences are excluded.
+- Overdue actionable occurrences are not silently moved to today. Their count is
+  reported for the selected scope so the user can resolve them in the calendar.
+- Events are ordered by `(due_on, occurrence_id)`, grouped by date, and applied
+  as one deterministic daily closing balance. The minimum and first negative
+  date use these closing balances, not an invented intraday order.
+- A single-account transfer is outgoing on its source and incoming on its
+  destination. An internal transfer has zero effect on the all-accounts balance,
+  but remains in the explanation for that date.
+- Week ends at `today + 7 days`; month, quarter, half-year and year preserve the
+  day of month where possible and clamp to the target month's last day.
+- All current account identities, including archived accounts, participate in
+  the combined balance because their ledger history still contains physical
+  money. A selected archived account can still be inspected.
+- Money is calculated with `Decimal`; API money fields are exact decimal strings.
+- The current account model has one locked base currency and no per-account
+  currency, so all-account aggregation is compatible by construction.
+- The calculation is read-only and persists no projection or snapshot. Beta.2
+  therefore adds no schema migration.
+- One request takes shared locks on the selected actionable occurrences and
+  account identities before reading ledger movements. Confirmation and posting
+  use the corresponding exclusive locks in the same Scheduling-to-Accounts
+  order, so one forecast cannot count an occurrence in both actual and planned
+  money during a concurrent confirmation.
+- The application screen materializes Scheduling's rolling one-year window
+  before reading the forecast. The forecast GET itself remains side-effect free;
+  API clients that bypass the screen must synchronize the schedule explicitly.
 
 ## Open questions
 
-- Date/time granularity and ordering for same-day operations.
-- Treatment of postponed, overdue and uncertain expected occurrences.
-- Whether inactive/archived accounts participate.
 - Performance and snapshot strategy once data volume is measurable.
+- The consistent read currently holds shared locks for the request and returns
+  every explaining event. Large schedules may require a versioned read
+  projection or another snapshot strategy that preserves explanations.
+- Whether future multi-currency accounts require separate series or explicit FX
+  scenarios; implicit conversion remains prohibited.
+- Whether liabilities and debts join the projection after those domains exist.

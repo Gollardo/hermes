@@ -1,0 +1,192 @@
+<section class="forecast-page">
+  <header class="page-header">
+    <div class="page-header-copy">
+      <p class="eyebrow">Будущие остатки</p>
+      <h1>Прогноз</h1>
+      <p>Фактический остаток и ожидаемые события показаны отдельно и объясняют каждое изменение.</p>
+    </div>
+    <a class="button-link secondary" routerLink="/calendar">Открыть календарь</a>
+  </header>
+
+  <section class="panel forecast-controls" aria-label="Параметры прогноза">
+    <label>
+      Счёт
+      <select
+        [ngModel]="selectedAccountId()"
+        (ngModelChange)="changeAccount($event)"
+        [disabled]="loading()"
+      >
+        <option value="">Все счета</option>
+        @for (account of accounts(); track account.id) {
+          <option [value]="account.id">{{ accountLabel(account) }}</option>
+        }
+      </select>
+    </label>
+    <fieldset>
+      <legend>Период</legend>
+      <div class="period-switcher">
+        @for (item of horizons; track item.value) {
+          <button
+            type="button"
+            class="secondary"
+            [class.active]="selectedHorizon() === item.value"
+            [attr.aria-pressed]="selectedHorizon() === item.value"
+            (click)="changeHorizon(item.value)"
+          >
+            {{ item.label }}
+          </button>
+        }
+      </div>
+    </fieldset>
+  </section>
+
+  @if (error(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+
+  @if (loading() && !forecast()) {
+    <section class="panel empty-state" aria-live="polite">Рассчитываем будущие остатки…</section>
+  } @else if (forecast(); as value) {
+    @if (value.first_negative_on) {
+      <section class="risk-banner" role="alert">
+        <strong>Возможен недостаток средств {{ value.first_negative_on }}</strong>
+        <span>Минимальный остаток: {{ value.minimum_balance }} {{ baseCurrency() }}.</span>
+      </section>
+    }
+    @if (value.overdue_excluded_count) {
+      <section class="overdue-note" role="status">
+        <strong>{{ value.overdue_excluded_count }} просроченных событий не включено.</strong>
+        <span>Подтвердите, перенесите или отмените их в календаре.</span>
+        <a routerLink="/calendar">Перейти к событиям</a>
+      </section>
+    }
+
+    <div class="summary-grid">
+      <article class="summary-card fact">
+        <span>Факт на {{ value.from_on }}</span>
+        <strong>{{ value.starting_balance }} {{ baseCurrency() }}</strong>
+      </article>
+      <article class="summary-card">
+        <span>Прогноз на {{ value.through_on }}</span>
+        <strong [class.negative]="isNegative(value.ending_balance)"
+          >{{ value.ending_balance }} {{ baseCurrency() }}</strong
+        >
+      </article>
+      <article class="summary-card">
+        <span>Минимум · {{ value.minimum_on }}</span>
+        <strong [class.negative]="isNegative(value.minimum_balance)"
+          >{{ value.minimum_balance }} {{ baseCurrency() }}</strong
+        >
+      </article>
+      <article class="summary-card flows">
+        <span>Ожидаемые доходы / расходы</span>
+        <strong
+          >+{{ value.expected_income }} / −{{ value.expected_expense }} {{ baseCurrency() }}</strong
+        >
+      </article>
+    </div>
+
+    <section class="panel chart-panel" aria-labelledby="chart-title">
+      <div class="panel-heading">
+        <div>
+          <p class="section-label">Закрытие дня</p>
+          <h2 id="chart-title">{{ value.account_name || 'Все счета' }}</h2>
+          <p>
+            Линия соединяет только рассчитанные дневные точки; промежуточные значения не
+            моделируются.
+          </p>
+        </div>
+        <span class="status-pill">Факт → прогноз по плану</span>
+      </div>
+      @if (!hasFutureEvents()) {
+        <p class="no-events-note" role="status">
+          Нет известных ожидаемых событий в выбранном периоде. Горизонтальная линия означает только
+          неизменность известных данных, а не гарантию будущего остатка.
+        </p>
+      }
+      <div class="chart-scroll">
+        <svg
+          class="forecast-chart"
+          viewBox="0 0 100 100"
+          role="img"
+          [attr.aria-label]="'Прогноз с ' + value.from_on + ' по ' + value.through_on"
+        >
+          @if (zeroY() !== null) {
+            <line class="zero-line" x1="2" [attr.y1]="zeroY()" x2="98" [attr.y2]="zeroY()" />
+          }
+          <polyline class="forecast-line" [attr.points]="plotLine()" />
+          @for (point of plot(); track $index; let first = $first) {
+            <circle
+              [class.fact-point]="first"
+              [class.risk-point]="isNegative(point.closing_balance)"
+              [attr.cx]="point.x"
+              [attr.cy]="point.y"
+              r="1.8"
+            >
+              <title>{{ point.on }}: {{ point.closing_balance }} {{ baseCurrency() }}</title>
+            </circle>
+          }
+        </svg>
+      </div>
+      <div class="point-switcher" aria-label="Точки прогноза">
+        @for (point of value.points; track $index; let first = $first) {
+          <button
+            type="button"
+            class="point-button secondary"
+            [class.active]="selectedPointIndex() === $index"
+            (click)="selectPoint($index)"
+          >
+            <span>{{ first ? 'Факт' : point.on }}</span>
+            <strong>{{ point.closing_balance }}</strong>
+          </button>
+        }
+      </div>
+    </section>
+
+    @if (selectedPoint(); as point) {
+      <section class="panel explanation-panel" aria-labelledby="explanation-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Почему изменился прогноз</p>
+            <h2 id="explanation-title">{{ point.on }}</h2>
+            <p>{{ point.opening_balance }} → {{ point.closing_balance }} {{ baseCurrency() }}</p>
+          </div>
+          <strong class="daily-change" [class.negative]="isNegative(point.change)"
+            >{{ signed(point.change) }} {{ baseCurrency() }}</strong
+          >
+        </div>
+        @if (!point.events.length) {
+          <p class="empty-state">В этой точке ожидаемых операций нет.</p>
+        } @else {
+          <div class="event-list">
+            @for (event of point.events; track event.occurrence_id) {
+              <article class="event-row">
+                <span class="event-type">{{ typeLabel(event.type) }}</span>
+                <div>
+                  <h3>{{ eventTitle(event) }}</h3>
+                  <p>
+                    {{ eventDirection(event) }} ·
+                    {{ event.status === 'postponed' ? 'перенесено' : 'ожидается' }}
+                  </p>
+                </div>
+                <div class="event-amount">
+                  <strong [class.negative]="isNegative(event.effect)"
+                    >{{ signed(event.effect) }} {{ baseCurrency() }}</strong
+                  >
+                  @if (event.type === 'transfer' && value.scope === 'all') {
+                    <small>0 для общего остатка</small>
+                  } @else {
+                    <small>операция: {{ event.amount }}</small>
+                  }
+                </div>
+                <a class="event-link" routerLink="/calendar" [queryParams]="calendarQuery(event)"
+                  >Открыть в календаре</a
+                >
+              </article>
+            }
+          </div>
+        }
+      </section>
+    }
+  }
+</section>

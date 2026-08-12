@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.modules.operations.ledger import account_balance
+from app.modules.operations.ledger import account_balance, account_balances
 from app.modules.operations.models import AccountMovement, FinancialOperation, OperationType
 from app.modules.operations.schemas import OperationCreateRequest
 from app.modules.operations.service import InsufficientBalanceError, create_operation
@@ -113,6 +113,7 @@ __all__ = [
     "OperationType",
     "ScheduledOperationDraft",
     "account_balance",
+    "account_balances",
     "account_has_history",
     "category_has_history",
     "operation_history_references",

@@ -39,5 +39,8 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand')?.textContent).toContain('Hermes');
     expect(compiled.textContent).toContain('Настройки');
+    expect(compiled.querySelector('.plan-label')?.textContent).toContain('План');
+    expect(compiled.textContent).toContain('Календарь');
+    expect(compiled.textContent).toContain('Прогноз');
   });
 });

@@ -10,9 +10,9 @@
 
 ## Current phase
 
-**0.1.0-beta.1 — регулярные операции и календарь реализованы и проверены.**
+**0.1.0-beta.2 — прогнозирование остатков реализовано и проверено.**
 
-Следующий запланированный этап: **0.1.0-beta.2 — прогнозирование остатков**.
+Следующий запланированный этап: **0.1.0-rc.1 — резервное копирование и стабилизация MVP**.
 Политики ADR 0001, ADR 0002 и ADR 0003 требуют owner review после реального
 использования.
 
@@ -29,7 +29,7 @@
 - Текущий Angular frontend приведён к этому направлению: access/setup,
   адаптивная shell-навигация, обзор, счета, категории, настройки и системные
   состояния и журнал используют общую иерархию поверхностей и действий. Фонды
-  и прогноз не имитируются dashboard-заглушками.
+  и прогноз представлены рабочими вертикальными сценариями.
 - Для доходов и расходов подтверждены обязательная категория, дата
   финансового факта без времени, серийный ручной ввод и отсутствие отдельного
   payee в MVP. Posting model отдельно проверена и описана в ADR 0001; её
@@ -189,10 +189,36 @@
 - ADR 0003 фиксирует recurrence, materialization, synchronization и
   confirmation policies.
 
+### Balance forecasting
+
+- Владелец может открыть общий прогноз или выбрать конкретный, в том числе
+  архивный, счёт и горизонт: неделя, месяц, квартал, полгода или год.
+- Стартовая точка полностью выводится из фактического ledger. В будущую линию
+  входят только `pending` и `postponed` экземпляры с датой от сегодня до
+  включительного конца горизонта; confirmed/cancelled исключаются.
+- События агрегируются в детерминированные daily closing points с точными
+  Decimal-суммами. Ответ содержит конец периода, минимум и первую возможную
+  отрицательную дату.
+- В общем scope внутренний перевод имеет нулевой net effect, но остаётся в
+  explanation. Для одного счёта тот же перевод является исходящим или входящим.
+- Просроченные события не сдвигаются молча: их scoped count показан отдельно с
+  переходом в календарь.
+- Экран отличает фактическую стартовую точку от плана, не сглаживает линию между
+  событиями и раскрывает opening, change, closing и исходные события каждой даты.
+- Forecasting — read-only модуль без таблиц и фоновой materialization; новая
+  миграция для beta.2 не добавлялась.
+- Forecast snapshot берёт shared locks на ожидаемые экземпляры и account
+  identities в том же порядке Scheduling → Accounts, что и confirmation.
+  Конкурентное подтверждение поэтому не может попасть одновременно в фактический
+  starting balance и плановую часть одного ответа.
+- Экран перед чтением прогноза синхронизирует rolling one-year materialization,
+  поэтому дальняя граница не зависит от того, когда последний раз открывался
+  календарь; сам forecast GET остаётся read-only.
+
 ## Verification snapshot
 
-- Backend suite: 64 теста: 33 unit/non-PostgreSQL и 31 PostgreSQL-dependent
-  scenario; integration target выполняет 32 сценария вместе с health-check.
+- Backend suite: 72 теста: 39 unit/non-PostgreSQL и 33 PostgreSQL-dependent
+  scenario; integration target выполняет 34 сценария вместе с health-check.
 - PostgreSQL scenarios: clean migration/setup, protected API, CSRF/logout/login,
   password/session revocation, expired sessions, sequential and concurrent rate
   limiting, serialized settings currency lock and upgrade initialized data from
@@ -215,14 +241,16 @@
   concurrent materialization, concurrent confirmation/rule edit, duplicate
   confirmation, scheduling auth/CSRF, injected confirmation rollback, alpha.4
   upgrade и beta.1 downgrade.
-- Frontend Vitest: 29 тестов для access shell, session expiry, setup, settings,
+- Frontend Vitest: 33 теста для access shell, session expiry, setup, settings,
   health UI, счетов, категорий и журнала, включая timezone default, expected-balance
   adjustment, archived edit reference, transfer direction, loading continuity,
   точный manual allocation preview, invalidation устаревшего preview, процентный
   лимит и выбор позиции фонда на физическом счёте; monthly calendar, overdue
   state, missing-day validation, exact rule payload, quick confirmation, полную
   пагинацию месяца, честный upcoming count, archived-reference edit state и
-  exact-operation link.
+  exact-operation link; forecast risk/explanation, account/horizon switches,
+  stale-loading, event-free state и календарную шкалу X.
+
 - Beta.1 calendar flow проверен в браузере на desktop и mobile: все пункты
   narrow-навигации видимы, action list предшествует календарной сетке, статусы
   выражены текстом, ограниченный список показывает `12 из 30`, а переход из
@@ -230,7 +258,7 @@
 - Ruff, Ruff format, strict mypy, ESLint, Prettier, strict TypeScript и docs check.
 - `alembic check` не обнаруживает drift между model metadata и схемой head;
   migration env явно загружает Operations, Funds и Scheduling indexes/constraints.
-- Production Angular beta.1 build проходит; остаётся прежнее warning превышения
+- Production Angular beta.2 build проходит; остаётся прежнее warning превышения
   `anyComponentStyle` budget общим `directory.css` (5.27 KiB при пороге 4 KiB).
   Повторная Docker image build была
   запущена, но Docker Hub frontend resolver завершился внешним
@@ -285,6 +313,10 @@
   ошибку; автоматическая lifecycle policy отложена.
 - Timezone migration расписания не реализована: после первого правила смена
   timezone отклоняется, а явный migration flow отложен.
+- Годовой forecast возвращает все explaining events и удерживает shared locks на
+  выбранных occurrences/accounts до завершения запроса. При измеренном росте
+  правил потребуется консистентная read projection, но молчаливое усечение
+  объяснений не допускается.
 
 ## Outside current scope
 
@@ -293,7 +325,7 @@
   reconciliation workflow и currency-specific precision/rounding.
 - Автоматическое/мультисчётное распределение, несколько фондов на одну операцию,
   fund goals и immutable audit trail.
-- Прогнозы, liabilities и debts.
+- Liabilities, debts и их будущие платежи в прогнозе.
 - Custom recurrence intervals, weekdays, дни 29–31, leap-day policy,
   drag-and-drop, уведомления и background materialization.
 - Импорт CSV/Excel, versioned JSON backup/restore и password recovery.
@@ -302,6 +334,5 @@
 
 ## Recommended next action
 
-Провести owner review ADR 0003 на реальном месяце регулярных платежей, затем
-спроектировать read-only forecasting engine beta.2 поверх ledger-derived
-остатков и ожидаемых экземпляров, не проводя планы автоматически.
+Перейти к `0.1.0-rc.1`: спроектировать версионированный JSON backup/restore и
+проверку целостности, не расширяя forecasting до liabilities или what-if.

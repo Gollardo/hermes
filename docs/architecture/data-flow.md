@@ -141,8 +141,6 @@ editing and posting serialize without a reverse lock dependency.
 flowchart LR
     Ledger["Current ledger-derived balance"] --> Timeline["Ordered future timeline"]
     Expected["Pending expected income, expense and transfers"] --> Timeline
-    Loans["Planned loan and installment payments"] --> Timeline
-    Debts["Planned debt repayments"] --> Timeline
     Timeline --> Scope["Filter: one account or all accounts"]
     Scope --> Projection["Apply movements through selected horizon"]
     Projection --> Series["Projected balances and influencing operations"]
@@ -151,4 +149,9 @@ flowchart LR
 ```
 
 Supported horizons are week, month, quarter, half-year and year. Forecasting is
-a read calculation and cannot silently post expected data.
+a read calculation and cannot silently post expected data. Beta.2 reads the
+Operations ledger and actionable Scheduling occurrences through their public
+contracts; liabilities and debts remain future sources until their domains
+exist. Events are grouped into deterministic daily closing points. Overdue
+occurrences are excluded explicitly and reported, while an internal transfer is
+neutral only in the combined scope.

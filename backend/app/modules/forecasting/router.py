@@ -1,0 +1,29 @@
+from datetime import UTC, datetime
+from uuid import UUID
+from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, HTTPException
+
+from app.core.database import DatabaseSession
+from app.modules.accounts.contracts import AccountReferenceError
+from app.modules.forecasting.schemas import ForecastHorizon, ForecastResponse
+from app.modules.forecasting.service import build_forecast
+from app.modules.settings.contracts import application_timezone
+
+read_router = APIRouter(prefix="/forecast", tags=["forecast"])
+
+
+@read_router.get("", response_model=ForecastResponse)
+def read_forecast(
+    session: DatabaseSession,
+    horizon: ForecastHorizon = ForecastHorizon.MONTH,
+    account_id: UUID | None = None,
+) -> ForecastResponse:
+    today = datetime.now(UTC).astimezone(ZoneInfo(application_timezone(session))).date()
+    try:
+        return build_forecast(session, today=today, horizon=horizon, account_id=account_id)
+    except AccountReferenceError as error:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "forecast_account_not_found", "message": "Account not found"},
+        ) from error

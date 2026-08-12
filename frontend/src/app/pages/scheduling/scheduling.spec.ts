@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 
 import { SchedulingPage } from './scheduling';
 
@@ -26,14 +26,29 @@ const OCCURRENCE = {
   version: 1,
 };
 
+let routeParams: Record<string, string>;
+
 describe('SchedulingPage', () => {
   let fixture: ComponentFixture<SchedulingPage>;
   let http: HttpTestingController;
 
   beforeEach(async () => {
+    routeParams = {};
     await TestBed.configureTestingModule({
       imports: [SchedulingPage],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              queryParamMap: { get: (key: string) => routeParams[key] ?? null },
+            },
+          },
+        },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(SchedulingPage);
     http = TestBed.inject(HttpTestingController);
@@ -146,6 +161,48 @@ describe('SchedulingPage', () => {
     const link = fixture.nativeElement.querySelector('.confirmed-link') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toContain('/operations?focus=operation-1');
     expect(link.textContent).toContain('Подтверждено');
+  });
+
+  it('opens the month and exact occurrence requested by forecast drill-down', () => {
+    routeParams = { month: '2026-09', focus: 'occurrence-1' };
+    fixture.detectChanges();
+    http.expectOne('/api/v1/scheduling/materialize').flush({
+      horizon_from: '2026-08-11',
+      horizon_to: '2027-08-11',
+      created: 0,
+      updated: 0,
+      cancelled: 0,
+    });
+    http
+      .expectOne('/api/v1/accounts')
+      .flush([{ id: 'account-1', name: 'Основной', archived: false }]);
+    http.expectOne('/api/v1/categories').flush([]);
+    http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
+    http.expectOne('/api/v1/scheduling/rules').flush([]);
+    http
+      .expectOne(
+        (request) =>
+          request.url === '/api/v1/scheduling/occurrences' &&
+          request.params.get('due_from') === '2026-08-31' &&
+          request.params.get('due_to') === '2026-10-11',
+      )
+      .flush({
+        items: [{ ...OCCURRENCE, due_on: '2026-09-10', overdue: false }],
+        page: 1,
+        page_size: 367,
+        total: 1,
+      });
+    http
+      .expectOne(
+        (request) =>
+          request.url === '/api/v1/scheduling/occurrences' &&
+          request.params.getAll('status')?.length === 2,
+      )
+      .flush({ items: [], page: 1, page_size: 12, total: 0 });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('сентябрь 2026');
+    expect(fixture.nativeElement.querySelector('#occurrence-occurrence-1')).not.toBeNull();
   });
 
   it('explains an archived reference and blocks saving an active rule with it', () => {

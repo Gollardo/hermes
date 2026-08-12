@@ -25,6 +25,10 @@ export const routes: Routes = [
       import('./pages/scheduling/scheduling').then((module) => module.SchedulingPage),
   },
   {
+    path: 'forecast',
+    loadComponent: () => import('./pages/forecast/forecast').then((module) => module.ForecastPage),
+  },
+  {
     path: 'accounts',
     loadComponent: () => import('./pages/accounts/accounts').then((module) => module.AccountsPage),
   },

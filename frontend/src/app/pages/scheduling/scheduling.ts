@@ -8,7 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { EMPTY, Observable, expand, forkJoin, reduce } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
@@ -107,6 +107,7 @@ interface CalendarDay {
 export class SchedulingPage implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly builder = inject(NonNullableFormBuilder);
+  private readonly route = inject(ActivatedRoute);
   private occurrenceRequestId = 0;
 
   protected readonly accounts = signal<Account[]>([]);
@@ -417,7 +418,12 @@ export class SchedulingPage implements OnInit {
       .subscribe({
         next: (materialization) => {
           this.today.set(materialization.horizon_from);
-          this.selectedMonth.set(`${materialization.horizon_from.slice(0, 7)}-01`);
+          const requestedMonth = this.route.snapshot.queryParamMap.get('month');
+          this.selectedMonth.set(
+            requestedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)
+              ? `${requestedMonth}-01`
+              : `${materialization.horizon_from.slice(0, 7)}-01`,
+          );
           this.ruleForm.controls.startOn.setValue(materialization.horizon_from);
           this.loadReferenceData();
         },
@@ -497,12 +503,27 @@ export class SchedulingPage implements OnInit {
         this.upcoming.set(upcoming.items);
         this.upcomingTotal.set(upcoming.total);
         this.loading.set(false);
+        this.focusRequestedOccurrence();
       },
       error: (error: unknown) => {
         if (requestId !== this.occurrenceRequestId) return;
         this.loading.set(false);
         this.error.set(apiErrorMessage(error, 'Не удалось загрузить ожидаемые операции.'));
       },
+    });
+  }
+
+  private focusRequestedOccurrence(): void {
+    const occurrenceId = this.route.snapshot.queryParamMap.get('focus');
+    if (!occurrenceId) return;
+    queueMicrotask(() => {
+      const target = document.getElementById(`occurrence-${occurrenceId}`) as
+        | (HTMLElement & {
+            scrollIntoView?: (options?: ScrollIntoViewOptions) => void;
+          })
+        | null;
+      target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      target?.focus({ preventScroll: true });
     });
   }
 

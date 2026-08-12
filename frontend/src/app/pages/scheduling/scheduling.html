@@ -78,6 +78,7 @@
               @for (occurrence of day.occurrences; track occurrence.id) {
                 @if (occurrence.status === 'confirmed' && occurrence.actual_operation_id) {
                   <a
+                    [id]="'occurrence-' + occurrence.id"
                     class="calendar-event confirmed-link"
                     [class]="'calendar-event confirmed-link ' + occurrence.type + ' confirmed'"
                     routerLink="/operations"
@@ -91,6 +92,8 @@
                   </a>
                 } @else {
                   <div
+                    [id]="'occurrence-' + occurrence.id"
+                    tabindex="-1"
                     class="calendar-event"
                     [class]="'calendar-event ' + occurrence.type + ' ' + occurrence.status"
                     [class.overdue]="occurrence.overdue"

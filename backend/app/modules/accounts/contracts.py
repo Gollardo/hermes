@@ -78,12 +78,19 @@ def account_names(session: Session, account_ids: set[UUID]) -> dict[UUID, str]:
     return {account_id: name for account_id, name in rows}
 
 
-def list_account_identities(session: Session) -> list[AccountIdentity]:
+def list_account_identities(
+    session: Session, *, shared_lock: bool = False
+) -> list[AccountIdentity]:
+    """Return account identities, optionally protecting a read-side snapshot."""
+    if shared_lock:
+        statement = select(Account).order_by(Account.id).with_for_update(read=True)
+    else:
+        statement = select(Account).order_by(
+            Account.archived_at.nulls_first(), Account.name, Account.id
+        )
     return [
         AccountIdentity(account.id, account.name, account.archived_at is not None)
-        for account in session.scalars(
-            select(Account).order_by(Account.archived_at.nulls_first(), Account.name, Account.id)
-        ).all()
+        for account in session.scalars(statement).all()
     ]
 
 
