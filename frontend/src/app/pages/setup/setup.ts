@@ -28,17 +28,22 @@ export class SetupPage {
     timezone: [detectedTimezone(), Validators.required],
   });
 
+  protected canSubmit(): boolean {
+    const value = this.form.getRawValue();
+    return this.form.valid && value.password === value.passwordConfirmation && !this.submitting();
+  }
+
   protected submit(): void {
     this.error.set(null);
-    if (this.form.invalid) {
+    if (!this.canSubmit()) {
       this.form.markAllAsTouched();
+      const value = this.form.getRawValue();
+      if (this.form.valid && value.password !== value.passwordConfirmation) {
+        this.error.set('Пароли не совпадают.');
+      }
       return;
     }
     const value = this.form.getRawValue();
-    if (value.password !== value.passwordConfirmation) {
-      this.error.set('Пароли не совпадают.');
-      return;
-    }
     this.submitting.set(true);
     this.auth
       .setup({

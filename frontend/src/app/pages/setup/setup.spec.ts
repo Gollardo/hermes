@@ -50,4 +50,24 @@ describe('SetupPage', () => {
     expect(auth.setup).not.toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('Пароли не совпадают');
   });
+
+  it('keeps the primary action disabled until the form and confirmation are valid', () => {
+    const button = fixture.nativeElement.querySelector(
+      'button[type="submit"]',
+    ) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+
+    const inputs = fixture.nativeElement.querySelectorAll('input') as NodeListOf<HTMLInputElement>;
+    inputs[0].value = 'long-master-password';
+    inputs[0].dispatchEvent(new Event('input'));
+    inputs[1].value = 'another-long-password';
+    inputs[1].dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(button.disabled).toBe(true);
+
+    inputs[1].value = 'long-master-password';
+    inputs[1].dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(button.disabled).toBe(false);
+  });
 });

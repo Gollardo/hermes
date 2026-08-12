@@ -2,133 +2,117 @@
   <header class="page-header">
     <div class="page-header-copy">
       <p class="eyebrow">Обзор</p>
-      <h1>Финансовая основа без лишнего шума</h1>
-      <p>Ведите доходы, расходы, переводы и корректировки в едином журнале с точными остатками.</p>
+      <h1>Ваши деньги сейчас и в ближайшем будущем</h1>
+      <p>Краткая сводка фактов, планов и сигналов, которые требуют действия.</p>
     </div>
-    <a class="button-link" routerLink="/operations">Добавить операцию</a>
+    <a class="button-link" routerLink="/operations" [queryParams]="{ new: 1 }">Добавить операцию</a>
   </header>
 
-  <div class="overview-grid">
-    <article class="welcome-card">
-      <div class="welcome-copy">
-        <span class="status-pill positive">Основа доступна</span>
-        <h2>Начните с реальной картины ваших денег</h2>
-        <p>
-          Создайте счета и категории, затем фиксируйте финансовые факты — остатки пересчитаются из
-          журнала автоматически.
-        </p>
-        <div class="welcome-actions">
-          <a class="button-link" routerLink="/operations">Открыть журнал</a>
-          <a class="button-link secondary" routerLink="/categories">Настроить категории</a>
-        </div>
-      </div>
-      <div class="balance-orbit" aria-hidden="true">
-        <span class="orbit orbit-one"></span>
-        <span class="orbit orbit-two"></span>
-        <span class="orbit orbit-three"></span>
-        <strong>H</strong>
-      </div>
-    </article>
+  @if (error(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+  @if (loading()) {
+    <section class="panel empty-state">Собираем финансовую сводку…</section>
+  } @else if (summary(); as data) {
+    <section class="overview-balances" aria-label="Текущее состояние денег">
+      <article class="primary-balance">
+        <span>Свободно сейчас</span>
+        <strong>{{ data.total_free | money }} {{ baseCurrency() }}</strong>
+        <a routerLink="/funds">Проверить распределение по фондам →</a>
+      </article>
+      <article>
+        <span>Общий физический остаток</span
+        ><strong>{{ physicalTotal() | money }} {{ baseCurrency() }}</strong
+        ><a routerLink="/accounts">Все счета →</a>
+      </article>
+      <article>
+        <span>Зарезервировано в фондах</span
+        ><strong>{{ data.total_reserved | money }} {{ baseCurrency() }}</strong
+        ><a routerLink="/funds">Все фонды →</a>
+      </article>
+      @if (forecast(); as value) {
+        <article>
+          <span>Через месяц · {{ value.through_on }}</span
+          ><strong>{{ value.ending_balance | money }} {{ baseCurrency() }}</strong
+          ><a routerLink="/forecast">Открыть прогноз →</a>
+        </article>
+      }
+    </section>
 
-    <div class="overview-stack">
-      <div class="quick-grid" aria-label="Доступные разделы">
-        <a class="entity-card" routerLink="/accounts">
-          <span class="entity-icon" aria-hidden="true">₽</span>
-          <div>
-            <span class="section-label">Где деньги</span>
-            <h2>Счета</h2>
-            <p>Наличные, дебетовые и сберегательные счета с остатком из журнала движений.</p>
-          </div>
-          <span class="card-arrow" aria-hidden="true">↗</span>
-        </a>
-        <a class="entity-card" routerLink="/categories">
-          <span class="entity-icon soft" aria-hidden="true">⌗</span>
-          <div>
-            <span class="section-label">Как классифицировать</span>
-            <h2>Категории</h2>
-            <p>Два отдельных дерева для понятной структуры доходов и расходов.</p>
-          </div>
-          <span class="card-arrow" aria-hidden="true">↗</span>
-        </a>
-        <a class="entity-card" routerLink="/operations">
-          <span class="entity-icon" aria-hidden="true">↕</span>
-          <div>
-            <span class="section-label">Что изменилось</span>
-            <h2>Операции</h2>
-            <p>Доходы, расходы, переводы и корректировки с атомарными движениями.</p>
-          </div>
-          <span class="card-arrow" aria-hidden="true">↗</span>
-        </a>
-        <a class="entity-card" routerLink="/calendar">
-          <span class="entity-icon soft" aria-hidden="true">↻</span>
-          <div>
-            <span class="section-label">Что ожидается</span>
-            <h2>Календарь</h2>
-            <p>Регулярные правила и ожидаемые события без влияния на фактический баланс.</p>
-          </div>
-          <span class="card-arrow" aria-hidden="true">↗</span>
-        </a>
-        <a class="entity-card" routerLink="/forecast">
-          <span class="entity-icon" aria-hidden="true">⌁</span>
-          <div>
-            <span class="section-label">Что будет с деньгами</span>
-            <h2>Прогноз</h2>
-            <p>Будущие остатки, риски и объяснение влияния ожидаемых операций.</p>
-          </div>
-          <span class="card-arrow" aria-hidden="true">↗</span>
-        </a>
-      </div>
-
-      <section class="trust-card panel" aria-labelledby="trust-title">
-        <span class="trust-icon" aria-hidden="true">✓</span>
+    @if (forecast(); as value) {
+      <section class="panel forecast-preview" [class.risk]="value.first_negative_on">
         <div>
-          <p class="section-label">Self-hosted</p>
-          <h2 id="trust-title">Ваши данные остаются вашими</h2>
-          <p>Hermes работает в вашем экземпляре и не зависит от внешних финансовых сервисов.</p>
+          <p class="section-label">Ближайший месяц</p>
+          @if (value.first_negative_on) {
+            <h2>Возможен дефицит {{ value.first_negative_on }}</h2>
+          } @else {
+            <h2>
+              Минимум {{ value.minimum_balance | money }} {{ baseCurrency() }} ·
+              {{ value.minimum_on }}
+            </h2>
+          }
+          <p>
+            Прогноз начинается с фактического остатка {{ value.starting_balance | money }}
+            {{ baseCurrency() }} и учитывает известные ожидаемые события.
+          </p>
         </div>
+        <a class="button-link secondary" routerLink="/forecast">Разобрать прогноз</a>
+      </section>
+    }
+
+    <div class="overview-columns">
+      <section class="panel" aria-labelledby="attention-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Сегодня и просроченные</p>
+            <h2 id="attention-title">Требуют внимания</h2>
+          </div>
+          <span class="count-pill">{{ attentionTotal() }}</span>
+        </div>
+        @if (!attention().length) {
+          <p class="empty-state">На сегодня обязательных действий нет.</p>
+        } @else {
+          <div class="overview-list">
+            @for (item of attention(); track item.id) {
+              <article [class.overdue]="item.overdue">
+                <div>
+                  <span
+                    >{{ item.overdue ? 'Просрочено' : 'Сегодня' }} ·
+                    {{ typeLabel(item.type) }}</span
+                  ><strong>{{ item.description || typeLabel(item.type) }}</strong>
+                </div>
+                <b>{{ item.amount | money }} {{ baseCurrency() }}</b>
+              </article>
+            }
+          </div>
+          <a class="section-link" routerLink="/calendar">Обработать в календаре →</a>
+        }
+      </section>
+
+      <section class="panel" aria-labelledby="recent-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Факты</p>
+            <h2 id="recent-title">Последние операции</h2>
+          </div>
+        </div>
+        @if (!recentOperations().length) {
+          <p class="empty-state">Фактических операций пока нет.</p>
+        } @else {
+          <div class="overview-list">
+            @for (operation of recentOperations(); track operation.id) {
+              <article>
+                <div>
+                  <span>{{ operation.occurred_on }} · {{ typeLabel(operation.type) }}</span
+                  ><strong>{{ operationTitle(operation) }}</strong>
+                </div>
+                <b>{{ signedOperation(operation) | money }} {{ baseCurrency() }}</b>
+              </article>
+            }
+          </div>
+          <a class="section-link" routerLink="/operations">Открыть весь журнал →</a>
+        }
       </section>
     </div>
-
-    <section class="foundation-card panel" aria-labelledby="foundation-title">
-      <div class="panel-heading">
-        <div>
-          <p class="section-label">Текущий этап</p>
-          <h2 id="foundation-title">0.1.0-rc.1</h2>
-        </div>
-        <span class="count-pill">Финансовая структура</span>
-      </div>
-      <ol class="foundation-steps">
-        <li class="done">
-          <span>01</span>
-          <div>
-            <strong>Доступ и настройки</strong
-            ><small>Локальный владелец защищён мастер-паролем</small>
-          </div>
-        </li>
-        <li class="done">
-          <span>02</span>
-          <div>
-            <strong>Счета и категории</strong
-            ><small>Создайте структуру для ежедневного учёта</small>
-          </div>
-        </li>
-        <li class="done">
-          <span>03</span>
-          <div><strong>Операции</strong><small>Журнал и фактические остатки доступны</small></div>
-        </li>
-        <li class="done">
-          <span>04</span>
-          <div>
-            <strong>План</strong><small>Регулярные правила и календарь ожидаемых операций</small>
-          </div>
-        </li>
-        <li class="current">
-          <span>05</span>
-          <div>
-            <strong>Прогноз</strong><small>Будущие остатки и предупреждения о рисках</small>
-          </div>
-        </li>
-      </ol>
-    </section>
-  </div>
+  }
 </section>

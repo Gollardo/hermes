@@ -11,11 +11,14 @@ from app.modules.accounts.contracts import (
 from app.modules.funds.contracts import (
     AllocationCreateRequest,
     AllocationPreviewResponse,
+    FundBalanceError,
     FundEventResponse,
     FundHistoryResponse,
     FundMovementResponse,
     FundSummaryResponse,
     RedistributionCreateRequest,
+    TransferAllocationCreateRequest,
+    TransferAllocationResponse,
     allocation_preview_with_free_balance,
     create_allocation_with_free_balance,
     create_redistribution_with_physical_balances,
@@ -27,7 +30,12 @@ from app.modules.funds.contracts import (
     reserved_balance,
     summary_with_physical_balances,
 )
-from app.modules.operations.contracts import account_balance, operation_history_references
+from app.modules.operations.contracts import (
+    PhysicalTransferDraft,
+    account_balance,
+    operation_history_references,
+    post_physical_transfer,
+)
 
 
 def fund_summary(session: Session) -> FundSummaryResponse:
@@ -59,6 +67,46 @@ def redistribute_fund(session: Session, payload: RedistributionCreateRequest) ->
     physical = {account_id: account_balance(session, account_id) for account_id in account_ids}
     event = create_redistribution_with_physical_balances(session, payload, physical)
     return event_response(session, event)
+
+
+def transfer_and_allocate(
+    session: Session, payload: TransferAllocationCreateRequest
+) -> TransferAllocationResponse:
+    """Move physical money, then reserve its percentage shares atomically."""
+    operation_id = post_physical_transfer(
+        session,
+        PhysicalTransferDraft(
+            occurred_on=payload.occurred_on,
+            amount=payload.amount,
+            description=payload.description,
+            source_account_id=payload.source_account_id,
+            destination_account_id=payload.destination_account_id,
+        ),
+    )
+    free = account_balance(session, payload.destination_account_id) - reserved_balance(
+        session, payload.destination_account_id
+    )
+    preview = allocation_preview_with_free_balance(
+        session, payload.destination_account_id, payload.amount, free
+    )
+    positive_allocations = [item for item in preview.allocations if item.amount > 0]
+    if not positive_allocations:
+        raise FundBalanceError
+    event = create_allocation_with_free_balance(
+        session,
+        AllocationCreateRequest(
+            account_id=payload.destination_account_id,
+            amount=payload.amount,
+            occurred_on=payload.occurred_on,
+            description=payload.description,
+            allocations=positive_allocations,
+        ),
+        free,
+    )
+    return TransferAllocationResponse(
+        operation_id=operation_id,
+        allocation=event_response(session, event),
+    )
 
 
 def fund_history(

@@ -8,6 +8,7 @@ from app.application.funds import (
     fund_summary,
     preview_allocation,
     redistribute_fund,
+    transfer_and_allocate,
 )
 from app.core.database import DatabaseSession
 from app.modules.accounts.contracts import AccountReferenceError
@@ -23,6 +24,8 @@ from app.modules.funds.schemas import (
     FundSummaryResponse,
     FundUpdateRequest,
     RedistributionCreateRequest,
+    TransferAllocationCreateRequest,
+    TransferAllocationResponse,
 )
 from app.modules.funds.service import (
     FundArchiveBalanceError,
@@ -37,6 +40,7 @@ from app.modules.funds.service import (
     list_funds,
     update_fund,
 )
+from app.modules.operations.contracts import InsufficientBalanceError
 
 read_router = APIRouter(prefix="/funds", tags=["funds"])
 write_router = APIRouter(prefix="/funds", tags=["funds"])
@@ -61,6 +65,7 @@ def _raise_domain_error(error: RuntimeError) -> None:
             "Fund reservations exceed physical balance",
         ),
         (AccountReferenceError, 409, "invalid_account_reference", "Account is unavailable"),
+        (InsufficientBalanceError, 409, "insufficient_balance", "Insufficient balance"),
     ]
     for error_type, status_code, code, message in mapping:
         if isinstance(error, error_type):
@@ -168,5 +173,26 @@ def redistribute(
     try:
         return redistribute_fund(session, payload)
     except (AccountReferenceError, FundNotFoundError, FundCoverageError, FundBalanceError) as error:
+        _raise_domain_error(error)
+        raise AssertionError from error
+
+
+@write_router.post(
+    "/transfer-and-allocate",
+    response_model=TransferAllocationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def transfer_allocation(
+    payload: TransferAllocationCreateRequest, session: DatabaseSession
+) -> TransferAllocationResponse:
+    try:
+        return transfer_and_allocate(session, payload)
+    except (
+        AccountReferenceError,
+        FundNotFoundError,
+        FundCoverageError,
+        FundBalanceError,
+        InsufficientBalanceError,
+    ) as error:
         _raise_domain_error(error)
         raise AssertionError from error

@@ -67,6 +67,7 @@ describe('SchedulingPage', () => {
 
   it('blocks a missing monthly date policy and submits an exact rule snapshot', () => {
     flushInitial([]);
+    clickButton('Добавить правило');
     setValue('.form-panel select[formControlName="type"]', 'income');
     setValue('.form-panel input[formControlName="startOn"]', '2026-08-29');
     setValue('.form-panel input[formControlName="amount"]', '100.2500');
@@ -304,6 +305,14 @@ describe('SchedulingPage', () => {
     control.value = value;
     control.dispatchEvent(new Event('input'));
     control.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+  }
+
+  function clickButton(label: string): void {
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (item: HTMLButtonElement) => item.textContent.trim() === label,
+    ) as HTMLButtonElement;
+    button.click();
     fixture.detectChanges();
   }
 });

@@ -13,6 +13,7 @@ import { forkJoin } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
+import { MoneyPipe } from '../../shared/money.pipe';
 
 type Horizon = 'week' | 'month' | 'quarter' | 'half_year' | 'year';
 type OperationType = 'income' | 'expense' | 'transfer';
@@ -77,7 +78,7 @@ interface PlotPoint extends ForecastPoint {
 
 @Component({
   selector: 'app-forecast-page',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, MoneyPipe],
   templateUrl: './forecast.html',
   styleUrl: './forecast.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -123,8 +124,8 @@ export class ForecastPage implements OnInit {
     const days = through - from || 1;
     return points.map((point) => ({
       ...point,
-      x: points.length === 1 ? 50 : 4 + ((isoDayNumber(point.on) - from) / days) * 92,
-      y: 8 + ((high - Number(point.closing_balance)) / span) * 76,
+      x: points.length === 1 ? 54 : 14 + ((isoDayNumber(point.on) - from) / days) * 82,
+      y: 8 + ((high - Number(point.closing_balance)) / span) * 70,
     }));
   });
 
@@ -140,8 +141,11 @@ export class ForecastPage implements OnInit {
     const low = Math.min(...values, 0);
     const high = Math.max(...values, 0);
     if (low === high) return null;
-    return 8 + (high / (high - low)) * 76;
+    return 8 + (high / (high - low)) * 70;
   });
+
+  protected readonly chartMaximum = computed(() => this.chartExtreme('maximum'));
+  protected readonly chartMinimum = computed(() => this.chartExtreme('minimum'));
 
   ngOnInit(): void {
     forkJoin({
@@ -201,11 +205,28 @@ export class ForecastPage implements OnInit {
   }
 
   protected signed(value: string): string {
-    return Number(value) > 0 ? `+${value}` : value;
+    return !value.startsWith('-') && value !== '0' && !/^0(?:\.0+)?$/.test(value)
+      ? `+${value}`
+      : value;
   }
 
   protected isNegative(value: string): boolean {
-    return value.startsWith('-') && Number(value) < 0;
+    return value.startsWith('-') && !/^-0(?:\.0+)?$/.test(value);
+  }
+
+  private chartExtreme(kind: 'minimum' | 'maximum'): string {
+    const values = this.forecast()?.points.map((point) => point.closing_balance) ?? [];
+    if (!values.length) return '0';
+    return values.reduce((selected, value) => {
+      const comparison = Number(value) - Number(selected);
+      return kind === 'minimum'
+        ? comparison < 0
+          ? value
+          : selected
+        : comparison > 0
+          ? value
+          : selected;
+    });
   }
 
   private loadForecast(): void {

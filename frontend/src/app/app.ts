@@ -15,6 +15,7 @@ import { SetupPage } from './pages/setup/setup';
 export class App implements OnInit {
   protected readonly auth = inject(AuthService);
   protected readonly actionError = signal<string | null>(null);
+  protected readonly sidebarHidden = signal(readSidebarPreference());
 
   ngOnInit(): void {
     this.auth.initialize();
@@ -27,4 +28,15 @@ export class App implements OnInit {
         this.actionError.set(apiErrorMessage(error, 'Не удалось завершить сессию.')),
     });
   }
+
+  protected toggleSidebar(): void {
+    this.sidebarHidden.update((hidden) => !hidden);
+    localStorage.setItem('hermes-sidebar-hidden', String(this.sidebarHidden()));
+  }
+}
+
+function readSidebarPreference(): boolean {
+  return (
+    typeof localStorage !== 'undefined' && localStorage.getItem('hermes-sidebar-hidden') === 'true'
+  );
 }

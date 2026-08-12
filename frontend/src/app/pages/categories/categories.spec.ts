@@ -23,6 +23,11 @@ describe('CategoriesPage', () => {
     fixture.detectChanges();
     http.expectOne('/api/v1/categories').flush([]);
     fixture.detectChanges();
+    const add = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (button: HTMLButtonElement) => button.textContent.trim() === 'Добавить категорию',
+    ) as HTMLButtonElement;
+    add.click();
+    fixture.detectChanges();
     const name = fixture.nativeElement.querySelector('#category-name') as HTMLInputElement;
     name.value = 'Food';
     name.dispatchEvent(new Event('input'));

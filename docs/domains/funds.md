@@ -19,6 +19,10 @@ posting model is recorded in [ADR 0002](../decisions/0002-virtual-fund-ledger.md
   `0 <= reserved <= physical` and non-negative individual fund positions.
 - Explicit allocation reserves a selected part of one account's free balance;
   the remainder stays free.
+- A convenience command may atomically transfer physical money to another
+  account and explicitly distribute the transferred amount across active funds
+  by their configured percentages. It produces one ordinary transfer plus one
+  allocation event and rolls both back on failure.
 - An expense may consume one fund completely or use free money. A transfer may
   carry one virtual part no greater than its physical amount.
 - Virtual redistribution moves one fund between accounts without physical

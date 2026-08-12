@@ -23,6 +23,7 @@ describe('AccountsPage', () => {
     fixture.detectChanges();
     http.expectOne('/api/v1/accounts').flush([]);
     fixture.detectChanges();
+    clickButton('Добавить счёт');
     const name = fixture.nativeElement.querySelector('#account-name') as HTMLInputElement;
     name.value = 'Wallet';
     name.dispatchEvent(new Event('input'));
@@ -41,6 +42,7 @@ describe('AccountsPage', () => {
     fixture.detectChanges();
     http.expectOne('/api/v1/accounts').flush([]);
     fixture.detectChanges();
+    clickButton('Добавить счёт');
     const name = fixture.nativeElement.querySelector('#account-name') as HTMLInputElement;
     name.value = 'Wallet';
     name.dispatchEvent(new Event('input'));
@@ -50,4 +52,12 @@ describe('AccountsPage', () => {
     fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit'));
     http.expectNone('/api/v1/accounts');
   });
+
+  function clickButton(label: string): void {
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (item: HTMLButtonElement) => item.textContent.trim() === label,
+    ) as HTMLButtonElement;
+    button.click();
+    fixture.detectChanges();
+  }
 });

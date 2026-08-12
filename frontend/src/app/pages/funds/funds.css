@@ -11,6 +11,26 @@
   display: grid;
   gap: 1rem;
 }
+.fund-primary-actions {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.fund-primary-actions h2,
+.fund-primary-actions p:not(.section-label) {
+  margin: 0.2rem 0 0;
+}
+.fund-primary-actions p:not(.section-label),
+.modal-explanation {
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+}
+.modal-explanation {
+  background: var(--surface-accent);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+}
 .fund-summary {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -38,6 +58,22 @@ dt {
   display: block;
   margin-top: 0.35rem;
   color: var(--muted);
+}
+.balance-block {
+  display: grid;
+  gap: 0.2rem;
+  text-align: right;
+}
+.balance-block > span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+.balance-block .balance {
+  display: block;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .coverage-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -82,6 +118,12 @@ dt {
   margin: 0;
   padding-left: 1.25rem;
 }
+.history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
 .history-list li {
   margin-bottom: 0.35rem;
 }
@@ -104,5 +146,12 @@ dt {
   }
   .history-list article {
     grid-template-columns: 1fr;
+  }
+  .fund-primary-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .fund-primary-actions .page-actions {
+    justify-content: flex-start;
   }
 }

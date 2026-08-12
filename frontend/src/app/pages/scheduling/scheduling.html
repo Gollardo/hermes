@@ -8,7 +8,10 @@
         подтверждения.
       </p>
     </div>
-    <span class="status-pill">Горизонт планирования · 1 год</span>
+    <div class="page-actions">
+      <span class="status-pill">Горизонт планирования · 1 год</span>
+      <button type="button" (click)="openRule()">Добавить правило</button>
+    </div>
   </header>
 
   @if (error(); as message) {
@@ -88,7 +91,7 @@
                     <span
                       >{{ typeLabel(occurrence.type) }} · {{ statusLabel(occurrence.status) }}</span
                     >
-                    <strong>{{ occurrence.amount }} {{ baseCurrency() }}</strong>
+                    <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
                   </a>
                 } @else {
                   <div
@@ -103,7 +106,7 @@
                       {{ typeLabel(occurrence.type) }} ·
                       {{ occurrence.overdue ? 'Просрочено' : statusLabel(occurrence.status) }}
                     </span>
-                    <strong>{{ occurrence.amount }} {{ baseCurrency() }}</strong>
+                    <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
                   </div>
                 }
               }
@@ -117,9 +120,9 @@
   <section class="panel upcoming-panel" aria-labelledby="upcoming-title">
     <div class="panel-heading">
       <div>
-        <p class="section-label">Ближайшие 30 дней</p>
+        <p class="section-label">Сегодня и просроченные</p>
         <h2 id="upcoming-title">Требуют внимания</h2>
-        <p>Просроченные события остаются сверху и выделяются независимо от цвета.</p>
+        <p>Будущие события остаются в календаре и не отвлекают от действий на сегодня.</p>
       </div>
       <span class="count-pill">{{ upcoming().length }} из {{ upcomingTotal() }}</span>
     </div>
@@ -127,7 +130,7 @@
     @if (loading() && !upcoming().length) {
       <p class="empty-state">Загружаем ожидаемые операции…</p>
     } @else if (!upcoming().length) {
-      <p class="empty-state">В ближайшие 30 дней нет ожидаемых операций по выбранным фильтрам.</p>
+      <p class="empty-state">На сегодня нет ожидаемых или просроченных операций.</p>
     } @else {
       <div class="upcoming-list">
         @for (occurrence of upcoming(); track occurrence.id) {
@@ -148,7 +151,9 @@
                 {{ occurrence.category_name || 'Без категории' }}
               </p>
             </div>
-            <strong class="occurrence-amount">{{ occurrence.amount }} {{ baseCurrency() }}</strong>
+            <strong class="occurrence-amount"
+              >{{ occurrence.amount | money }} {{ baseCurrency() }}</strong
+            >
             @if (actionable(occurrence)) {
               <div class="quick-actions">
                 <button
@@ -200,7 +205,7 @@
     }
   </section>
 
-  <div class="directory-grid rules-grid">
+  <div class="directory-grid rules-grid single-column">
     <section class="panel directory-list-panel" aria-labelledby="rules-title">
       <div class="panel-heading">
         <div>
@@ -234,7 +239,7 @@
                 </div>
               </div>
               <div class="directory-item-side">
-                <strong>{{ rule.amount }} {{ baseCurrency() }}</strong>
+                <strong>{{ rule.amount | money }} {{ baseCurrency() }}</strong>
                 <span class="badge">{{ rule.active ? 'Активно' : 'Отключено' }}</span>
                 <div class="item-actions">
                   <button
@@ -261,109 +266,129 @@
         </div>
       }
     </section>
+  </div>
 
-    <section id="rule-editor" class="panel form-panel" [class.editing]="editingId()">
-      <div class="panel-heading">
-        <div>
-          <p class="section-label">{{ editingId() ? 'Изменение' : 'Новое правило' }}</p>
-          <h2>{{ editingId() ? 'Обновить расписание' : 'Добавить регулярную операцию' }}</h2>
+  @if (ruleFormOpen()) {
+    <div class="modal-backdrop" role="presentation" (keydown.escape)="cancelEdit()">
+      <section
+        id="rule-editor"
+        class="modal-card form-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rule-editor-title"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="section-label">{{ editingId() ? 'Изменение' : 'Новое правило' }}</p>
+            <h2 id="rule-editor-title">
+              {{ editingId() ? 'Обновить расписание' : 'Добавить регулярную операцию' }}
+            </h2>
+          </div>
+          <button type="button" class="modal-close" (click)="cancelEdit()" aria-label="Закрыть">
+            ×
+          </button>
         </div>
-      </div>
 
-      <form [formGroup]="ruleForm" (ngSubmit)="submitRule()">
-        <label>
-          Тип операции
-          <select formControlName="type">
-            <option value="income">Доход</option>
-            <option value="expense">Расход</option>
-            <option value="transfer">Перевод</option>
-          </select>
-        </label>
-        <label>
-          Периодичность
-          <select formControlName="frequency">
-            <option value="daily">Ежедневно</option>
-            <option value="weekly">Еженедельно</option>
-            <option value="monthly">Ежемесячно</option>
-            <option value="yearly">Ежегодно</option>
-          </select>
-        </label>
-        <div class="date-fields">
+        <form [formGroup]="ruleForm" (ngSubmit)="submitRule()">
           <label>
-            Дата начала
-            <input type="date" formControlName="startOn" />
+            Тип операции
+            <select formControlName="type">
+              <option value="income">Доход</option>
+              <option value="expense">Расход</option>
+              <option value="transfer">Перевод</option>
+            </select>
           </label>
           <label>
-            Дата окончания
-            <input type="date" formControlName="endOn" />
+            Периодичность
+            <select formControlName="frequency">
+              <option value="daily">Ежедневно</option>
+              <option value="weekly">Еженедельно</option>
+              <option value="monthly">Ежемесячно</option>
+              <option value="yearly">Ежегодно</option>
+            </select>
           </label>
-        </div>
-        @if (ruleForm.controls.frequency.value === 'monthly') {
-          <p class="hint">Для ежемесячного правила доступны дни с 1 по 28.</p>
-        }
-        <label>
-          Сумма, {{ baseCurrency() }}
-          <input type="text" inputmode="decimal" formControlName="amount" autocomplete="off" />
-        </label>
-        <label>
-          Счёт
-          <select formControlName="accountId">
-            <option value="">Выберите счёт</option>
-            @for (account of activeAccounts(); track account.id) {
-              <option [value]="account.id" [disabled]="account.archived && ruleWillBeActive()">
-                {{ accountLabel(account) }}
-              </option>
-            }
-          </select>
-        </label>
-        @if (ruleForm.controls.type.value === 'transfer') {
+          <div class="date-fields">
+            <label>
+              Дата начала
+              <input type="date" formControlName="startOn" />
+            </label>
+            <label>
+              Дата окончания
+              <input type="date" formControlName="endOn" />
+            </label>
+          </div>
+          @if (ruleForm.controls.frequency.value === 'monthly') {
+            <p class="hint">Для ежемесячного правила доступны дни с 1 по 28.</p>
+          }
           <label>
-            Счёт зачисления
-            <select formControlName="destinationAccountId">
+            Сумма, {{ baseCurrency() }}
+            <input type="text" inputmode="decimal" formControlName="amount" autocomplete="off" />
+          </label>
+          <label>
+            Счёт
+            <select formControlName="accountId">
               <option value="">Выберите счёт</option>
               @for (account of activeAccounts(); track account.id) {
-                <option
-                  [value]="account.id"
-                  [disabled]="
-                    account.id === ruleForm.controls.accountId.value ||
-                    (account.archived && ruleWillBeActive())
-                  "
-                >
+                <option [value]="account.id" [disabled]="account.archived && ruleWillBeActive()">
                   {{ accountLabel(account) }}
                 </option>
               }
             </select>
           </label>
-        } @else {
-          <label>
-            Категория
-            <select formControlName="categoryId">
-              <option value="">Выберите категорию</option>
-              @for (category of availableCategories(); track category.id) {
-                <option [value]="category.id" [disabled]="category.archived && ruleWillBeActive()">
-                  {{ categoryLabel(category) }}
-                </option>
-              }
-            </select>
-          </label>
-          @if (editingId() && hasUnavailableReference()) {
-            <p class="hint">
-              Для активного правила выберите действующие счёт и категорию. Архивные ссылки показаны
-              только для объяснения текущего состояния.
-            </p>
+          @if (ruleForm.controls.type.value === 'transfer') {
+            <label>
+              Счёт зачисления
+              <select formControlName="destinationAccountId">
+                <option value="">Выберите счёт</option>
+                @for (account of activeAccounts(); track account.id) {
+                  <option
+                    [value]="account.id"
+                    [disabled]="
+                      account.id === ruleForm.controls.accountId.value ||
+                      (account.archived && ruleWillBeActive())
+                    "
+                  >
+                    {{ accountLabel(account) }}
+                  </option>
+                }
+              </select>
+            </label>
+          } @else {
+            <label>
+              Категория
+              <select formControlName="categoryId">
+                <option value="">Выберите категорию</option>
+                @for (category of availableCategories(); track category.id) {
+                  <option
+                    [value]="category.id"
+                    [disabled]="category.archived && ruleWillBeActive()"
+                  >
+                    {{ categoryLabel(category) }}
+                  </option>
+                }
+              </select>
+            </label>
+            @if (editingId() && hasUnavailableReference()) {
+              <p class="hint">
+                Для активного правила выберите действующие счёт и категорию. Архивные ссылки
+                показаны только для объяснения текущего состояния.
+              </p>
+            }
           }
-        }
-        <label>
-          Описание
-          <textarea formControlName="description"></textarea>
-        </label>
-        <button type="submit" [disabled]="saving() || !canSaveRule()">
-          {{ editingId() ? 'Сохранить изменения' : 'Создать правило' }}
-        </button>
-        @if (editingId()) {
-          <button type="button" class="secondary" (click)="cancelEdit()">Отменить изменение</button>
-        }
-      </form>
-    </section>
-  </div>
+          <label>
+            Описание
+            <textarea formControlName="description"></textarea>
+          </label>
+          <button type="submit" [disabled]="saving() || !canSaveRule()">
+            {{ editingId() ? 'Сохранить изменения' : 'Создать правило' }}
+          </button>
+          @if (editingId()) {
+            <button type="button" class="secondary" (click)="cancelEdit()">
+              Отменить изменение
+            </button>
+          }
+        </form>
+      </section>
+    </div>
+  }
 </section>

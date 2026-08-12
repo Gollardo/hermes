@@ -4,6 +4,7 @@ import { FormArray, NonNullableFormBuilder, ReactiveFormsModule, Validators } fr
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
+import { MoneyPipe } from '../../shared/money.pipe';
 
 interface Fund {
   id: string;
@@ -88,7 +89,7 @@ interface AllocationTotals {
 
 @Component({
   selector: 'app-funds-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, MoneyPipe],
   templateUrl: './funds.html',
   styleUrls: ['../directory.css', './funds.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -111,6 +112,9 @@ export class FundsPage implements OnInit {
   protected readonly editingId = signal<string | null>(null);
   protected readonly baseCurrency = signal('RUB');
   protected readonly Math = Math;
+  protected readonly activeModal = signal<
+    'fund' | 'allocation' | 'transfer' | 'redistribution' | null
+  >(null);
 
   protected readonly fundForm = this.builder.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
@@ -129,6 +133,13 @@ export class FundsPage implements OnInit {
   });
   protected readonly redistributionForm = this.builder.group({
     fundId: ['', Validators.required],
+    sourceAccountId: ['', Validators.required],
+    destinationAccountId: ['', Validators.required],
+    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:\.\d{1,4})?$/)]],
+    occurredOn: ['', Validators.required],
+    description: ['', Validators.maxLength(2000)],
+  });
+  protected readonly transferAllocationForm = this.builder.group({
     sourceAccountId: ['', Validators.required],
     destinationAccountId: ['', Validators.required],
     amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:\.\d{1,4})?$/)]],
@@ -219,6 +230,7 @@ export class FundsPage implements OnInit {
       allocation_percentage: value.percentage,
       ...(existing ? { version: existing.version } : {}),
     };
+    const created = !id;
     const request = id
       ? this.http.put<Fund>(`${environment.apiBaseUrl}/funds/${id}`, body)
       : this.http.post<Fund>(`${environment.apiBaseUrl}/funds`, body);
@@ -227,6 +239,7 @@ export class FundsPage implements OnInit {
         this.saving.set(false);
         this.cancelEdit();
         this.load();
+        if (created) this.openAllocation();
       },
       error: (error: unknown) => this.failed(error, 'Не удалось сохранить фонд.'),
     });
@@ -239,11 +252,35 @@ export class FundsPage implements OnInit {
       description: fund.description ?? '',
       percentage: fund.allocation_percentage,
     });
+    this.activeModal.set('fund');
+  }
+
+  protected openFund(): void {
+    this.cancelEdit();
+    this.activeModal.set('fund');
+  }
+
+  protected openAllocation(): void {
+    this.activeModal.set('allocation');
+  }
+
+  protected openTransferAllocation(): void {
+    this.activeModal.set('transfer');
+  }
+
+  protected openRedistribution(): void {
+    this.activeModal.set('redistribution');
+  }
+
+  protected closeModal(): void {
+    if (this.activeModal() === 'fund') this.cancelEdit();
+    else this.activeModal.set(null);
   }
 
   protected cancelEdit(): void {
     this.editingId.set(null);
     this.fundForm.reset({ name: '', description: '', percentage: '0' });
+    this.activeModal.set(null);
   }
 
   protected toggleArchive(fund: Fund): void {
@@ -336,6 +373,7 @@ export class FundsPage implements OnInit {
           this.preview.set(null);
           this.allocationControls.clear();
           this.allocationForm.patchValue({ amount: '', description: '' });
+          this.activeModal.set(null);
           this.load();
         },
         error: (error: unknown) => this.failed(error, 'Не удалось сохранить распределение.'),
@@ -366,10 +404,54 @@ export class FundsPage implements OnInit {
         next: () => {
           this.saving.set(false);
           this.redistributionForm.patchValue({ amount: '', description: '' });
+          this.activeModal.set(null);
           this.load();
         },
         error: (error: unknown) => this.failed(error, 'Не удалось перераспределить фонд.'),
       });
+  }
+
+  protected transferAndAllocate(): void {
+    if (!this.canTransferAndAllocate()) {
+      this.transferAllocationForm.markAllAsTouched();
+      return;
+    }
+    const value = this.transferAllocationForm.getRawValue();
+    this.saving.set(true);
+    this.http
+      .post(`${environment.apiBaseUrl}/funds/transfer-and-allocate`, {
+        source_account_id: value.sourceAccountId,
+        destination_account_id: value.destinationAccountId,
+        amount: value.amount,
+        occurred_on: value.occurredOn,
+        description: value.description || null,
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.transferAllocationForm.patchValue({ amount: '', description: '' });
+          this.activeModal.set(null);
+          this.load();
+        },
+        error: (error: unknown) =>
+          this.failed(error, 'Не удалось перевести и распределить деньги.'),
+      });
+  }
+
+  protected canTransferAndAllocate(): boolean {
+    const value = this.transferAllocationForm.getRawValue();
+    const amount = moneyUnits(value.amount);
+    const source = this.summary()?.accounts.find(
+      (item) => item.account_id === value.sourceAccountId,
+    );
+    return Boolean(
+      this.transferAllocationForm.valid &&
+      value.sourceAccountId !== value.destinationAccountId &&
+      amount !== null &&
+      amount > 0n &&
+      amount <= (moneyUnits(source?.physical_balance ?? '0') ?? 0n) &&
+      (percentageUnits(this.summary()?.active_percentage ?? '0') ?? 0n) > 0n,
+    );
   }
 
   protected fundName(id: string): string {
@@ -503,6 +585,7 @@ export class FundsPage implements OnInit {
         const today = `${value['year']}-${value['month']}-${value['day']}`;
         this.allocationForm.patchValue({ occurredOn: today });
         this.redistributionForm.patchValue({ occurredOn: today });
+        this.transferAllocationForm.patchValue({ occurredOn: today });
       });
   }
 

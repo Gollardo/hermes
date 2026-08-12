@@ -162,6 +162,27 @@ class RedistributionCreateRequest(BaseModel):
         return self
 
 
+class TransferAllocationCreateRequest(BaseModel):
+    occurred_on: date
+    source_account_id: UUID
+    destination_account_id: UUID
+    amount: Money
+    description: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("description")
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> Self:
+        if self.source_account_id == self.destination_account_id:
+            raise ValueError("accounts must differ")
+        if self.amount <= 0:
+            raise ValueError("amount must be positive")
+        return self
+
+
 class FundMovementResponse(BaseModel):
     fund_id: UUID
     fund_name: str
@@ -177,6 +198,11 @@ class FundEventResponse(BaseModel):
     description: str | None
     movements: list[FundMovementResponse]
     created_at: datetime
+
+
+class TransferAllocationResponse(BaseModel):
+    operation_id: UUID
+    allocation: FundEventResponse
 
 
 class FundHistoryResponse(BaseModel):

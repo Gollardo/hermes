@@ -5,6 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
+import { formatMoney, MoneyPipe } from '../../shared/money.pipe';
 
 type OperationType = 'income' | 'expense' | 'transfer' | 'balance_adjustment';
 type CategoryType = 'income' | 'expense';
@@ -89,7 +90,7 @@ interface ApplicationSettings {
 
 @Component({
   selector: 'app-operations-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, MoneyPipe],
   templateUrl: './operations.html',
   styleUrl: './operations.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -118,6 +119,7 @@ export class OperationsPage implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly editingId = signal<string | null>(null);
   protected readonly expandedId = signal<string | null>(null);
+  protected readonly formOpen = signal(false);
 
   protected readonly form = this.builder.group({
     type: this.builder.control<OperationType | ''>('', Validators.required),
@@ -146,6 +148,7 @@ export class OperationsPage implements OnInit {
     this.loadSettings();
     this.loadDirectories();
     this.load();
+    if (this.route?.snapshot.queryParamMap.get('new') === '1') this.openCreate();
   }
 
   protected currentOperation(): Operation | undefined {
@@ -180,8 +183,8 @@ export class OperationsPage implements OnInit {
   }
 
   protected fundPositionLabel(fund: Fund): string {
-    return `${fund.name} · доступно ${formatMoneyUnits(
-      this.fundAvailableOnSource(fund.id, this.form.controls.accountId.value),
+    return `${fund.name} · доступно ${formatMoney(
+      formatMoneyUnits(this.fundAvailableOnSource(fund.id, this.form.controls.accountId.value)),
     )} ${this.baseCurrency()}${fund.archived ? ' · в архиве' : ''}`;
   }
 
@@ -203,7 +206,7 @@ export class OperationsPage implements OnInit {
   }
 
   protected accountLabel(account: Account): string {
-    return `${account.name} · ${account.balance}${account.archived ? ' · в архиве' : ''}`;
+    return `${account.name} · ${formatMoney(account.balance)}${account.archived ? ' · в архиве' : ''}`;
   }
 
   protected transferDirection(operation: Operation): string {
@@ -219,7 +222,7 @@ export class OperationsPage implements OnInit {
 
   protected signedAmount(operation: Operation): string {
     if (operation.type === 'income') return `+${operation.amount}`;
-    if (operation.type === 'expense') return `−${operation.amount}`;
+    if (operation.type === 'expense') return `-${operation.amount}`;
     return operation.amount;
   }
 
@@ -348,7 +351,12 @@ export class OperationsPage implements OnInit {
       fundId: operation.fund_id ?? '',
       fundAmount: operation.type === 'transfer' ? (operation.fund_amount ?? '') : '',
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.formOpen.set(true);
+  }
+
+  protected openCreate(): void {
+    this.cancelEdit();
+    this.formOpen.set(true);
   }
 
   protected cancelEdit(): void {
@@ -365,6 +373,7 @@ export class OperationsPage implements OnInit {
       fundId: '',
       fundAmount: '',
     });
+    this.formOpen.set(false);
   }
 
   protected remove(operation: Operation): void {

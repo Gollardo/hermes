@@ -289,6 +289,64 @@ def test_operation_change_that_breaks_coverage_is_rolled_back(
         assert client.get("/api/v1/funds/summary").json()["total_reserved"] == "80.0000"
 
 
+def test_transfer_and_percentage_allocation_are_one_atomic_action(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        source = _account(client, headers, "Main", "100")
+        target = _account(client, headers, "Savings", "10")
+        reserve = _fund(client, headers, "Reserve", "25")
+        travel = _fund(client, headers, "Travel", "50")
+
+        response = client.post(
+            "/api/v1/funds/transfer-and-allocate",
+            headers=headers,
+            json={
+                "source_account_id": source,
+                "destination_account_id": target,
+                "amount": "20",
+                "occurred_on": "2026-08-12",
+                "description": "Monthly savings",
+            },
+        )
+        assert response.status_code == 201
+        body = response.json()
+        operation = client.get(f"/api/v1/operations/{body['operation_id']}")
+        assert operation.status_code == 200
+        assert operation.json()["type"] == "transfer"
+        allocations = {
+            movement["fund_id"]: movement["amount"] for movement in body["allocation"]["movements"]
+        }
+        assert allocations == {reserve["id"]: "5.0000", travel["id"]: "10.0000"}
+
+        summary = client.get("/api/v1/funds/summary").json()
+        coverage = {item["account_id"]: item for item in summary["accounts"]}
+        assert coverage[source]["physical_balance"] == "80.0000"
+        assert coverage[target]["physical_balance"] == "30.0000"
+        assert coverage[target]["reserved_balance"] == "15.0000"
+        assert coverage[target]["free_balance"] == "15.0000"
+
+        rejected = client.post(
+            "/api/v1/funds/transfer-and-allocate",
+            headers=headers,
+            json={
+                "source_account_id": source,
+                "destination_account_id": target,
+                "amount": "1000",
+                "occurred_on": "2026-08-12",
+            },
+        )
+        assert rejected.status_code == 409
+        assert rejected.json()["detail"]["code"] == "insufficient_balance"
+        unchanged = client.get("/api/v1/funds/summary").json()
+        unchanged_coverage = {item["account_id"]: item for item in unchanged["accounts"]}
+        assert unchanged_coverage[source]["physical_balance"] == "80.0000"
+        assert unchanged_coverage[target]["reserved_balance"] == "15.0000"
+
+
 def test_virtual_transfer_failure_rolls_back_both_ledgers(
     postgres_database_settings: Settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:

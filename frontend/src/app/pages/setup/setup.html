@@ -40,6 +40,12 @@
           autocomplete="new-password"
           placeholder="Введите пароль ещё раз"
         />
+        @if (
+          form.controls.passwordConfirmation.touched &&
+          form.controls.password.value !== form.controls.passwordConfirmation.value
+        ) {
+          <p class="field-error">Пароли не совпадают.</p>
+        }
 
         <div class="field-grid">
           <div>
@@ -71,7 +77,7 @@
         @if (error(); as message) {
           <p class="form-error" role="alert">{{ message }}</p>
         }
-        <button type="submit" [disabled]="submitting()">
+        <button type="submit" [disabled]="!canSubmit()">
           {{ submitting() ? 'Создаём пространство…' : 'Создать приложение' }}
         </button>
       </form>

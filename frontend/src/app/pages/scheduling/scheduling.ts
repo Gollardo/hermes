@@ -13,6 +13,7 @@ import { EMPTY, Observable, expand, forkJoin, reduce } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
+import { MoneyPipe } from '../../shared/money.pipe';
 
 type OperationType = 'income' | 'expense' | 'transfer';
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -99,7 +100,7 @@ interface CalendarDay {
 
 @Component({
   selector: 'app-scheduling-page',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, MoneyPipe],
   templateUrl: './scheduling.html',
   styleUrls: ['../directory.css', './scheduling.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -123,6 +124,7 @@ export class SchedulingPage implements OnInit {
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly editingId = signal<string | null>(null);
+  protected readonly ruleFormOpen = signal(false);
   protected readonly busyOccurrenceId = signal<string | null>(null);
   protected readonly postponeDates = signal<Record<string, string>>({});
 
@@ -266,9 +268,12 @@ export class SchedulingPage implements OnInit {
       destinationAccountId: rule.destination_account_id ?? '',
       categoryId: rule.category_id ?? '',
     });
-    const editor = document.getElementById('rule-editor') as
-      (HTMLElement & { scrollIntoView?: (options?: ScrollIntoViewOptions) => void }) | null;
-    editor?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    this.ruleFormOpen.set(true);
+  }
+
+  protected openRule(): void {
+    this.cancelEdit();
+    this.ruleFormOpen.set(true);
   }
 
   protected cancelEdit(): void {
@@ -284,6 +289,7 @@ export class SchedulingPage implements OnInit {
       destinationAccountId: '',
       categoryId: '',
     });
+    this.ruleFormOpen.set(false);
   }
 
   protected toggleRule(rule: RecurringRule): void {
@@ -480,7 +486,7 @@ export class SchedulingPage implements OnInit {
       .set('due_to', range.end);
     let upcomingParams = new HttpParams()
       .set('page_size', '12')
-      .set('due_to', addDays(this.today(), 30))
+      .set('due_to', this.today())
       .append('status', 'pending')
       .append('status', 'postponed');
     if (filters.accountId) {

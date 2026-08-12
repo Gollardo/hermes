@@ -6,6 +6,14 @@
   padding: 1rem;
 }
 
+.app-shell.sidebar-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sidebar-hidden .app-sidebar {
+  display: none;
+}
+
 .app-sidebar {
   background: rgb(255 255 255 / 92%);
   border: 1px solid rgb(255 255 255 / 70%);
@@ -145,6 +153,13 @@
 .workspace-kicker {
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.sidebar-toggle {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  min-height: 2.35rem;
+  padding: 0.4rem 0.7rem;
 }
 
 .release-pill {
@@ -295,6 +310,10 @@ footer {
   }
 
   .workspace-header {
+    padding: 0.65rem 0.4rem 0;
+  }
+
+  .sidebar-hidden .app-sidebar {
     display: none;
   }
 }

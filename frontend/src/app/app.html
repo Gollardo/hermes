@@ -28,8 +28,8 @@
     <app-login-page />
   }
   @case ('authenticated') {
-    <div class="app-shell">
-      <aside class="app-sidebar">
+    <div class="app-shell" [class.sidebar-hidden]="sidebarHidden()">
+      <aside id="app-sidebar" class="app-sidebar">
         <a class="brand brand-lockup" routerLink="/" aria-label="Hermes — главная">
           <span class="brand-mark" aria-hidden="true">H</span>
           <span>Hermes</span>
@@ -113,7 +113,16 @@
 
       <div class="app-workspace">
         <header class="workspace-header">
-          <span class="workspace-kicker">Личные финансы</span>
+          <button
+            type="button"
+            class="sidebar-toggle secondary"
+            (click)="toggleSidebar()"
+            [attr.aria-expanded]="!sidebarHidden()"
+            aria-controls="app-sidebar"
+          >
+            <span aria-hidden="true">☰</span>
+            {{ sidebarHidden() ? 'Показать меню' : 'Скрыть меню' }}
+          </button>
           <span class="release-pill">0.1.0-rc.1</span>
         </header>
 

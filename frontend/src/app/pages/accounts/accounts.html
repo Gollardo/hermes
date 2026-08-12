@@ -5,10 +5,13 @@
       <h1>Счета</h1>
       <p>Физическое местонахождение денег. Остаток всегда рассчитывается из журнала движений.</p>
     </div>
-    <span class="status-pill">Баланс нельзя изменить напрямую</span>
+    <div class="page-actions">
+      <span class="status-pill">Баланс нельзя изменить напрямую</span>
+      <button type="button" (click)="openCreate()">Добавить счёт</button>
+    </div>
   </header>
 
-  <div class="directory-grid">
+  <div class="directory-grid single-column">
     <section class="panel directory-list-panel" aria-labelledby="accounts-list-title">
       <div class="panel-heading">
         <div>
@@ -44,7 +47,7 @@
               <div class="directory-item-side">
                 <div class="balance-block">
                   <span>Текущий остаток</span>
-                  <strong class="balance">{{ account.balance }}</strong>
+                  <strong class="balance">{{ account.balance | money }}</strong>
                 </div>
                 <div class="item-actions">
                   <button type="button" class="secondary" (click)="edit(account)">Изменить</button>
@@ -59,61 +62,71 @@
         </div>
       }
     </section>
-
-    <section
-      class="panel form-panel"
-      [class.editing]="editingId()"
-      aria-labelledby="account-form-title"
-    >
-      <div class="panel-heading">
-        <div>
-          <p class="section-label">{{ editingId() ? 'Изменение' : 'Новое' }}</p>
-          <h2 id="account-form-title">
-            {{ editingId() ? 'Редактировать счёт' : 'Добавить счёт' }}
-          </h2>
-        </div>
-      </div>
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <label for="account-name">Название</label>
-        <input
-          id="account-name"
-          formControlName="name"
-          maxlength="120"
-          placeholder="Например, Наличные"
-        />
-        <label for="account-type">Тип счёта</label>
-        <select id="account-type" formControlName="type">
-          <option value="cash">Наличные</option>
-          <option value="debit">Дебетовый</option>
-          <option value="savings">Сберегательный</option>
-        </select>
-        <label for="account-description">Описание</label>
-        <textarea
-          id="account-description"
-          formControlName="description"
-          maxlength="2000"
-          placeholder="Необязательный контекст счёта"
-        ></textarea>
-        <label for="initial-balance">Начальный остаток</label>
-        <input
-          id="initial-balance"
-          formControlName="initialBalance"
-          inputmode="decimal"
-          placeholder="0"
-        />
-        <p class="hint">
-          Будет записан отдельной корректировкой. Допустимо до 4 знаков после запятой.
-        </p>
-        @if (error(); as message) {
-          <p class="form-error" role="alert">{{ message }}</p>
-        }
-        <button type="submit" [disabled]="saving()">
-          {{ saving() ? 'Сохраняем…' : editingId() ? 'Сохранить изменения' : 'Создать счёт' }}
-        </button>
-        @if (editingId()) {
-          <button type="button" class="secondary" (click)="cancelEdit()">Отменить изменение</button>
-        }
-      </form>
-    </section>
   </div>
+
+  @if (formOpen()) {
+    <div class="modal-backdrop" role="presentation" (keydown.escape)="cancelEdit()">
+      <section
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="account-form-title"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="section-label">{{ editingId() ? 'Изменение' : 'Новое' }}</p>
+            <h2 id="account-form-title">
+              {{ editingId() ? 'Редактировать счёт' : 'Добавить счёт' }}
+            </h2>
+          </div>
+          <button type="button" class="modal-close" (click)="cancelEdit()" aria-label="Закрыть">
+            ×
+          </button>
+        </div>
+        <form [formGroup]="form" (ngSubmit)="submit()">
+          <label for="account-name">Название</label>
+          <input
+            id="account-name"
+            formControlName="name"
+            maxlength="120"
+            placeholder="Например, Наличные"
+          />
+          <label for="account-type">Тип счёта</label>
+          <select id="account-type" formControlName="type">
+            <option value="cash">Наличные</option>
+            <option value="debit">Дебетовый</option>
+            <option value="savings">Сберегательный</option>
+          </select>
+          <label for="account-description">Описание</label>
+          <textarea
+            id="account-description"
+            formControlName="description"
+            maxlength="2000"
+            placeholder="Необязательный контекст счёта"
+          ></textarea>
+          <label for="initial-balance">Начальный остаток</label>
+          <input
+            id="initial-balance"
+            formControlName="initialBalance"
+            inputmode="decimal"
+            placeholder="0"
+          />
+          <p class="hint">
+            Будет записан отдельной корректировкой. Допустимо до 4 знаков после запятой.
+          </p>
+          @if (error(); as message) {
+            <p class="form-error" role="alert">{{ message }}</p>
+          }
+          <button type="submit" [disabled]="saving()">
+            {{ saving() ? 'Сохраняем…' : editingId() ? 'Сохранить изменения' : 'Создать счёт' }}
+          </button>
+          @if (editingId()) {
+            <button type="button" class="secondary" (click)="cancelEdit()">
+              Отменить изменение
+            </button>
+          }
+        </form>
+      </section>
+    </div>
+  }
 </section>

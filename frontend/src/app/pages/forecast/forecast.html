@@ -50,7 +50,7 @@
     @if (value.first_negative_on) {
       <section class="risk-banner" role="alert">
         <strong>Возможен недостаток средств {{ value.first_negative_on }}</strong>
-        <span>Минимальный остаток: {{ value.minimum_balance }} {{ baseCurrency() }}.</span>
+        <span>Минимальный остаток: {{ value.minimum_balance | money }} {{ baseCurrency() }}.</span>
       </section>
     }
     @if (value.overdue_excluded_count) {
@@ -64,24 +64,25 @@
     <div class="summary-grid">
       <article class="summary-card fact">
         <span>Факт на {{ value.from_on }}</span>
-        <strong>{{ value.starting_balance }} {{ baseCurrency() }}</strong>
+        <strong>{{ value.starting_balance | money }} {{ baseCurrency() }}</strong>
       </article>
       <article class="summary-card">
         <span>Прогноз на {{ value.through_on }}</span>
         <strong [class.negative]="isNegative(value.ending_balance)"
-          >{{ value.ending_balance }} {{ baseCurrency() }}</strong
+          >{{ value.ending_balance | money }} {{ baseCurrency() }}</strong
         >
       </article>
       <article class="summary-card">
         <span>Минимум · {{ value.minimum_on }}</span>
         <strong [class.negative]="isNegative(value.minimum_balance)"
-          >{{ value.minimum_balance }} {{ baseCurrency() }}</strong
+          >{{ value.minimum_balance | money }} {{ baseCurrency() }}</strong
         >
       </article>
       <article class="summary-card flows">
         <span>Ожидаемые доходы / расходы</span>
         <strong
-          >+{{ value.expected_income }} / −{{ value.expected_expense }} {{ baseCurrency() }}</strong
+          >+{{ value.expected_income | money }} / −{{ value.expected_expense | money }}
+          {{ baseCurrency() }}</strong
         >
       </article>
     </div>
@@ -104,42 +105,47 @@
           неизменность известных данных, а не гарантию будущего остатка.
         </p>
       }
-      <div class="chart-scroll">
-        <svg
-          class="forecast-chart"
-          viewBox="0 0 100 100"
-          role="img"
-          [attr.aria-label]="'Прогноз с ' + value.from_on + ' по ' + value.through_on"
-        >
-          @if (zeroY() !== null) {
-            <line class="zero-line" x1="2" [attr.y1]="zeroY()" x2="98" [attr.y2]="zeroY()" />
-          }
-          <polyline class="forecast-line" [attr.points]="plotLine()" />
-          @for (point of plot(); track $index; let first = $first) {
-            <circle
-              [class.fact-point]="first"
-              [class.risk-point]="isNegative(point.closing_balance)"
-              [attr.cx]="point.x"
-              [attr.cy]="point.y"
-              r="1.8"
-            >
-              <title>{{ point.on }}: {{ point.closing_balance }} {{ baseCurrency() }}</title>
-            </circle>
-          }
-        </svg>
-      </div>
-      <div class="point-switcher" aria-label="Точки прогноза">
-        @for (point of value.points; track $index; let first = $first) {
-          <button
-            type="button"
-            class="point-button secondary"
-            [class.active]="selectedPointIndex() === $index"
-            (click)="selectPoint($index)"
+      <div class="chart-frame">
+        <div class="y-axis-title">Сумма · {{ baseCurrency() }}</div>
+        <div class="y-axis-scale" aria-hidden="true">
+          <span>{{ chartMaximum() | money }}</span>
+          <span>{{ chartMinimum() | money }}</span>
+        </div>
+        <div class="chart-scroll">
+          <svg
+            class="forecast-chart"
+            viewBox="0 0 100 100"
+            role="img"
+            [attr.aria-label]="'Прогноз с ' + value.from_on + ' по ' + value.through_on"
           >
-            <span>{{ first ? 'Факт' : point.on }}</span>
-            <strong>{{ point.closing_balance }}</strong>
-          </button>
-        }
+            @if (zeroY() !== null) {
+              <line class="zero-line" x1="2" [attr.y1]="zeroY()" x2="98" [attr.y2]="zeroY()" />
+            }
+            <polyline class="forecast-line" [attr.points]="plotLine()" />
+            @for (point of plot(); track $index; let first = $first) {
+              <circle
+                [class.fact-point]="first"
+                [class.risk-point]="isNegative(point.closing_balance)"
+                [attr.cx]="point.x"
+                [attr.cy]="point.y"
+                r="1.8"
+              >
+                tabindex="0" role="button" [attr.aria-label]="point.on + ': ' +
+                point.closing_balance + ' ' + baseCurrency()" (click)="selectPoint($index)"
+                (keydown.enter)="selectPoint($index)" >
+                <title>
+                  {{ point.on }}: начало {{ point.opening_balance | money }}, изменение
+                  {{ point.change | money }}, итог {{ point.closing_balance | money }}
+                  {{ baseCurrency() }}
+                </title>
+              </circle>
+            }
+          </svg>
+        </div>
+      </div>
+      <div class="x-axis" aria-label="Ось даты">
+        <span>{{ value.from_on }}</span
+        ><strong>Дата</strong><span>{{ value.through_on }}</span>
       </div>
     </section>
 
@@ -149,10 +155,13 @@
           <div>
             <p class="section-label">Почему изменился прогноз</p>
             <h2 id="explanation-title">{{ point.on }}</h2>
-            <p>{{ point.opening_balance }} → {{ point.closing_balance }} {{ baseCurrency() }}</p>
+            <p>
+              {{ point.opening_balance | money }} → {{ point.closing_balance | money }}
+              {{ baseCurrency() }}
+            </p>
           </div>
           <strong class="daily-change" [class.negative]="isNegative(point.change)"
-            >{{ signed(point.change) }} {{ baseCurrency() }}</strong
+            >{{ signed(point.change) | money }} {{ baseCurrency() }}</strong
           >
         </div>
         @if (!point.events.length) {
@@ -171,12 +180,12 @@
                 </div>
                 <div class="event-amount">
                   <strong [class.negative]="isNegative(event.effect)"
-                    >{{ signed(event.effect) }} {{ baseCurrency() }}</strong
+                    >{{ signed(event.effect) | money }} {{ baseCurrency() }}</strong
                   >
                   @if (event.type === 'transfer' && value.scope === 'all') {
                     <small>0 для общего остатка</small>
                   } @else {
-                    <small>операция: {{ event.amount }}</small>
+                    <small>операция: {{ event.amount | money }}</small>
                   }
                 </div>
                 <a class="event-link" routerLink="/calendar" [queryParams]="calendarQuery(event)"

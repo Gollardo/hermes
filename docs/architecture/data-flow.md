@@ -109,6 +109,15 @@ flowchart LR
 Virtual redistribution uses the same lock and coverage order but posts equal
 opposite fund movements and no account movement.
 
+## Transfer and percentage allocation
+
+The UI may compose a physical transfer and an explicit percentage allocation
+as one command. The application layer first posts one Operations-owned transfer,
+then calculates the exact Funds-owned allocation on the destination account and
+creates its virtual event before the request transaction commits. A failure in
+either part rolls back both ledgers; this does not turn a fund into a transfer
+destination or introduce automatic income allocation.
+
 ## Expected occurrence to actual operation
 
 ```mermaid

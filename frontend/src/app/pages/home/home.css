@@ -1,231 +1,109 @@
-.overview-grid {
+.overview-page {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: minmax(0, 1.45fr) minmax(17rem, 0.55fr);
+  gap: 1.1rem;
 }
-
-.welcome-card {
-  align-items: center;
-  background:
-    radial-gradient(circle at 80% 10%, rgb(181 225 194 / 60%), transparent 15rem),
-    linear-gradient(140deg, #edf6ef, #dceee1);
-  border: 1px solid #d5e8db;
-  border-radius: 1.5rem;
-  display: grid;
-  gap: 2rem;
-  grid-column: 1 / -1;
-  grid-template-columns: minmax(0, 1fr) minmax(14rem, 0.55fr);
-  min-height: 23rem;
-  overflow: hidden;
-  padding: clamp(1.5rem, 4vw, 3.5rem);
-  position: relative;
-}
-
-.welcome-copy {
-  position: relative;
-  z-index: 1;
-}
-
-.welcome-copy h2 {
-  font-size: clamp(2rem, 4vw, 3.4rem);
-  font-weight: 560;
-  letter-spacing: -0.055em;
-  line-height: 1.02;
-  margin: 1rem 0;
-  max-width: 15ch;
-}
-
-.welcome-copy > p {
-  color: var(--ink-soft);
-  max-width: 52ch;
-}
-
-.welcome-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-top: 1.5rem;
-}
-
-.balance-orbit {
-  aspect-ratio: 1;
-  display: grid;
-  margin: auto;
-  max-width: 18rem;
-  place-items: center;
-  position: relative;
-  width: 100%;
-}
-
-.balance-orbit strong {
-  align-items: center;
-  background: var(--accent);
-  border-radius: 1.5rem;
-  box-shadow: 0 1.25rem 3rem rgb(23 115 79 / 22%);
-  color: #fff;
-  display: flex;
-  font-size: 2rem;
-  height: 5rem;
-  justify-content: center;
-  transform: rotate(-8deg);
-  width: 5rem;
-}
-
-.orbit {
-  border: 1px solid rgb(23 115 79 / 24%);
-  border-radius: 50%;
-  position: absolute;
-}
-
-.orbit-one {
-  inset: 10%;
-}
-
-.orbit-two {
-  border-style: dashed;
-  inset: 23%;
-}
-
-.orbit-three {
-  background: rgb(255 255 255 / 38%);
-  inset: 35%;
-}
-
-.overview-stack,
-.quick-grid {
-  align-self: start;
-  display: grid;
-  gap: 1rem;
-}
-
-.entity-card {
-  align-items: start;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 1.25rem;
-  color: var(--ink);
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: auto 1fr auto;
-  padding: 1.3rem;
-  text-decoration: none;
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
-}
-
-.entity-card:hover {
-  border-color: #b9cec0;
-  box-shadow: var(--shadow-card);
-  transform: translateY(-2px);
-}
-
-.entity-card h2 {
-  font-size: 1.25rem;
-  margin: 0.2rem 0 0.35rem;
-}
-
-.entity-card p {
-  color: var(--ink-soft);
-  font-size: 0.83rem;
-  margin: 0;
-}
-
-.entity-icon,
-.trust-icon {
-  align-items: center;
-  background: var(--accent);
-  border-radius: 0.8rem;
-  color: #fff;
-  display: flex;
-  font-weight: 720;
-  height: 2.6rem;
-  justify-content: center;
-  width: 2.6rem;
-}
-
-.entity-icon.soft {
-  background: #edf1ee;
-  color: var(--accent-strong);
-}
-
-.card-arrow {
-  color: var(--muted);
-}
-
-.foundation-steps {
-  display: grid;
-  gap: 0.5rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.foundation-card {
-  align-self: start;
-}
-
-.foundation-card .panel-heading {
-  align-items: flex-start;
-  flex-direction: column;
-}
-
-.foundation-steps li {
-  align-items: center;
-  border-radius: 0.85rem;
-  color: var(--muted);
+.overview-balances {
   display: grid;
   gap: 0.85rem;
-  grid-template-columns: auto 1fr;
-  padding: 0.7rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-
-.foundation-steps li.current {
-  background: var(--surface-accent);
-  color: var(--ink);
+.overview-balances article {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-card);
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.15rem;
 }
-
-.foundation-steps li > span {
-  font-size: 0.72rem;
-  font-variant-numeric: tabular-nums;
+.overview-balances .primary-balance {
+  background: linear-gradient(140deg, #e8f4eb, #d9ebde);
+  border-color: #cfe3d5;
 }
-
-.foundation-steps strong,
-.foundation-steps small {
-  display: block;
-}
-
-.foundation-steps small {
+.overview-balances span {
   color: var(--muted);
-  font-size: 0.75rem;
-  margin-top: 0.15rem;
+  font-size: 0.78rem;
 }
-
-.trust-card {
-  align-items: start;
+.overview-balances strong {
+  font-size: clamp(1.15rem, 2.5vw, 1.65rem);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: normal;
+}
+.overview-balances a,
+.section-link {
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.forecast-preview {
+  align-items: center;
   display: flex;
-  gap: 1rem;
+  gap: 2rem;
+  justify-content: space-between;
 }
-
-.trust-card h2 {
-  font-size: 1.2rem;
-  margin: 0.25rem 0 0.5rem;
+.forecast-preview.risk {
+  background: var(--danger-soft);
+  border-color: #efd0ca;
 }
-
-.trust-card p:not(.section-label) {
+.forecast-preview h2 {
+  margin: 0.25rem 0;
+}
+.forecast-preview p:not(.section-label) {
   color: var(--ink-soft);
-  font-size: 0.85rem;
   margin: 0;
 }
-
-@media (max-width: 62rem) {
-  .overview-grid,
-  .welcome-card {
+.overview-columns {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.overview-list {
+  border-top: 1px solid var(--line);
+  display: grid;
+}
+.overview-list article {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.8rem 0;
+}
+.overview-list article.overdue {
+  box-shadow: inset 3px 0 var(--danger);
+  padding-left: 0.7rem;
+}
+.overview-list article > div {
+  display: grid;
+  min-width: 0;
+}
+.overview-list span {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+.overview-list b {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.section-link {
+  display: inline-block;
+  margin-top: 1rem;
+}
+@media (max-width: 70rem) {
+  .overview-balances {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 48rem) {
+  .overview-columns,
+  .overview-balances {
     grid-template-columns: 1fr;
   }
-
-  .balance-orbit {
-    display: none;
+  .forecast-preview {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 1rem;
   }
 }

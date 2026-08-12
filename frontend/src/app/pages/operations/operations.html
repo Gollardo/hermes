@@ -5,6 +5,7 @@
       <h1>Журнал операций</h1>
       <p>Фактические остатки полностью складываются из движений этого журнала.</p>
     </div>
+    <button type="button" (click)="openCreate()">Добавить операцию</button>
   </header>
 
   @if (error(); as message) {
@@ -25,307 +26,323 @@
           {{ transferDirection(operation) }}
         </p>
       </div>
-      <strong>{{ signedAmount(operation) }} {{ baseCurrency() }}</strong>
+      <strong>{{ signedAmount(operation) | money }} {{ baseCurrency() }}</strong>
     </section>
   }
 
-  <div class="operation-layout">
-    <section class="panel entry-panel" [class.editing]="editingId()" aria-labelledby="entry-title">
-      <div class="panel-heading">
-        <div>
-          <p class="section-label">{{ editingId() ? 'Изменение' : 'Новая запись' }}</p>
-          <h2 id="entry-title">
-            {{ editingId() ? 'Редактировать операцию' : 'Добавить операцию' }}
-          </h2>
-        </div>
-      </div>
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <label for="operation-type">Тип</label>
-        <select id="operation-type" formControlName="type">
-          <option value="">Выберите тип</option>
-          <option value="expense">Расход</option>
-          <option value="income">Доход</option>
-          <option value="transfer">Перевод</option>
-          <option value="balance_adjustment">Корректировка</option>
-        </select>
-
-        @if (form.controls.type.value === 'income' || form.controls.type.value === 'expense') {
-          <label for="operation-category">Категория</label>
-          <select id="operation-category" formControlName="categoryId">
-            <option value="">Выберите категорию</option>
-            @for (category of availableCategories(); track category.id) {
-              <option [value]="category.id">{{ categoryLabel(category) }}</option>
-            }
-          </select>
-        }
-
-        <label for="operation-amount">
-          {{
-            form.controls.type.value === 'balance_adjustment' ? 'Новый ожидаемый остаток' : 'Сумма'
-          }}
-          · {{ baseCurrency() }}
-        </label>
-        <input
-          id="operation-amount"
-          formControlName="amount"
-          inputmode="decimal"
-          placeholder="0.00"
-        />
-        <label for="operation-account">
-          {{ form.controls.type.value === 'transfer' ? 'Счёт списания' : 'Счёт' }}
-        </label>
-        <select id="operation-account" formControlName="accountId">
-          <option value="">Выберите счёт</option>
-          @for (account of activeAccounts(currentOperation()); track account.id) {
-            <option [value]="account.id">{{ accountLabel(account) }}</option>
-          }
-        </select>
-
-        @if (
-          form.controls.type.value === 'balance_adjustment' && adjustmentBaseBalance();
-          as base
-        ) {
-          <div class="impact-preview">
-            <span>Исходный остаток: {{ base }} {{ baseCurrency() }}</span>
-            @if (adjustmentDelta(); as delta) {
-              <span>Изменение журнала: {{ delta }} {{ baseCurrency() }}</span>
-            }
-          </div>
-        }
-
-        @if (form.controls.type.value === 'transfer') {
-          <label for="destination-account">Счёт зачисления</label>
-          <select id="destination-account" formControlName="destinationAccountId">
-            <option value="">Выберите счёт</option>
-            @for (account of activeAccounts(currentOperation()); track account.id) {
-              @if (account.id !== form.controls.accountId.value) {
-                <option [value]="account.id">{{ accountLabel(account) }}</option>
-              }
-            }
-          </select>
-          <p class="impact-preview">Одна операция: списание и зачисление сохранятся вместе.</p>
-        }
-
-        @if (form.controls.type.value === 'expense' || form.controls.type.value === 'transfer') {
-          <label for="operation-fund">Фонд</label>
-          <select id="operation-fund" formControlName="fundId">
-            <option value="">Без фонда</option>
-            @for (fund of availableFunds(); track fund.id) {
-              <option [value]="fund.id">{{ fundPositionLabel(fund) }}</option>
-            }
-          </select>
-          @if (form.controls.type.value === 'expense' && form.controls.fundId.value) {
-            <p class="impact-preview">Расход полностью уменьшит выбранный фонд на этом счёте.</p>
-          }
-          @if (form.controls.type.value === 'transfer' && form.controls.fundId.value) {
-            <label for="operation-fund-amount">Виртуальная часть перевода</label>
-            <input
-              id="operation-fund-amount"
-              formControlName="fundAmount"
-              inputmode="decimal"
-              placeholder="0.00"
-            />
-            <p class="impact-preview">
-              Эта часть фонда сменит физический счёт, но общий остаток фонда не изменится.
-            </p>
-          }
-        }
-
-        <label for="operation-date">Дата факта</label>
-        <input id="operation-date" type="date" formControlName="occurredOn" />
-
-        @if (form.controls.type.value === 'balance_adjustment') {
-          <label for="operation-reason">Причина корректировки</label>
-          <textarea id="operation-reason" formControlName="reason" maxlength="2000"></textarea>
-        } @else {
-          <label for="operation-description">Описание</label>
-          <textarea
-            id="operation-description"
-            formControlName="description"
-            maxlength="2000"
-            placeholder="Необязательно"
-          ></textarea>
-        }
-
-        @if (form.touched && !canSubmit()) {
-          <p class="field-error">Заполните обязательные поля и проверьте финансовый эффект.</p>
-        }
-        <button type="submit" [disabled]="saving() || !canSubmit()">
-          {{ saving() ? 'Сохраняем…' : editingId() ? 'Сохранить изменения' : 'Добавить в журнал' }}
-        </button>
-        @if (editingId()) {
-          <button type="button" class="secondary" (click)="cancelEdit()">Отменить изменение</button>
-        }
-      </form>
-    </section>
-
-    <div class="journal-column">
-      <section class="panel filters-panel" aria-labelledby="filters-title">
-        <div class="panel-heading compact-heading">
+  @if (formOpen()) {
+    <div class="modal-backdrop" role="presentation" (keydown.escape)="cancelEdit()">
+      <section
+        class="modal-card wide entry-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="entry-title"
+      >
+        <div class="modal-header">
           <div>
-            <p class="section-label">Выборка</p>
-            <h2 id="filters-title">Фильтры</h2>
+            <p class="section-label">{{ editingId() ? 'Изменение' : 'Новая запись' }}</p>
+            <h2 id="entry-title">
+              {{ editingId() ? 'Редактировать операцию' : 'Добавить операцию' }}
+            </h2>
           </div>
+          <button type="button" class="modal-close" (click)="cancelEdit()" aria-label="Закрыть">
+            ×
+          </button>
         </div>
-        <form class="filter-grid" [formGroup]="filters" (ngSubmit)="applyFilters()">
-          <label>С даты <input type="date" formControlName="occurredFrom" /></label>
-          <label>По дату <input type="date" formControlName="occurredTo" /></label>
-          <label
-            >Счёт
-            <select formControlName="accountId">
-              <option value="">Все счета</option>
-              @for (account of accounts(); track account.id) {
-                <option [value]="account.id">{{ account.name }}</option>
-              }
-            </select>
-          </label>
-          <label
-            >Тип
-            <select formControlName="type">
-              <option value="">Все типы</option>
-              <option value="income">Доход</option>
-              <option value="expense">Расход</option>
-              <option value="transfer">Перевод</option>
-              <option value="balance_adjustment">Корректировка</option>
-            </select>
-          </label>
-          <label
-            >Категория
-            <select formControlName="categoryId">
-              <option value="">Все категории</option>
-              @for (category of categories(); track category.id) {
+        <form [formGroup]="form" (ngSubmit)="submit()">
+          <label for="operation-type">Тип</label>
+          <select id="operation-type" formControlName="type">
+            <option value="">Выберите тип</option>
+            <option value="expense">Расход</option>
+            <option value="income">Доход</option>
+            <option value="transfer">Перевод</option>
+            <option value="balance_adjustment">Корректировка</option>
+          </select>
+
+          @if (form.controls.type.value === 'income' || form.controls.type.value === 'expense') {
+            <label for="operation-category">Категория</label>
+            <select id="operation-category" formControlName="categoryId">
+              <option value="">Выберите категорию</option>
+              @for (category of availableCategories(); track category.id) {
                 <option [value]="category.id">{{ categoryLabel(category) }}</option>
               }
             </select>
-          </label>
-          <div class="filter-actions">
-            <button type="submit">Применить</button
-            ><button type="button" class="secondary" (click)="clearFilters()">Сбросить</button>
-          </div>
-        </form>
-        @if (filterChips().length > 0) {
-          <div class="filter-chips" aria-label="Активные фильтры">
-            @for (chip of filterChips(); track chip) {
-              <span>{{ chip }}</span>
-            }
-          </div>
-        }
-      </section>
-
-      <section class="panel journal-panel" aria-labelledby="journal-title">
-        <div class="panel-heading compact-heading">
-          <div>
-            <p class="section-label">Фактические записи</p>
-            <h2 id="journal-title">Операции · {{ total() }}</h2>
-            <p class="selection-total">
-              Чистое изменение выборки: {{ totalAmount() }} {{ baseCurrency() }}
-            </p>
-          </div>
-        </div>
-        @if (loading() && operations().length === 0) {
-          <p class="empty-state">Загружаем журнал…</p>
-        } @else {
-          @if (loading()) {
-            <p class="loading-note" role="status">Обновляем выборку…</p>
           }
-          @if (operations().length === 0) {
-            <p class="empty-state">Операций по выбранным условиям нет.</p>
+
+          <label for="operation-amount">
+            {{
+              form.controls.type.value === 'balance_adjustment'
+                ? 'Новый ожидаемый остаток'
+                : 'Сумма'
+            }}
+            · {{ baseCurrency() }}
+          </label>
+          <input
+            id="operation-amount"
+            formControlName="amount"
+            inputmode="decimal"
+            placeholder="0.00"
+          />
+          <label for="operation-account">
+            {{ form.controls.type.value === 'transfer' ? 'Счёт списания' : 'Счёт' }}
+          </label>
+          <select id="operation-account" formControlName="accountId">
+            <option value="">Выберите счёт</option>
+            @for (account of activeAccounts(currentOperation()); track account.id) {
+              <option [value]="account.id">{{ accountLabel(account) }}</option>
+            }
+          </select>
+
+          @if (
+            form.controls.type.value === 'balance_adjustment' && adjustmentBaseBalance();
+            as base
+          ) {
+            <div class="impact-preview">
+              <span>Исходный остаток: {{ base | money }} {{ baseCurrency() }}</span>
+              @if (adjustmentDelta(); as delta) {
+                <span>Изменение журнала: {{ delta | money }} {{ baseCurrency() }}</span>
+              }
+            </div>
+          }
+
+          @if (form.controls.type.value === 'transfer') {
+            <label for="destination-account">Счёт зачисления</label>
+            <select id="destination-account" formControlName="destinationAccountId">
+              <option value="">Выберите счёт</option>
+              @for (account of activeAccounts(currentOperation()); track account.id) {
+                @if (account.id !== form.controls.accountId.value) {
+                  <option [value]="account.id">{{ accountLabel(account) }}</option>
+                }
+              }
+            </select>
+            <p class="impact-preview">Одна операция: списание и зачисление сохранятся вместе.</p>
+          }
+
+          @if (form.controls.type.value === 'expense' || form.controls.type.value === 'transfer') {
+            <label for="operation-fund">Фонд</label>
+            <select id="operation-fund" formControlName="fundId">
+              <option value="">Без фонда</option>
+              @for (fund of availableFunds(); track fund.id) {
+                <option [value]="fund.id">{{ fundPositionLabel(fund) }}</option>
+              }
+            </select>
+            @if (form.controls.type.value === 'expense' && form.controls.fundId.value) {
+              <p class="impact-preview">Расход полностью уменьшит выбранный фонд на этом счёте.</p>
+            }
+            @if (form.controls.type.value === 'transfer' && form.controls.fundId.value) {
+              <label for="operation-fund-amount">Виртуальная часть перевода</label>
+              <input
+                id="operation-fund-amount"
+                formControlName="fundAmount"
+                inputmode="decimal"
+                placeholder="0.00"
+              />
+              <p class="impact-preview">
+                Эта часть фонда сменит физический счёт, но общий остаток фонда не изменится.
+              </p>
+            }
+          }
+
+          <label for="operation-date">Дата факта</label>
+          <input id="operation-date" type="date" formControlName="occurredOn" />
+
+          @if (form.controls.type.value === 'balance_adjustment') {
+            <label for="operation-reason">Причина корректировки</label>
+            <textarea id="operation-reason" formControlName="reason" maxlength="2000"></textarea>
           } @else {
-            <div class="operation-list">
-              @for (operation of operations(); track operation.id) {
-                <article
-                  class="operation-row"
-                  [class.income]="operation.type === 'income'"
-                  [class.expense]="operation.type === 'expense'"
+            <label for="operation-description">Описание</label>
+            <textarea
+              id="operation-description"
+              formControlName="description"
+              maxlength="2000"
+              placeholder="Необязательно"
+            ></textarea>
+          }
+
+          @if (form.touched && !canSubmit()) {
+            <p class="field-error">Заполните обязательные поля и проверьте финансовый эффект.</p>
+          }
+          <button type="submit" [disabled]="saving() || !canSubmit()">
+            {{
+              saving() ? 'Сохраняем…' : editingId() ? 'Сохранить изменения' : 'Добавить в журнал'
+            }}
+          </button>
+          @if (editingId()) {
+            <button type="button" class="secondary" (click)="cancelEdit()">
+              Отменить изменение
+            </button>
+          }
+        </form>
+      </section>
+    </div>
+  }
+
+  <div class="journal-column">
+    <section class="panel filters-panel" aria-labelledby="filters-title">
+      <div class="panel-heading compact-heading">
+        <div>
+          <p class="section-label">Выборка</p>
+          <h2 id="filters-title">Фильтры</h2>
+        </div>
+      </div>
+      <form class="filter-grid" [formGroup]="filters" (ngSubmit)="applyFilters()">
+        <label>С даты <input type="date" formControlName="occurredFrom" /></label>
+        <label>По дату <input type="date" formControlName="occurredTo" /></label>
+        <label
+          >Счёт
+          <select formControlName="accountId">
+            <option value="">Все счета</option>
+            @for (account of accounts(); track account.id) {
+              <option [value]="account.id">{{ account.name }}</option>
+            }
+          </select>
+        </label>
+        <label
+          >Тип
+          <select formControlName="type">
+            <option value="">Все типы</option>
+            <option value="income">Доход</option>
+            <option value="expense">Расход</option>
+            <option value="transfer">Перевод</option>
+            <option value="balance_adjustment">Корректировка</option>
+          </select>
+        </label>
+        <label
+          >Категория
+          <select formControlName="categoryId">
+            <option value="">Все категории</option>
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ categoryLabel(category) }}</option>
+            }
+          </select>
+        </label>
+        <div class="filter-actions">
+          <button type="submit">Применить</button
+          ><button type="button" class="secondary" (click)="clearFilters()">Сбросить</button>
+        </div>
+      </form>
+      @if (filterChips().length > 0) {
+        <div class="filter-chips" aria-label="Активные фильтры">
+          @for (chip of filterChips(); track chip) {
+            <span>{{ chip }}</span>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="panel journal-panel" aria-labelledby="journal-title">
+      <div class="panel-heading compact-heading">
+        <div>
+          <p class="section-label">Фактические записи</p>
+          <h2 id="journal-title">Операции · {{ total() }}</h2>
+          <p class="selection-total">
+            Чистое изменение выборки: {{ totalAmount() | money }} {{ baseCurrency() }}
+          </p>
+        </div>
+      </div>
+      @if (loading() && operations().length === 0) {
+        <p class="empty-state">Загружаем журнал…</p>
+      } @else {
+        @if (loading()) {
+          <p class="loading-note" role="status">Обновляем выборку…</p>
+        }
+        @if (operations().length === 0) {
+          <p class="empty-state">Операций по выбранным условиям нет.</p>
+        } @else {
+          <div class="operation-list">
+            @for (operation of operations(); track operation.id) {
+              <article
+                class="operation-row"
+                [class.income]="operation.type === 'income'"
+                [class.expense]="operation.type === 'expense'"
+              >
+                <button
+                  type="button"
+                  class="row-main"
+                  (click)="toggleDetails(operation)"
+                  [attr.aria-expanded]="expandedId() === operation.id"
                 >
-                  <button
-                    type="button"
-                    class="row-main"
-                    (click)="toggleDetails(operation)"
-                    [attr.aria-expanded]="expandedId() === operation.id"
+                  <span class="operation-date">{{ operation.occurred_on }}</span>
+                  <span class="operation-copy"
+                    ><strong>{{
+                      operation.description ||
+                        operation.reason ||
+                        operation.category_name ||
+                        operationTypeLabel(operation.type)
+                    }}</strong
+                    ><small
+                      >{{ operationTypeLabel(operation.type) }} ·
+                      {{ transferDirection(operation) }}</small
+                    ></span
                   >
-                    <span class="operation-date">{{ operation.occurred_on }}</span>
-                    <span class="operation-copy"
-                      ><strong>{{
-                        operation.description ||
-                          operation.reason ||
-                          operation.category_name ||
-                          operationTypeLabel(operation.type)
-                      }}</strong
-                      ><small
-                        >{{ operationTypeLabel(operation.type) }} ·
-                        {{ transferDirection(operation) }}</small
-                      ></span
-                    >
-                    <span class="operation-amount">{{ signedAmount(operation) }}</span>
-                  </button>
-                  @if (expandedId() === operation.id) {
-                    <div class="operation-details">
-                      <dl>
-                        <div>
-                          <dt>Тип</dt>
-                          <dd>{{ operationTypeLabel(operation.type) }}</dd>
-                        </div>
-                        <div>
-                          <dt>Версия</dt>
-                          <dd>{{ operation.version }}</dd>
-                        </div>
-                      </dl>
-                      <div class="movement-list">
-                        @for (movement of operation.movements; track movement.account_id) {
+                  <span class="operation-amount">{{ signedAmount(operation) | money }}</span>
+                </button>
+                @if (expandedId() === operation.id) {
+                  <div class="operation-details">
+                    <dl>
+                      <div>
+                        <dt>Тип</dt>
+                        <dd>{{ operationTypeLabel(operation.type) }}</dd>
+                      </div>
+                      <div>
+                        <dt>Версия</dt>
+                        <dd>{{ operation.version }}</dd>
+                      </div>
+                    </dl>
+                    <div class="movement-list">
+                      @for (movement of operation.movements; track movement.account_id) {
+                        <span
+                          >{{ movement.account_name }}
+                          <strong>{{ movement.amount | money }}</strong></span
+                        >
+                      }
+                    </div>
+                    @if (operation.fund_movements.length > 0) {
+                      <div class="movement-list fund-movement-list">
+                        @for (
+                          movement of operation.fund_movements;
+                          track movement.fund_id + movement.account_id
+                        ) {
                           <span
-                            >{{ movement.account_name }}
-                            <strong>{{ movement.amount }}</strong></span
+                            >Фонд «{{ movement.fund_name }}» · {{ movement.account_name }}
+                            <strong>{{ movement.amount | money }}</strong></span
                           >
                         }
                       </div>
-                      @if (operation.fund_movements.length > 0) {
-                        <div class="movement-list fund-movement-list">
-                          @for (
-                            movement of operation.fund_movements;
-                            track movement.fund_id + movement.account_id
-                          ) {
-                            <span
-                              >Фонд «{{ movement.fund_name }}» · {{ movement.account_name }}
-                              <strong>{{ movement.amount }}</strong></span
-                            >
-                          }
-                        </div>
-                      }
-                      <div class="row-actions">
-                        <button type="button" class="secondary" (click)="edit(operation)">
-                          Изменить</button
-                        ><button type="button" class="danger" (click)="remove(operation)">
-                          Удалить
-                        </button>
-                      </div>
+                    }
+                    <div class="row-actions">
+                      <button type="button" class="secondary" (click)="edit(operation)">
+                        Изменить</button
+                      ><button type="button" class="danger" (click)="remove(operation)">
+                        Удалить
+                      </button>
                     </div>
-                  }
-                </article>
-              }
-            </div>
-            <nav class="pagination" aria-label="Страницы журнала">
-              <button
-                type="button"
-                class="secondary"
-                (click)="previousPage()"
-                [disabled]="page() === 1"
-              >
-                Назад
-              </button>
-              <span>Страница {{ page() }} из {{ Math.max(1, Math.ceil(total() / pageSize)) }}</span>
-              <button
-                type="button"
-                class="secondary"
-                (click)="nextPage()"
-                [disabled]="page() * pageSize >= total()"
-              >
-                Далее
-              </button>
-            </nav>
-          }
+                  </div>
+                }
+              </article>
+            }
+          </div>
+          <nav class="pagination" aria-label="Страницы журнала">
+            <button
+              type="button"
+              class="secondary"
+              (click)="previousPage()"
+              [disabled]="page() === 1"
+            >
+              Назад
+            </button>
+            <span>Страница {{ page() }} из {{ Math.max(1, Math.ceil(total() / pageSize)) }}</span>
+            <button
+              type="button"
+              class="secondary"
+              (click)="nextPage()"
+              [disabled]="page() * pageSize >= total()"
+            >
+              Далее
+            </button>
+          </nav>
         }
-      </section>
-    </div>
+      }
+    </section>
   </div>
 </section>

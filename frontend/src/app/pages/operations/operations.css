@@ -33,6 +33,7 @@
   display: grid;
   gap: 1rem;
   min-width: 0;
+  width: 100%;
 }
 .compact-heading {
   margin-bottom: 0.75rem;

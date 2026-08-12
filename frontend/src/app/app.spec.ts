@@ -15,6 +15,7 @@ describe('App', () => {
   };
 
   beforeEach(async () => {
+    localStorage.removeItem('hermes-sidebar-hidden');
     accessState.set('checking');
     auth.initialize.mockClear();
     await TestBed.configureTestingModule({
@@ -42,5 +43,23 @@ describe('App', () => {
     expect(compiled.querySelector('.plan-label')?.textContent).toContain('План');
     expect(compiled.textContent).toContain('Календарь');
     expect(compiled.textContent).toContain('Прогноз');
+  });
+
+  it('lets the owner hide and restore the sidebar', () => {
+    accessState.set('authenticated');
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const toggle = fixture.nativeElement.querySelector('.sidebar-toggle') as HTMLButtonElement;
+    toggle.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-shell').classList).toContain('sidebar-hidden');
+    expect(localStorage.getItem('hermes-sidebar-hidden')).toBe('true');
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-shell').classList).not.toContain(
+      'sidebar-hidden',
+    );
   });
 });

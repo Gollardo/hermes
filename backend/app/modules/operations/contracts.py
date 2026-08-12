@@ -32,6 +32,31 @@ class ScheduledOperationDraft:
     category_id: UUID | None
 
 
+@dataclass(frozen=True, slots=True)
+class PhysicalTransferDraft:
+    occurred_on: date
+    amount: Decimal
+    description: str | None
+    source_account_id: UUID
+    destination_account_id: UUID
+
+
+def post_physical_transfer(session: Session, draft: PhysicalTransferDraft) -> UUID:
+    """Post one transfer inside the caller's transaction and return its identity."""
+    operation = create_operation(
+        session,
+        OperationCreateRequest(
+            type=OperationType.TRANSFER,
+            occurred_on=draft.occurred_on,
+            amount=draft.amount,
+            description=draft.description,
+            account_id=draft.source_account_id,
+            destination_account_id=draft.destination_account_id,
+        ),
+    )
+    return operation.id
+
+
 def post_scheduled_operation(session: Session, draft: ScheduledOperationDraft) -> UUID:
     """Post one occurrence through Operations inside the caller's transaction."""
     operation = create_operation(
@@ -111,6 +136,7 @@ __all__ = [
     "InsufficientBalanceError",
     "OperationHistoryReference",
     "OperationType",
+    "PhysicalTransferDraft",
     "ScheduledOperationDraft",
     "account_balance",
     "account_balances",
@@ -118,5 +144,6 @@ __all__ = [
     "category_has_history",
     "operation_history_references",
     "post_initial_balance",
+    "post_physical_transfer",
     "post_scheduled_operation",
 ]

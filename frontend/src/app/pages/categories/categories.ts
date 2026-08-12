@@ -36,10 +36,17 @@ export class CategoriesPage implements OnInit {
 
   protected readonly categories = signal<Category[]>([]);
   protected readonly roots = computed(() => this.categories().filter((item) => !item.parent_id));
+  protected readonly incomeRoots = computed(() =>
+    this.roots().filter((item) => item.type === 'income'),
+  );
+  protected readonly expenseRoots = computed(() =>
+    this.roots().filter((item) => item.type === 'expense'),
+  );
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly editingId = signal<string | null>(null);
+  protected readonly formOpen = signal(false);
   protected readonly form = this.builder.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
     type: this.builder.control<CategoryType>('expense', Validators.required),
@@ -110,12 +117,20 @@ export class CategoriesPage implements OnInit {
     if (this.children(category.id).length > 0) {
       this.form.controls.parentId.disable();
     }
+    this.formOpen.set(true);
+  }
+
+  protected openCreate(type: CategoryType = 'expense'): void {
+    this.cancelEdit();
+    this.form.controls.type.setValue(type);
+    this.formOpen.set(true);
   }
 
   protected cancelEdit(): void {
     this.editingId.set(null);
     this.form.reset({ name: '', type: 'expense', description: '', parentId: '' });
     this.form.controls.parentId.enable();
+    this.formOpen.set(false);
   }
 
   protected toggleArchive(category: Category): void {

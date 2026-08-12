@@ -5,6 +5,10 @@
   grid-template-columns: minmax(0, 1.45fr) minmax(18rem, 0.55fr);
 }
 
+.directory-grid.single-column {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .directory-list-panel {
   min-width: 0;
 }

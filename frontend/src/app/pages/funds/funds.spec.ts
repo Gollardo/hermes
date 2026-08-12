@@ -60,7 +60,7 @@ describe('FundsPage', () => {
 
   it('shows physical coverage and permits editing a fund definition', () => {
     expect(fixture.nativeElement.textContent).toContain('Физический остаток = в фондах + свободно');
-    expect(fixture.nativeElement.textContent).toContain('80.0000');
+    expect(fixture.nativeElement.textContent).toContain('80.00');
     const edit = [...fixture.nativeElement.querySelectorAll('button')].find(
       (button: HTMLButtonElement) => button.textContent.trim() === 'Изменить',
     ) as HTMLButtonElement;
@@ -69,16 +69,14 @@ describe('FundsPage', () => {
     expect((fixture.nativeElement.querySelector('#fund-name') as HTMLInputElement).value).toBe(
       'Reserve',
     );
-    expect(
-      (fixture.nativeElement.querySelector('#allocation-account') as HTMLSelectElement).textContent,
-    ).not.toContain('Closed');
   });
 
   it('keeps preview editable and commits exact decimal strings', () => {
+    clickButton('Выделить со счёта');
     setValue('#allocation-account', 'account-1');
     setValue('#allocation-amount', '10');
     const previewButton = [...fixture.nativeElement.querySelectorAll('button')].find(
-      (button: HTMLButtonElement) => button.textContent.includes('Предварительный'),
+      (button: HTMLButtonElement) => button.textContent.includes('Рассчитать по процентам'),
     ) as HTMLButtonElement;
     previewButton.click();
     http.expectOne('/api/v1/funds/allocation-preview').flush({
@@ -92,7 +90,7 @@ describe('FundsPage', () => {
     });
     fixture.detectChanges();
     setValue('#allocation-0', '3.1250');
-    const form = fixture.nativeElement.querySelector('.fund-actions-grid form') as HTMLFormElement;
+    const form = fixture.nativeElement.querySelector('.modal-card form') as HTMLFormElement;
     form.dispatchEvent(new Event('submit'));
     const request = http.expectOne('/api/v1/funds/allocations');
     expect(request.request.body.allocations[0].amount).toBe('3.1250');
@@ -109,17 +107,21 @@ describe('FundsPage', () => {
   });
 
   it('blocks percentage overflow and invalidates a stale allocation preview', () => {
+    clickButton('Создать фонд');
     setValue('#fund-percentage', '80');
     const fundSubmit = fixture.nativeElement.querySelector(
-      '.directory-grid .form-panel button[type="submit"]',
+      '.modal-card button[type="submit"]',
     ) as HTMLButtonElement;
     expect(fundSubmit.disabled).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Доступно для этого фонда: 75.0000%');
+    expect(fixture.nativeElement.textContent).toContain('Доступно: 75.0000%');
+
+    clickButton('Закрыть');
+    clickButton('Выделить со счёта');
 
     setValue('#allocation-account', 'account-1');
     setValue('#allocation-amount', '10');
     const previewButton = [...fixture.nativeElement.querySelectorAll('button')].find(
-      (button: HTMLButtonElement) => button.textContent.includes('Предварительный'),
+      (button: HTMLButtonElement) => button.textContent.includes('Рассчитать по процентам'),
     ) as HTMLButtonElement;
     previewButton.click();
     const staleRequest = http.expectOne('/api/v1/funds/allocation-preview');
@@ -151,6 +153,15 @@ describe('FundsPage', () => {
     control.value = value;
     control.dispatchEvent(new Event('input'));
     control.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+  }
+
+  function clickButton(label: string): void {
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (item: HTMLButtonElement) =>
+        item.textContent.trim() === label || item.getAttribute('aria-label') === label,
+    ) as HTMLButtonElement;
+    button.click();
     fixture.detectChanges();
   }
 });

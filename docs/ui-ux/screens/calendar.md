@@ -16,15 +16,14 @@ monthly context, an action-oriented upcoming list and recurring-rule management.
 1. Explanation that expected events do not affect actual balances.
 2. Month navigation and visible account/type filters.
 3. Seven-column monthly grid with status/type summaries.
-4. Upcoming and overdue occurrences with confirm, date-specific postpone and
-   cancel actions.
+4. Only today's and overdue actionable occurrences with confirm, date-specific
+   postpone and cancel actions; future items remain in the calendar grid.
 5. Rule list and create/edit form.
 
 The calendar uses an internally scrollable grid on narrow screens instead of
-expanding the document. The upcoming list becomes the primary mobile action
-surface and is placed before the dense monthly grid. The first 12 actionable
-events are shown with an explicit full-result count instead of looking like a
-complete unpaginated list.
+expanding the document. The attention list becomes the primary mobile action
+surface and is placed before the dense monthly grid. It never includes future
+events merely because they are within the next 30 days.
 
 ## States and actions
 

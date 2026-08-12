@@ -8,6 +8,8 @@ from app.modules.funds.schemas import (
     FundMovementResponse,
     FundSummaryResponse,
     RedistributionCreateRequest,
+    TransferAllocationCreateRequest,
+    TransferAllocationResponse,
 )
 from app.modules.funds.service import (
     FundArchivedMutationError,
@@ -41,6 +43,8 @@ __all__ = [
     "FundMovementResponse",
     "FundSummaryResponse",
     "RedistributionCreateRequest",
+    "TransferAllocationCreateRequest",
+    "TransferAllocationResponse",
     "account_has_fund_history",
     "allocation_preview_with_free_balance",
     "create_allocation_with_free_balance",

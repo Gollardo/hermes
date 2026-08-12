@@ -4,6 +4,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
+import { MoneyPipe } from '../../shared/money.pipe';
 
 type AccountType = 'cash' | 'debit' | 'savings';
 
@@ -18,7 +19,7 @@ interface Account {
 
 @Component({
   selector: 'app-accounts-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, MoneyPipe],
   templateUrl: './accounts.html',
   styleUrl: './accounts.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,6 +33,7 @@ export class AccountsPage implements OnInit {
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly editingId = signal<string | null>(null);
+  protected readonly formOpen = signal(false);
   protected readonly form = this.builder.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
     type: this.builder.control<AccountType>('cash', Validators.required),
@@ -81,12 +83,19 @@ export class AccountsPage implements OnInit {
       initialBalance: '0',
     });
     this.form.controls.initialBalance.disable();
+    this.formOpen.set(true);
+  }
+
+  protected openCreate(): void {
+    this.cancelEdit();
+    this.formOpen.set(true);
   }
 
   protected cancelEdit(): void {
     this.editingId.set(null);
     this.form.reset({ name: '', type: 'cash', description: '', initialBalance: '0' });
     this.form.controls.initialBalance.enable();
+    this.formOpen.set(false);
   }
 
   protected accountTypeLabel(type: AccountType): string {

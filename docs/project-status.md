@@ -30,6 +30,11 @@
   адаптивная shell-навигация, обзор, счета, категории, настройки и системные
   состояния и журнал используют общую иерархию поверхностей и действий. Фонды
   и прогноз представлены рабочими вертикальными сценариями.
+- Owner feedback 2026-08-12 реализован как UX-stabilization: sidebar можно
+  скрыть с сохранением выбора, entity composers открываются modal-слоями,
+  суммы имеют единый формат с группировкой тысяч, категории разделены на
+  доходы/расходы, а обзор показывает фактическую краткую сводку вместо
+  onboarding/release-карточек.
 - Для доходов и расходов подтверждены обязательная категория, дата
   финансового факта без времени, серийный ручной ввод и отсутствие отдельного
   payee в MVP. Posting model отдельно проверена и описана в ADR 0001; её
@@ -172,6 +177,9 @@
 - CRUD fund-linked операции заменяет оба журнала в одной транзакции и повторно
   проверяет coverage и non-negative positions.
 - История объединяет allocations, redistributions, expenses и transfers.
+- Экран явно различает выделение свободных денег, перенос уже существующего
+  назначения без физического движения и атомарный физический перевод с
+  последующим процентным распределением на счёте назначения.
 - ADR 0002 отдельно фиксирует posting model, lock order, rounding и archive policy.
 
 ### Recurring rules and calendar
@@ -187,8 +195,8 @@
   просроченные экземпляры не исчезают.
 - Подтверждение создаёт ровно одну фактическую операцию и записывает связь в той
   же транзакции. Перенос и отмена не создают физических движений.
-- Календарь показывает месяц, ближайшие 30 дней, overdue, фильтры по счёту и
-  типу, а также быстрые confirm/postpone/cancel действия.
+- Календарь показывает месяц, фильтры по счёту и типу, а также быстрые
+  confirm/postpone/cancel действия только для событий текущего дня и overdue.
 - Месячная сетка загружает все страницы ограниченного диапазона; список действий
   честно показывает первые 12 и полный размер выборки. Подтверждённый экземпляр
   открывает точную связанную операцию, а mobile сначала показывает action list.
@@ -217,6 +225,8 @@
   переходом в календарь.
 - Экран отличает фактическую стартовую точку от плана, не сглаживает линию между
   событиями и раскрывает opening, change, closing и исходные события каждой даты.
+- Оси графика подписаны суммой/валютой и датой; крайние значения и даты видимы,
+  а перегружающая длинный горизонт лента сумм удалена.
 - Forecasting — read-only модуль без таблиц и фоновой materialization; новая
   миграция для beta.2 не добавлялась.
 - Forecast snapshot берёт shared locks на ожидаемые экземпляры и account
@@ -229,9 +239,11 @@
 
 ## Verification snapshot
 
-- `rc.1`: 84 backend-сценария (47 non-PostgreSQL passed, 37 skipped без opt-in;
-  PostgreSQL integration 38/38 passed), 36 frontend-тестов passed,
-  lint/format/typecheck/docs passed.
+- `rc.1`: 85 backend-сценариев (47 non-PostgreSQL passed, 38 skipped без opt-in);
+  focused PostgreSQL funds integration 9/9 passed, включая атомарный
+  transfer-and-allocation и его rollback. Предыдущий полный PostgreSQL snapshot
+  38/38 остаётся базовой проверкой остальных интеграционных сценариев.
+  Frontend: 39/39 тестов passed; lint/format/typecheck/docs passed.
 - Полный `npm audit` после совместимых security patch overrides для build-only
   `hono` и `nanoid` сообщает 0 известных advisories; production dependency graph
   также чист.
@@ -261,7 +273,7 @@
   upgrade и beta.1 downgrade; полный backup round trip на clean initialized
   target, rollback invalid restore, rate-limited re-authentication, other-session
   revocation и 50 MiB request limit.
-- Frontend Vitest: 36 тестов для access shell, session expiry, setup, settings,
+- Frontend Vitest: 39 тестов для access shell, session expiry, setup, settings,
   health UI, счетов, категорий и журнала, включая timezone default, expected-balance
   adjustment, archived edit reference, transfer direction, loading continuity,
   точный manual allocation preview, invalidation устаревшего preview, процентный
@@ -271,7 +283,9 @@
   exact-operation link; forecast risk/explanation, account/horizon switches,
   stale-loading, event-free state и календарную шкалу X.
   Settings дополнительно проверяет preview, полную replacement summary, точную
-  destructive phrase, restore payload и очистку пароля после ошибки.
+  destructive phrase, restore payload и очистку пароля после ошибки. Новые
+  проверки фиксируют disabled setup action при невалидном/несовпадающем пароле,
+  сохранение состояния скрытого sidebar и точный строковый формат денежных сумм.
 
 - Beta.1 calendar flow проверен в браузере на desktop и mobile: все пункты
   narrow-навигации видимы, action list предшествует календарной сетке, статусы
@@ -281,14 +295,23 @@
 - `alembic check` не обнаруживает drift между model metadata и схемой head;
   migration env явно загружает Operations, Funds и Scheduling indexes/constraints.
 - Production Angular rc.1 build и production Docker image build проходят;
-  `npm ci` внутри образа сообщает 0 vulnerabilities. Остаётся прежнее warning
-  превышения `anyComponentStyle` budget общим `directory.css` (5.27 KiB при
-  пороге 4 KiB).
+  `npm ci` внутри образа сообщает 0 vulnerabilities. Angular build предупреждает
+  о превышении `anyComponentStyle` budget общим `directory.css` (5.34 KiB),
+  `app.css` (4.25 KiB) и `forecast.css` (4.03 KiB) при пороге 4 KiB; это не
+  блокирует сборку, но требует последующей декомпозиции общих стилей.
 - Production-like Compose e2e на отдельном clean volume: setup → authenticated
   shell → settings update → logout → login; browser console без ошибок.
 - Settings/backup flow повторно проверен screenshot-аудитом на 1440 px и 390 px:
   release label согласован с rc.1, horizontal overflow отсутствует, destructive
   flow раскрывается только после валидного preview, статусы имеют текст и ARIA role.
+- UX-stabilization 2026-08-12 проверена в production-like Compose через браузер:
+  setup action действительно заблокирован до совпадения валидных паролей; sidebar
+  скрывается и восстанавливается; composers счетов, операций, категорий и фондов
+  отсутствуют в исходном layout и открываются dialog-слоем; суммы отображаются как
+  `100 000.00`; категории разделены на доходы/расходы; overview показывает
+  фактические итоги. Сценарий `4 000.00` между счетами при доле фонда 25% атомарно
+  дал `1 000.00` нового назначения. Годовой forecast сохранил layout, показывает
+  оси «Сумма · RUB»/«Дата» и не содержит прежней нижней ленты сумм.
 
 ## Release assumptions and technical debt
 
