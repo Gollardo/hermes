@@ -90,15 +90,38 @@
     <section class="panel chart-panel" aria-labelledby="chart-title">
       <div class="panel-heading">
         <div>
-          <p class="section-label">Закрытие дня</p>
+          <p class="section-label">
+            {{ value.granularity === 'month' ? 'Закрытие месяца' : 'Закрытие дня' }}
+          </p>
           <h2 id="chart-title">{{ value.account_name || 'Все счета' }}</h2>
           <p>
-            Линия соединяет только рассчитанные дневные точки; промежуточные значения не
-            моделируются.
+            {{
+              value.granularity === 'month'
+                ? 'Каждая точка объединяет события месяца и показывает баланс на конец интервала.'
+                : 'Каждая календарная дата показана отдельной точкой с балансом на конец дня.'
+            }}
           </p>
         </div>
-        <span class="status-pill">Факт → прогноз по плану</span>
+        <div class="chart-options">
+          <span class="status-pill">{{ granularityLabel() }}</span>
+          <button
+            type="button"
+            class="secondary trend-toggle"
+            [class.active]="trendEnabled()"
+            [attr.aria-pressed]="trendEnabled()"
+            (click)="toggleTrend()"
+          >
+            {{ trendEnabled() ? 'Скрыть тренд' : 'Показать тренд' }}
+          </button>
+        </div>
       </div>
+      @if (trendEnabled() && trendLine(); as trend) {
+        <p class="trend-summary" role="status">
+          Тренд закрывающего баланса:
+          <strong>{{ signed(trend.changePerPeriod) | money }} {{ baseCurrency() }}</strong> за
+          {{ trendPeriodLabel() }}. Это линия общей тенденции, а не отдельный прогноз.
+        </p>
+      }
       @if (!hasFutureEvents()) {
         <p class="no-events-note" role="status">
           Нет известных ожидаемых событий в выбранном периоде. Горизонтальная линия означает только
@@ -108,44 +131,77 @@
       <div class="chart-frame">
         <div class="y-axis-title">Сумма · {{ baseCurrency() }}</div>
         <div class="y-axis-scale" aria-hidden="true">
-          <span>{{ chartMaximum() | money }}</span>
-          <span>{{ chartMinimum() | money }}</span>
+          @for (tick of yTicks(); track tick.y) {
+            <span>{{ tick.value | money }}</span>
+          }
         </div>
         <div class="chart-scroll">
-          <svg
-            class="forecast-chart"
-            viewBox="0 0 100 100"
-            role="img"
-            [attr.aria-label]="'Прогноз с ' + value.from_on + ' по ' + value.through_on"
-          >
-            @if (zeroY() !== null) {
-              <line class="zero-line" x1="2" [attr.y1]="zeroY()" x2="98" [attr.y2]="zeroY()" />
-            }
-            <polyline class="forecast-line" [attr.points]="plotLine()" />
-            @for (point of plot(); track $index; let first = $first) {
-              <circle
-                [class.fact-point]="first"
+          <div class="chart-canvas" [style.min-width.rem]="chartMinWidth()">
+            <svg
+              class="forecast-chart"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              role="img"
+              [attr.aria-label]="'Прогноз с ' + value.from_on + ' по ' + value.through_on"
+            >
+              @for (tick of yTicks(); track tick.y) {
+                <line class="grid-line" x1="14" [attr.y1]="tick.y" x2="96" [attr.y2]="tick.y" />
+              }
+              @if (zeroY() !== null) {
+                <line class="zero-line" x1="14" [attr.y1]="zeroY()" x2="96" [attr.y2]="zeroY()" />
+              }
+              @if (trendEnabled() && trendLine(); as trend) {
+                <polyline class="trend-line" [attr.points]="trend.points" />
+              }
+              <polyline class="forecast-line" [attr.points]="plotLine()" />
+            </svg>
+            @for (point of plot(); track point.on; let index = $index; let first = $first) {
+              <button
+                type="button"
+                class="chart-point"
+                [class.start-point]="first"
+                [class.event-point]="point.events.length > 0"
+                [class.selected-point]="selectedPointIndex() === index"
                 [class.risk-point]="isNegative(point.closing_balance)"
-                [attr.cx]="point.x"
-                [attr.cy]="point.y"
-                r="1.8"
-              >
-                tabindex="0" role="button" [attr.aria-label]="point.on + ': ' +
-                point.closing_balance + ' ' + baseCurrency()" (click)="selectPoint($index)"
-                (keydown.enter)="selectPoint($index)" >
-                <title>
-                  {{ point.on }}: начало {{ point.opening_balance | money }}, изменение
-                  {{ point.change | money }}, итог {{ point.closing_balance | money }}
-                  {{ baseCurrency() }}
-                </title>
-              </circle>
+                [style.left.%]="point.x"
+                [style.top.%]="point.y"
+                [attr.aria-label]="
+                  periodLabel(point) + ': баланс ' + point.closing_balance + ' ' + baseCurrency()
+                "
+                (mouseenter)="showPoint(index)"
+                (mouseleave)="hidePoint(index)"
+                (focus)="showPoint(index)"
+                (blur)="hidePoint(index)"
+                (click)="selectPoint(index)"
+              ></button>
             }
-          </svg>
+            @if (hoveredPoint(); as point) {
+              <div
+                class="chart-tooltip"
+                [class.below]="tooltipBelow(point)"
+                role="status"
+                [style.left.%]="point.x"
+                [style.top.%]="point.y"
+              >
+                <span>{{ periodLabel(point) }}</span>
+                <strong>{{ point.closing_balance | money }} {{ baseCurrency() }}</strong>
+                <small>
+                  {{ signed(point.change) | money }} за
+                  {{ value.granularity === 'month' ? 'интервал' : 'день' }} · событий:
+                  {{ point.events.length }}
+                </small>
+              </div>
+            }
+            <div class="chart-date-ticks" aria-hidden="true">
+              @for (tick of dateTicks(); track tick.x) {
+                <span [style.left.%]="tick.x">{{ tick.label }}</span>
+              }
+            </div>
+          </div>
         </div>
       </div>
       <div class="x-axis" aria-label="Ось даты">
-        <span>{{ value.from_on }}</span
-        ><strong>Дата</strong><span>{{ value.through_on }}</span>
+        <strong>Дата</strong>
       </div>
     </section>
 
@@ -154,7 +210,7 @@
         <div class="panel-heading">
           <div>
             <p class="section-label">Почему изменился прогноз</p>
-            <h2 id="explanation-title">{{ point.on }}</h2>
+            <h2 id="explanation-title">{{ periodLabel(point) }}</h2>
             <p>
               {{ point.opening_balance | money }} → {{ point.closing_balance | money }}
               {{ baseCurrency() }}

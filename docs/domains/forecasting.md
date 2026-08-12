@@ -31,6 +31,14 @@ post expected operations. See the [forecast diagram](../architecture/data-flow.m
 - Events are ordered by `(due_on, occurrence_id)`, grouped by date, and applied
   as one deterministic daily closing balance. The minimum and first negative
   date use these closing balances, not an invented intraday order.
+- Week, month, quarter and half-year responses contain one closing point for
+  every calendar date in the inclusive horizon, including dates without
+  events. A year response uses monthly intervals: the first and last may be
+  partial months, while intermediate points close on calendar month-end.
+- Monthly display aggregation does not reduce risk accuracy: minimum balance
+  and first negative date are still calculated from ordered daily event
+  closings before the response is grouped into month points. Every source event
+  remains attached to its monthly interval for explanation.
 - A single-account transfer is outgoing on its source and incoming on its
   destination. An internal transfer has zero effect on the all-accounts balance,
   but remains in the explanation for that date.
@@ -57,8 +65,9 @@ post expected operations. See the [forecast diagram](../architecture/data-flow.m
 
 - Performance and snapshot strategy once data volume is measurable.
 - The consistent read currently holds shared locks for the request and returns
-  every explaining event. Large schedules may require a versioned read
-  projection or another snapshot strategy that preserves explanations.
+  every explaining event plus up to one point per day for a half-year horizon.
+  Large schedules may require a versioned read projection or another snapshot
+  strategy that preserves explanations.
 - Whether future multi-currency accounts require separate series or explicit FX
   scenarios; implicit conversion remains prohibited.
 - Whether liabilities and debts join the projection after those domains exist.

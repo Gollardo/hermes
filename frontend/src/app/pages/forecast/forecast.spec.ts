@@ -10,6 +10,7 @@ const FORECAST = {
   account_id: null,
   account_name: null,
   horizon: 'month',
+  granularity: 'day',
   from_on: '2026-08-12',
   through_on: '2026-09-12',
   starting_balance: '100.0000',
@@ -22,6 +23,7 @@ const FORECAST = {
   overdue_excluded_count: 1,
   points: [
     {
+      period_from: '2026-08-12',
       on: '2026-08-12',
       opening_balance: '100.0000',
       change: '0',
@@ -29,6 +31,7 @@ const FORECAST = {
       events: [],
     },
     {
+      period_from: '2026-08-20',
       on: '2026-08-20',
       opening_balance: '100.0000',
       change: '-120.0000',
@@ -48,6 +51,7 @@ const FORECAST = {
       ],
     },
     {
+      period_from: '2026-09-12',
       on: '2026-09-12',
       opening_balance: '-20.0000',
       change: '0',
@@ -156,6 +160,38 @@ describe('ForecastPage', () => {
           request.params.get('account_id') === 'account-1',
       )
       .flush({ ...FORECAST, horizon: 'quarter' });
+  });
+
+  it('shows an exact point tooltip on hover and an optional trend line', () => {
+    flushInitial();
+    http.expectOne('/api/v1/forecast?horizon=month').flush(FORECAST);
+    fixture.detectChanges();
+
+    const points = fixture.nativeElement.querySelectorAll('.chart-point');
+    points[1].dispatchEvent(new Event('mouseenter'));
+    fixture.detectChanges();
+    const tooltip = fixture.nativeElement.querySelector('.chart-tooltip');
+    expect(tooltip.textContent).toContain('2026-08-20');
+    expect(tooltip.textContent).toContain('-20.00 RUB');
+
+    const trend = fixture.nativeElement.querySelector('.trend-toggle') as HTMLButtonElement;
+    expect(fixture.nativeElement.querySelector('.trend-line')).toBeNull();
+    trend.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.trend-line')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('линия общей тенденции');
+  });
+
+  it('opens the tooltip below points near the top edge', () => {
+    flushInitial();
+    http.expectOne('/api/v1/forecast?horizon=month').flush(FORECAST);
+    fixture.detectChanges();
+
+    const highestPoint = fixture.nativeElement.querySelector('.chart-point') as HTMLButtonElement;
+    highestPoint.dispatchEvent(new Event('mouseenter'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.chart-tooltip.below')).not.toBeNull();
   });
 
   function flushInitial(): void {

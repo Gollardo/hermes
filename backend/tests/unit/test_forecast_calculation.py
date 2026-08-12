@@ -76,6 +76,13 @@ def test_account_forecast_is_exact_deterministic_and_explained() -> None:
     assert first.first_negative_on == date(2026, 8, 14)
     assert first.expected_income == "10.0000"
     assert first.expected_expense == "120.0000"
+    assert first.granularity == "day"
+    assert len(first.points) == 8
+    assert [point.on for point in first.points[:3]] == [
+        date(2026, 8, 12),
+        date(2026, 8, 13),
+        date(2026, 8, 14),
+    ]
     assert first.points[1].opening_balance == "100.0000"
     assert first.points[1].change == "-30.0000"
     assert [item.effect for item in first.points[1].events] == ["10.0000", "-40.0000"]
@@ -176,3 +183,29 @@ def test_invalid_account_scope_is_rejected() -> None:
             account_id=TARGET,
             horizon=ForecastHorizon.WEEK,
         )
+
+
+def test_year_forecast_uses_monthly_periods_and_keeps_event_details() -> None:
+    result = calculate_forecast(
+        today=TODAY,
+        through_on=date(2027, 8, 12),
+        balances={SOURCE: Decimal("100.0000")},
+        account_name_by_id={SOURCE: "Main"},
+        events=[
+            event(1, due_on=date(2026, 8, 13), type=OperationType.INCOME, amount="20.0000"),
+            event(2, due_on=date(2026, 8, 20), type=OperationType.EXPENSE, amount="5.0000"),
+            event(3, due_on=date(2026, 9, 1), type=OperationType.EXPENSE, amount="10.0000"),
+        ],
+        account_id=SOURCE,
+        horizon=ForecastHorizon.YEAR,
+    )
+
+    assert result.granularity == "month"
+    assert len(result.points) == 13
+    assert result.points[0].period_from == TODAY
+    assert result.points[0].on == date(2026, 8, 31)
+    assert result.points[0].change == "15.0000"
+    assert len(result.points[0].events) == 2
+    assert result.points[1].period_from == date(2026, 9, 1)
+    assert result.points[1].on == date(2026, 9, 30)
+    assert result.points[-1].on == date(2027, 8, 12)

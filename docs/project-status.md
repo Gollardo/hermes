@@ -227,6 +227,11 @@
   событиями и раскрывает opening, change, closing и исходные события каждой даты.
 - Оси графика подписаны суммой/валютой и датой; крайние значения и даты видимы,
   а перегружающая длинный горизонт лента сумм удалена.
+- До полугода API и экран дают ежедневные closing points; год агрегируется по
+  месячным интервалам без потери исходных событий и точности daily risk checks.
+  Каждая точка имеет hover/focus tooltip с точным балансом, клик раскрывает её
+  события, а отдельно включаемая пунктирная regression-линия показывает тренд
+  и среднее изменение за период, не выдавая его за расчётный прогноз.
 - Forecasting — read-only модуль без таблиц и фоновой materialization; новая
   миграция для beta.2 не добавлялась.
 - Forecast snapshot берёт shared locks на ожидаемые экземпляры и account
@@ -239,11 +244,12 @@
 
 ## Verification snapshot
 
-- `rc.1`: 85 backend-сценариев (47 non-PostgreSQL passed, 38 skipped без opt-in);
+- `rc.1`: 86 backend-сценариев (48 non-PostgreSQL passed, 38 skipped без opt-in);
   focused PostgreSQL funds integration 9/9 passed, включая атомарный
-  transfer-and-allocation и его rollback. Предыдущий полный PostgreSQL snapshot
+  transfer-and-allocation и его rollback; focused forecasting integration 2/2
+  passed с обновлённым series contract. Предыдущий полный PostgreSQL snapshot
   38/38 остаётся базовой проверкой остальных интеграционных сценариев.
-  Frontend: 39/39 тестов passed; lint/format/typecheck/docs passed.
+  Frontend: 41/41 тест passed; lint/format/typecheck/docs passed.
 - Полный `npm audit` после совместимых security patch overrides для build-only
   `hono` и `nanoid` сообщает 0 известных advisories; production dependency graph
   также чист.
@@ -273,7 +279,7 @@
   upgrade и beta.1 downgrade; полный backup round trip на clean initialized
   target, rollback invalid restore, rate-limited re-authentication, other-session
   revocation и 50 MiB request limit.
-- Frontend Vitest: 39 тестов для access shell, session expiry, setup, settings,
+- Frontend Vitest: 41 тест для access shell, session expiry, setup, settings,
   health UI, счетов, категорий и журнала, включая timezone default, expected-balance
   adjustment, archived edit reference, transfer direction, loading continuity,
   точный manual allocation preview, invalidation устаревшего preview, процентный
@@ -297,7 +303,7 @@
 - Production Angular rc.1 build и production Docker image build проходят;
   `npm ci` внутри образа сообщает 0 vulnerabilities. Angular build предупреждает
   о превышении `anyComponentStyle` budget общим `directory.css` (5.34 KiB),
-  `app.css` (4.25 KiB) и `forecast.css` (4.03 KiB) при пороге 4 KiB; это не
+  `app.css` (4.25 KiB) и `forecast.css` (5.65 KiB) при пороге 4 KiB; это не
   блокирует сборку, но требует последующей декомпозиции общих стилей.
 - Production-like Compose e2e на отдельном clean volume: setup → authenticated
   shell → settings update → logout → login; browser console без ошибок.
@@ -312,6 +318,13 @@
   фактические итоги. Сценарий `4 000.00` между счетами при доле фонда 25% атомарно
   дал `1 000.00` нового назначения. Годовой forecast сохранил layout, показывает
   оси «Сумма · RUB»/«Дата» и не содержит прежней нижней ленты сумм.
+- Детализированный forecast повторно проверен в production-like Compose:
+  календарный месяц дал 32 daily points, полугодие — 185 daily points с
+  горизонтальной прокруткой, год — 13 monthly intervals. Hover/focus tooltip
+  показывает точный баланс/изменение/число событий, клик раскрывает состав
+  интервала, trend toggle добавляет отличимую пунктирную линию и подписанное
+  среднее изменение. Верхняя зона графика имеет увеличенный запас, а tooltip
+  автоматически меняет направление и не обрезается; browser console без ошибок.
 
 ## Release assumptions and technical debt
 

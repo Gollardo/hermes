@@ -21,6 +21,11 @@ class ForecastHorizon(StrEnum):
     YEAR = "year"
 
 
+class ForecastGranularity(StrEnum):
+    DAY = "day"
+    MONTH = "month"
+
+
 class ForecastEventResponse(BaseModel):
     occurrence_id: UUID
     rule_id: UUID
@@ -37,6 +42,7 @@ class ForecastEventResponse(BaseModel):
 
 
 class ForecastPointResponse(BaseModel):
+    period_from: date
     on: date
     opening_balance: str
     change: str
@@ -49,6 +55,7 @@ class ForecastResponse(BaseModel):
     account_id: UUID | None
     account_name: str | None
     horizon: ForecastHorizon
+    granularity: ForecastGranularity
     from_on: date
     through_on: date
     starting_balance: str

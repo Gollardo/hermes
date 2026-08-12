@@ -13,6 +13,7 @@ from app.modules.accounts.contracts import (
 )
 from app.modules.forecasting.schemas import (
     ForecastEventResponse,
+    ForecastGranularity,
     ForecastHorizon,
     ForecastPointResponse,
     ForecastResponse,
@@ -99,49 +100,44 @@ def calculate_forecast(
         elif event.type == OperationType.EXPENSE and effect < 0:
             expense += -effect
 
-    current = starting
+    granularity = (
+        ForecastGranularity.MONTH if horizon == ForecastHorizon.YEAR else ForecastGranularity.DAY
+    )
     minimum = starting
     minimum_on = today
     first_negative: date | None = today if starting < 0 else None
-    points = [
-        ForecastPointResponse(
-            on=today,
-            opening_balance=_money(starting),
-            change=_money(Decimal(0)),
-            closing_balance=_money(starting),
-            events=[],
-        )
-    ]
+    risk_balance = starting
     for on in sorted(grouped):
-        opening = current
-        daily_events = grouped[on]
-        change = sum((effect for _, effect in daily_events), Decimal(0))
-        current += change
-        if current < minimum:
-            minimum = current
+        risk_balance += sum((effect for _, effect in grouped[on]), Decimal(0))
+        if risk_balance < minimum:
+            minimum = risk_balance
             minimum_on = on
-        if first_negative is None and current < 0:
+        if first_negative is None and risk_balance < 0:
             first_negative = on
+
+    current = starting
+    points: list[ForecastPointResponse] = []
+    for period_from, on in _forecast_periods(today, through_on, granularity):
+        opening = current
+        period_events = [
+            item
+            for event_on in sorted(grouped)
+            if period_from <= event_on <= on
+            for item in grouped[event_on]
+        ]
+        change = sum((effect for _, effect in period_events), Decimal(0))
+        current += change
         points.append(
             ForecastPointResponse(
+                period_from=period_from,
                 on=on,
                 opening_balance=_money(opening),
                 change=_money(change),
                 closing_balance=_money(current),
                 events=[
                     _event_response(event, effect, account_name_by_id)
-                    for event, effect in daily_events
+                    for event, effect in period_events
                 ],
-            )
-        )
-    if points[-1].on != through_on:
-        points.append(
-            ForecastPointResponse(
-                on=through_on,
-                opening_balance=_money(current),
-                change=_money(Decimal(0)),
-                closing_balance=_money(current),
-                events=[],
             )
         )
     return ForecastResponse(
@@ -149,6 +145,7 @@ def calculate_forecast(
         account_id=account_id,
         account_name=account_name_by_id.get(account_id) if account_id is not None else None,
         horizon=horizon,
+        granularity=granularity,
         from_on=today,
         through_on=through_on,
         starting_balance=_money(starting),
@@ -161,6 +158,24 @@ def calculate_forecast(
         overdue_excluded_count=overdue_excluded_count,
         points=points,
     )
+
+
+def _forecast_periods(
+    from_on: date, through_on: date, granularity: ForecastGranularity
+) -> list[tuple[date, date]]:
+    if granularity == ForecastGranularity.DAY:
+        return [
+            (from_on + timedelta(days=offset), from_on + timedelta(days=offset))
+            for offset in range((through_on - from_on).days + 1)
+        ]
+    periods: list[tuple[date, date]] = []
+    cursor = from_on
+    while cursor <= through_on:
+        month_end = _add_months(cursor.replace(day=1), 1) - timedelta(days=1)
+        period_end = min(month_end, through_on)
+        periods.append((cursor, period_end))
+        cursor = period_end + timedelta(days=1)
+    return periods
 
 
 def build_forecast(

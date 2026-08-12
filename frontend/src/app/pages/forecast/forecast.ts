@@ -17,6 +17,9 @@ import { MoneyPipe } from '../../shared/money.pipe';
 
 type Horizon = 'week' | 'month' | 'quarter' | 'half_year' | 'year';
 type OperationType = 'income' | 'expense' | 'transfer';
+const PLOT_TOP = 18;
+const PLOT_HEIGHT = 60;
+const TOOLTIP_BELOW_THRESHOLD = 30;
 
 interface HorizonOption {
   value: Horizon;
@@ -42,6 +45,7 @@ interface ForecastEvent {
 }
 
 interface ForecastPoint {
+  period_from: string;
   on: string;
   opening_balance: string;
   change: string;
@@ -54,6 +58,7 @@ interface Forecast {
   account_id: string | null;
   account_name: string | null;
   horizon: Horizon;
+  granularity: 'day' | 'month';
   from_on: string;
   through_on: string;
   starting_balance: string;
@@ -74,6 +79,26 @@ interface Settings {
 interface PlotPoint extends ForecastPoint {
   x: number;
   y: number;
+}
+
+interface PlotScale {
+  low: number;
+  high: number;
+}
+
+interface AxisTick {
+  y: number;
+  value: string;
+}
+
+interface DateTick {
+  x: number;
+  label: string;
+}
+
+interface TrendLine {
+  points: string;
+  changePerPeriod: string;
 }
 
 @Component({
@@ -100,6 +125,8 @@ export class ForecastPage implements OnInit {
   protected readonly selectedAccountId = signal('');
   protected readonly selectedHorizon = signal<Horizon>('month');
   protected readonly selectedPointIndex = signal(0);
+  protected readonly hoveredPointIndex = signal<number | null>(null);
+  protected readonly trendEnabled = signal(false);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly hasFutureEvents = computed(
@@ -112,20 +139,35 @@ export class ForecastPage implements OnInit {
     return value.points[this.selectedPointIndex()] ?? value.points[0];
   });
 
+  protected readonly hoveredPoint = computed(() => {
+    const index = this.hoveredPointIndex();
+    return index === null ? null : (this.plot()[index] ?? null);
+  });
+
+  protected readonly chartScale = computed<PlotScale>(() => {
+    const values = (this.forecast()?.points ?? []).map((point) => Number(point.closing_balance));
+    if (!values.length) return { low: 0, high: 1 };
+    const minimum = Math.min(...values);
+    const maximum = Math.max(...values);
+    if (minimum === maximum) {
+      const padding = Math.max(Math.abs(minimum) * 0.05, 1);
+      return { low: minimum - padding, high: maximum + padding };
+    }
+    const padding = (maximum - minimum) * 0.08;
+    return { low: minimum - padding, high: maximum + padding };
+  });
+
   protected readonly plot = computed<PlotPoint[]>(() => {
     const points = this.forecast()?.points ?? [];
     if (!points.length) return [];
-    const values = points.map((point) => Number(point.closing_balance));
-    const low = Math.min(...values, 0);
-    const high = Math.max(...values, 0);
-    const span = high - low || 1;
+    const scale = this.chartScale();
     const from = isoDayNumber(this.forecast()!.from_on);
     const through = isoDayNumber(this.forecast()!.through_on);
     const days = through - from || 1;
     return points.map((point) => ({
       ...point,
       x: points.length === 1 ? 54 : 14 + ((isoDayNumber(point.on) - from) / days) * 82,
-      y: 8 + ((high - Number(point.closing_balance)) / span) * 70,
+      y: plotY(Number(point.closing_balance), scale),
     }));
   });
 
@@ -136,16 +178,56 @@ export class ForecastPage implements OnInit {
   );
 
   protected readonly zeroY = computed(() => {
-    const values = (this.forecast()?.points ?? []).map((point) => Number(point.closing_balance));
-    if (!values.length) return null;
-    const low = Math.min(...values, 0);
-    const high = Math.max(...values, 0);
-    if (low === high) return null;
-    return 8 + (high / (high - low)) * 70;
+    const scale = this.chartScale();
+    return scale.low <= 0 && scale.high >= 0 ? plotY(0, scale) : null;
   });
 
-  protected readonly chartMaximum = computed(() => this.chartExtreme('maximum'));
-  protected readonly chartMinimum = computed(() => this.chartExtreme('minimum'));
+  protected readonly yTicks = computed<AxisTick[]>(() => {
+    const scale = this.chartScale();
+    return Array.from({ length: 5 }, (_, index) => {
+      const value = scale.high - ((scale.high - scale.low) * index) / 4;
+      return { y: plotY(value, scale), value: approximateMoney(value) };
+    });
+  });
+
+  protected readonly dateTicks = computed<DateTick[]>(() => {
+    const points = this.plot();
+    if (!points.length) return [];
+    const count = Math.min(
+      this.forecast()?.granularity === 'month' ? points.length : 7,
+      points.length,
+    );
+    return uniqueIndexes(count, points.length).map((index) => ({
+      x: points[index].x,
+      label: shortDate(points[index].on, this.forecast()?.granularity ?? 'day'),
+    }));
+  });
+
+  protected readonly chartMinWidth = computed(() => {
+    const count = this.forecast()?.points.length ?? 0;
+    return this.forecast()?.granularity === 'day' ? Math.max(42, count * 0.65) : 42;
+  });
+
+  protected readonly trendLine = computed<TrendLine | null>(() => {
+    const points = this.plot();
+    if (points.length < 2) return null;
+    const values = points.map((point) => Number(point.closing_balance));
+    const meanIndex = (points.length - 1) / 2;
+    const meanValue = values.reduce((total, value) => total + value, 0) / values.length;
+    const denominator = values.reduce(
+      (total, _value, index) => total + (index - meanIndex) ** 2,
+      0,
+    );
+    const slope =
+      values.reduce((total, value, index) => total + (index - meanIndex) * (value - meanValue), 0) /
+      denominator;
+    const intercept = meanValue - slope * meanIndex;
+    const ending = intercept + slope * (points.length - 1);
+    return {
+      points: `${points[0].x},${plotY(intercept, this.chartScale())} ${points.at(-1)!.x},${plotY(ending, this.chartScale())}`,
+      changePerPeriod: approximateMoney(slope),
+    };
+  });
 
   ngOnInit(): void {
     forkJoin({
@@ -182,6 +264,36 @@ export class ForecastPage implements OnInit {
     this.selectedPointIndex.set(index);
   }
 
+  protected showPoint(index: number): void {
+    this.hoveredPointIndex.set(index);
+  }
+
+  protected hidePoint(index: number): void {
+    if (this.hoveredPointIndex() === index) this.hoveredPointIndex.set(null);
+  }
+
+  protected toggleTrend(): void {
+    this.trendEnabled.update((enabled) => !enabled);
+  }
+
+  protected periodLabel(point: ForecastPoint): string {
+    return this.forecast()?.granularity === 'month' && point.period_from !== point.on
+      ? `${point.period_from} — ${point.on}`
+      : point.on;
+  }
+
+  protected granularityLabel(): string {
+    return this.forecast()?.granularity === 'month' ? 'По месяцам' : 'По дням';
+  }
+
+  protected trendPeriodLabel(): string {
+    return this.forecast()?.granularity === 'month' ? 'месяц' : 'день';
+  }
+
+  protected tooltipBelow(point: PlotPoint): boolean {
+    return point.y < TOOLTIP_BELOW_THRESHOLD;
+  }
+
   protected accountLabel(account: Account): string {
     return `${account.name}${account.archived ? ' · в архиве' : ''}`;
   }
@@ -214,27 +326,13 @@ export class ForecastPage implements OnInit {
     return value.startsWith('-') && !/^-0(?:\.0+)?$/.test(value);
   }
 
-  private chartExtreme(kind: 'minimum' | 'maximum'): string {
-    const values = this.forecast()?.points.map((point) => point.closing_balance) ?? [];
-    if (!values.length) return '0';
-    return values.reduce((selected, value) => {
-      const comparison = Number(value) - Number(selected);
-      return kind === 'minimum'
-        ? comparison < 0
-          ? value
-          : selected
-        : comparison > 0
-          ? value
-          : selected;
-    });
-  }
-
   private loadForecast(): void {
     const requestId = ++this.requestId;
     this.loading.set(true);
     this.error.set(null);
     this.forecast.set(null);
     this.selectedPointIndex.set(0);
+    this.hoveredPointIndex.set(null);
     let params = new HttpParams().set('horizon', this.selectedHorizon());
     if (this.selectedAccountId()) params = params.set('account_id', this.selectedAccountId());
     this.http.get<Forecast>(`${environment.apiBaseUrl}/forecast`, { params }).subscribe({
@@ -257,4 +355,28 @@ export class ForecastPage implements OnInit {
 function isoDayNumber(value: string): number {
   const [year, month, day] = value.split('-').map(Number);
   return Date.UTC(year, month - 1, day) / 86_400_000;
+}
+
+function plotY(value: number, scale: PlotScale): number {
+  return PLOT_TOP + ((scale.high - value) / (scale.high - scale.low || 1)) * PLOT_HEIGHT;
+}
+
+function approximateMoney(value: number): string {
+  const normalized = Math.abs(value) < 0.005 ? 0 : value;
+  return normalized.toFixed(2);
+}
+
+function uniqueIndexes(count: number, total: number): number[] {
+  return [
+    ...new Set(
+      Array.from({ length: count }, (_, index) =>
+        Math.round((index * (total - 1)) / Math.max(count - 1, 1)),
+      ),
+    ),
+  ];
+}
+
+function shortDate(value: string, granularity: 'day' | 'month'): string {
+  const [year, month, day] = value.split('-');
+  return granularity === 'month' ? `${month}.${year.slice(2)}` : `${day}.${month}`;
 }
