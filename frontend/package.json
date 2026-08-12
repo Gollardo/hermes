@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-rc.1",
   "scripts": {
     "ng": "ng",
     "start": "ng serve --proxy-config proxy.conf.js",
@@ -39,6 +39,8 @@
   },
   "overrides": {
     "@hono/node-server": "2.0.12",
-    "@modelcontextprotocol/sdk": "1.30.0"
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "hono": "4.12.34",
+    "nanoid": "3.3.17"
   }
 }

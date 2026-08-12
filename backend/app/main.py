@@ -3,6 +3,7 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from fastapi import FastAPI
 
+from app import APP_VERSION
 from app.api.router import create_api_router
 from app.core.config import Settings, get_settings
 from app.core.database import create_database_engine, create_session_factory
@@ -27,7 +28,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     resolved_settings = settings or get_settings()
     application = FastAPI(
         title=resolved_settings.app_name,
-        version="0.1.0-beta.2",
+        version=APP_VERSION,
         lifespan=create_lifespan(resolved_settings),
     )
     application.state.settings = resolved_settings

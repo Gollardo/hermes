@@ -71,6 +71,11 @@ Authentication guards every API except setup, login and health. It does not own
 financial data. Backup may orchestrate all modules, but must not duplicate their
 validation rules.
 
+For schema-level round trips, every owning module exposes a narrow `backup.py`
+persistence surface. It is separate from ordinary runtime contracts: only
+Backup uses it, and the versioned validator enforces the same documented
+invariants before any rows are replaced.
+
 Scheduling validates account/category snapshots and the application timezone
 through those modules' public contracts. It posts confirmed occurrences only
 through the Operations contract and never writes the physical ledger directly.

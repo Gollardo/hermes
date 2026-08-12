@@ -150,6 +150,9 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
       forecast_account_not_found: 'Счёт для прогноза не найден.',
       scheduling_conflict: 'Расписание уже изменено в другой вкладке. Обновите календарь.',
       invalid_occurrence_transition: 'Это действие больше недоступно для ожидаемой операции.',
+      confirmation_invalid: 'Фраза подтверждения не совпадает. Данные не изменены.',
+      backup_too_large: 'Backup превышает допустимый размер 50 МБ.',
+      invalid_backup: 'Backup повреждён, несовместим или нарушает финансовые правила.',
     };
     return localized[detail.code] ?? fallback;
   }

@@ -106,6 +106,95 @@
       </section>
     </div>
 
+    <section class="panel backup-panel" aria-labelledby="backup-title">
+      <div class="panel-heading setting-heading">
+        <span class="setting-icon soft" aria-hidden="true">⇄</span>
+        <div>
+          <p class="section-label">Резервная копия</p>
+          <h2 id="backup-title">Экспорт и восстановление</h2>
+          <p>JSON содержит финансовые данные и настройки, но не пароль и не сессии.</p>
+        </div>
+      </div>
+      <div class="backup-actions">
+        <div>
+          <h3>Создать копию</h3>
+          <p>Скачайте полный проверенный снимок текущих данных.</p>
+          <button type="button" (click)="exportBackup()" [disabled]="backupBusy()">
+            Скачать проверенный backup
+          </button>
+        </div>
+        <div>
+          <h3>Проверить и восстановить</h3>
+          <p>Сначала выберите файл: данные не изменятся до отдельного подтверждения.</p>
+          <label for="backup-file">Выберите JSON-backup</label>
+          <input
+            id="backup-file"
+            type="file"
+            accept="application/json,.json"
+            [disabled]="backupBusy()"
+            (change)="chooseBackup($event)"
+          />
+        </div>
+      </div>
+      @if (backupPreview(); as preview) {
+        <div class="backup-summary" role="status">
+          <strong>Целостность подтверждена</strong>
+          <span>{{ formatTimestamp(preview.exported_at) }} · Hermes {{ preview.app_version }}</span>
+          <span>{{ preview.base_currency }} · {{ preview.timezone }}</span>
+          <span
+            >{{ preview.counts['operations'] }} операций ·
+            {{ preview.counts['account_movements'] }} физических движений</span
+          >
+          <span
+            >{{ preview.counts['accounts'] }} счетов · {{ preview.counts['categories'] }} категорий
+            · {{ preview.counts['funds'] }} фондов</span
+          >
+          <span
+            >{{ preview.counts['fund_events'] }} событий фондов ·
+            {{ preview.counts['fund_movements'] }} виртуальных движений</span
+          >
+          <span
+            >{{ preview.counts['recurring_rules'] }} регулярных правил ·
+            {{ preview.counts['expected_occurrences'] }} ожидаемых операций</span
+          >
+        </div>
+        <form [formGroup]="restoreForm" (ngSubmit)="restoreBackup()" class="restore-form">
+          <p class="form-warning">
+            Будут заменены {{ preview.counts['accounts'] }} счетов,
+            {{ preview.counts['operations'] }} операций, {{ preview.counts['funds'] }} фондов и
+            {{ preview.counts['expected_occurrences'] }} ожидаемых операций. Остальные сессии
+            завершатся. Ошибка откатит всю замену.
+          </p>
+          <label for="restore-confirmation">Введите «ЗАМЕНИТЬ ВСЕ ДАННЫЕ»</label>
+          <input id="restore-confirmation" formControlName="confirmation" autocomplete="off" />
+          <label for="restore-password">Текущий мастер-пароль</label>
+          <input
+            id="restore-password"
+            type="password"
+            formControlName="masterPassword"
+            autocomplete="current-password"
+          />
+          <button
+            type="submit"
+            class="danger"
+            [disabled]="
+              backupBusy() ||
+              restoreForm.controls.confirmation.value !== restoreConfirmation ||
+              restoreForm.controls.masterPassword.invalid
+            "
+          >
+            Восстановить и заменить данные
+          </button>
+        </form>
+      }
+      @if (backupError(); as message) {
+        <p class="form-error" role="alert">{{ message }}</p>
+      }
+      @if (backupSuccess(); as message) {
+        <p class="form-success" role="status">{{ message }}</p>
+      }
+    </section>
+
     <section class="panel danger-zone" aria-labelledby="sessions-title">
       <div class="danger-copy">
         <p class="section-label danger-section-label">Сессии</p>

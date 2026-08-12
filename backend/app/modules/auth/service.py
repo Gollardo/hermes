@@ -165,6 +165,31 @@ def csrf_is_valid(auth_session: AuthSession, csrf_token: str) -> bool:
     return tokens_match(auth_session.csrf_token_hash, csrf_token)
 
 
+def reauthenticate_owner(session: Session, settings: Settings, password: str) -> LoginResult:
+    """Rate-limit and verify a password for a sensitive authenticated action."""
+    now = datetime.now(UTC)
+    throttle = _get_locked_throttle(session)
+    if blocked_seconds := _blocked_seconds(throttle, now):
+        return LoginResult(LoginStatus.BLOCKED, retry_after_seconds=blocked_seconds)
+    owner = session.get(OwnerCredential, 1)
+    if owner is None or not verify_password(owner.password_hash, password):
+        _record_failed_login(throttle, now, settings)
+        blocked_seconds = _blocked_seconds(throttle, now)
+        if blocked_seconds is not None:
+            return LoginResult(LoginStatus.BLOCKED, retry_after_seconds=blocked_seconds)
+        return LoginResult(LoginStatus.INVALID)
+    throttle.failed_count = 0
+    throttle.window_started_at = None
+    throttle.blocked_until = None
+    if password_hash_needs_upgrade(owner.password_hash):
+        owner.password_hash = hash_password(password)
+    return LoginResult(LoginStatus.SUCCESS)
+
+
+def logout_other_sessions(session: Session, auth_session: AuthSession) -> None:
+    session.execute(delete(AuthSession).where(AuthSession.token_hash != auth_session.token_hash))
+
+
 def logout_current(session: Session, auth_session: AuthSession) -> None:
     session.delete(auth_session)
 

@@ -9,6 +9,11 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Versioned full JSON backup schema 1 with canonical SHA-256 integrity,
+  exact-decimal settings, ledger, fund and scheduling state.
+- Settings restore flow with preview, explicit replacement confirmation,
+  destination-owner re-authentication and transactional invariant checks.
+
 - Recurring income, expense and transfer rules with daily, weekly, monthly and
   yearly frequencies, inclusive date bounds and optimistic editing.
 - One-calendar-year idempotent occurrence materialization with persistent
@@ -38,6 +43,18 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 - Migration `0003_accounts_categories` and PostgreSQL/unit/frontend coverage.
 
 ### Changed
+
+- JSON restore now validates complete operation shapes, category trees,
+  scheduling links, physical coverage and per-fund positions before replacement;
+  re-authentication uses the shared throttle and successful restore revokes
+  other sessions.
+- Backup uploads are capped at 50 MiB before JSON parsing, destructive restore
+  requires the exact confirmation phrase, and the settings screen shows the
+  full preview summary and verified export time.
+- Development-only `hono` and `nanoid` transitive dependencies were pinned to
+  patched compatible versions; `npm audit` reports no known advisories.
+- Alembic now commits each historical revision separately so clean upgrades can
+  safely use PostgreSQL enum values introduced by an earlier revision.
 
 - Calendar month reads now consume every bounded API page, while the limited
   upcoming list exposes its complete result count.

@@ -4,8 +4,8 @@ Hermes is an early-stage, single-owner, self-hosted web application for personal
 finance. It is intended for a home server or local computer and keeps its data
 independent of external cloud services.
 
-> **Beta candidate:** `0.1.0-beta.2` adds deterministic future-balance forecasts
-> from ledger balances and actionable expected occurrences.
+> **Release candidate:** `0.1.0-rc.1` adds full versioned JSON backup and
+> transactional restore with domain validation.
 
 ## Current capabilities
 
@@ -25,6 +25,7 @@ independent of external cloud services.
 - idempotent confirmation that atomically links one posted financial operation.
 - per-account and combined balance forecasts with five horizons, risk warnings
   and exact explanations for every changing date.
+- full versioned JSON export, preview and transactional restore.
 
 ## Planned financial capabilities
 

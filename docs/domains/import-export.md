@@ -28,17 +28,45 @@ restored state or no restored changes remain. See the operational
 
 Money in JSON should use decimal strings when needed to avoid loss of precision.
 
+## JSON backup format (schema 1)
+
+`0.1.0-rc.1` implements `hermes-json-backup`, schema version `1`. The envelope
+contains `format`, `schema_version`, `app_version`, `exported_at`, `data` and an
+`integrity` object with a SHA-256 digest of canonical envelope content excluding
+the integrity object itself. Money and percentages are JSON strings with no
+binary floating-point conversion.
+
+The digest detects accidental corruption; it is not a digital signature and
+does not authenticate the file's author. Restore therefore treats every JSON
+file as untrusted, applies strict size/schema/domain validation and still
+requires destination-owner re-authentication.
+
+The data section contains application settings, accounts, categories, financial
+operation headers and physical movements, funds, fund events and virtual
+movements, recurring rules and expected occurrences. Stable identifiers,
+calendar dates, timestamps, archive state and optimistic versions are retained.
+
+Owner credential, password hash, login throttle and sessions are deliberately
+excluded: they are security state of the destination instance, not portable
+financial data. A target must first be initialized, and restore re-authenticates
+the current owner through the shared password throttle and ends other active
+sessions after success. Excluding authentication state is the security-first
+MVP assumption pending owner review; importing it remains outside scope.
+
+Only schema 1 is accepted. Compatibility translation between backup schemas is
+not implicit: a future version must add an explicit, tested reader before it
+claims support.
+
 ## Boundaries
 
-Imports owns staging and mapping, not accounts or ledger tables. Backup
-orchestrates module-owned versioned representations. Neither may bypass current
-domain invariants merely because data came from a file.
+Imports owns staging and mapping, not accounts or ledger tables. Backup owns the
+versioned envelope and validator and orchestrates narrow module-owned backup
+persistence surfaces. Neither may bypass current domain invariants merely
+because data came from a file.
 
 ## Open questions
 
 - CSV dialects, date formats and locale-aware decimal parsing.
-- Excel formats and maximum safe upload size.
+- Excel formats; JSON backup requests are currently limited to 50 MiB.
 - Duplicate fingerprint and conflict-review UX.
-- Whether backups include owner credential/session data; sessions should likely
-  be excluded, but this is not confirmed.
-- Forward/backward schema compatibility, migrations and encryption at rest.
+- Forward/backward schema compatibility beyond exact schema 1 and encryption at rest.

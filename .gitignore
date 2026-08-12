@@ -54,3 +54,4 @@ tmp/
 temp/
 dist/
 build/
+.artifacts/

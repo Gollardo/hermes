@@ -10,9 +10,9 @@
 
 ## Current phase
 
-**0.1.0-beta.2 — прогнозирование остатков реализовано и проверено.**
+**0.1.0-rc.1 — JSON backup/restore реализован; стабилизация продолжается.**
 
-Следующий запланированный этап: **0.1.0-rc.1 — резервное копирование и стабилизация MVP**.
+Следующий шаг: owner acceptance и период ежедневного использования перед `0.1.0`.
 Политики ADR 0001, ADR 0002 и ADR 0003 требуют owner review после реального
 использования.
 
@@ -88,6 +88,18 @@
 - Runtime-параметры сессии, throttling и Secure-cookie доступны через
   `HERMES_*`; development Compose явно использует non-Secure cookie только для
   локального HTTP.
+- Alembic выполняет исторические ревизии отдельными транзакциями: чистый upgrade
+  commit-ит PostgreSQL enum additions до зависящих CHECK constraints.
+
+### Backup and restore
+
+- Settings содержит JSON-export schema 1 с SHA-256 integrity, decimal-строками
+  и идентификаторами всех settings, ledger, fund и scheduling записей.
+- Preview проверяет формат, версию, checksum и ссылки до записи и показывает сводку.
+- Restore требует CSRF, мастер-пароль назначения и точную фразу подтверждения;
+  exclusive locks, одна транзакция и post-write checks исключают частичную замену.
+- Credential, login throttle и sessions не экспортируются; restore проходит
+  через общий throttle, сохраняет текущую сессию и завершает остальные.
 
 ### Accounts and balances
 
@@ -217,8 +229,14 @@
 
 ## Verification snapshot
 
-- Backend suite: 72 теста: 39 unit/non-PostgreSQL и 33 PostgreSQL-dependent
-  scenario; integration target выполняет 34 сценария вместе с health-check.
+- `rc.1`: 84 backend-сценария (47 non-PostgreSQL passed, 37 skipped без opt-in;
+  PostgreSQL integration 38/38 passed), 36 frontend-тестов passed,
+  lint/format/typecheck/docs passed.
+- Полный `npm audit` после совместимых security patch overrides для build-only
+  `hono` и `nanoid` сообщает 0 известных advisories; production dependency graph
+  также чист.
+- Поиск `float` в финансовом backend-коде нашёл только входной rejection guard
+  и docstring о запрете float arithmetic.
 - PostgreSQL scenarios: clean migration/setup, protected API, CSRF/logout/login,
   password/session revocation, expired sessions, sequential and concurrent rate
   limiting, serialized settings currency lock and upgrade initialized data from
@@ -240,8 +258,10 @@
   idempotent confirmation, protected manual edits, overdue preservation,
   concurrent materialization, concurrent confirmation/rule edit, duplicate
   confirmation, scheduling auth/CSRF, injected confirmation rollback, alpha.4
-  upgrade и beta.1 downgrade.
-- Frontend Vitest: 33 теста для access shell, session expiry, setup, settings,
+  upgrade и beta.1 downgrade; полный backup round trip на clean initialized
+  target, rollback invalid restore, rate-limited re-authentication, other-session
+  revocation и 50 MiB request limit.
+- Frontend Vitest: 36 тестов для access shell, session expiry, setup, settings,
   health UI, счетов, категорий и журнала, включая timezone default, expected-balance
   adjustment, archived edit reference, transfer direction, loading continuity,
   точный manual allocation preview, invalidation устаревшего preview, процентный
@@ -250,6 +270,8 @@
   пагинацию месяца, честный upcoming count, archived-reference edit state и
   exact-operation link; forecast risk/explanation, account/horizon switches,
   stale-loading, event-free state и календарную шкалу X.
+  Settings дополнительно проверяет preview, полную replacement summary, точную
+  destructive phrase, restore payload и очистку пароля после ошибки.
 
 - Beta.1 calendar flow проверен в браузере на desktop и mobile: все пункты
   narrow-навигации видимы, action list предшествует календарной сетке, статусы
@@ -258,13 +280,15 @@
 - Ruff, Ruff format, strict mypy, ESLint, Prettier, strict TypeScript и docs check.
 - `alembic check` не обнаруживает drift между model metadata и схемой head;
   migration env явно загружает Operations, Funds и Scheduling indexes/constraints.
-- Production Angular beta.2 build проходит; остаётся прежнее warning превышения
-  `anyComponentStyle` budget общим `directory.css` (5.27 KiB при пороге 4 KiB).
-  Повторная Docker image build была
-  запущена, но Docker Hub frontend resolver завершился внешним
-  `DeadlineExceeded`; локальная компиляция backend/frontend и тесты проходят.
+- Production Angular rc.1 build и production Docker image build проходят;
+  `npm ci` внутри образа сообщает 0 vulnerabilities. Остаётся прежнее warning
+  превышения `anyComponentStyle` budget общим `directory.css` (5.27 KiB при
+  пороге 4 KiB).
 - Production-like Compose e2e на отдельном clean volume: setup → authenticated
   shell → settings update → logout → login; browser console без ошибок.
+- Settings/backup flow повторно проверен screenshot-аудитом на 1440 px и 390 px:
+  release label согласован с rc.1, horizontal overflow отсутствует, destructive
+  flow раскрывается только после валидного preview, статусы имеют текст и ARIA role.
 
 ## Release assumptions and technical debt
 
@@ -299,6 +323,12 @@
 - Advisory lock намеренно сериализует редкие мутации всего category tree; при
   доказанной необходимости высокой write-concurrency потребуется более узкая схема блокировок.
 - HTTPS reverse-proxy configurations и CSP не проверены внешним security audit.
+- Backup schema 1 имеет строгую совместимость и 50 MiB request limit. SHA-256
+  защищает от случайной порчи, но не аутентифицирует источник; шифрование и
+  цифровая подпись backup остаются вне MVP.
+- Frontend lock временно фиксирует patched `hono` и `nanoid` через `overrides`,
+  потому что их уязвимые версии приходят только через Angular build tooling.
+  Overrides нужно пересмотреть после обновления Angular toolchain.
 - Upgrade существующей `0004 → 0005` и schema downgrade `0005 → 0004` проверены.
   Downgrade удаляет фондовые данные, поэтому production rollback требует backup
   и явного принятия потери alpha.4 ledger.
@@ -328,11 +358,12 @@
 - Liabilities, debts и их будущие платежи в прогнозе.
 - Custom recurrence intervals, weekdays, дни 29–31, leap-day policy,
   drag-and-drop, уведомления и background materialization.
-- Импорт CSV/Excel, versioned JSON backup/restore и password recovery.
+- Импорт CSV/Excel, совместимость backup-схем после schema 1 и password recovery.
 - Несколько пользователей, роли, permissions, organizations и tenants.
 - Внешняя инфраструктура, Redis, broker, background workers и cloud identity.
 
 ## Recommended next action
 
-Перейти к `0.1.0-rc.1`: спроектировать версионированный JSON backup/restore и
-проверку целостности, не расширяя forecasting до liabilities или what-if.
+Провести owner acceptance: восстановить реальный backup на отдельном экземпляре
+и начать период ежедневного использования; затем обновить Angular toolchain и
+проверить, можно ли удалить временные dependency overrides.

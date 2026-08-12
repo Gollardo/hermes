@@ -8,6 +8,8 @@ from app.api.routes.settings import write_router as settings_write_router
 from app.modules.auth.dependencies import require_authenticated_session, require_csrf_session
 from app.modules.auth.router import protected_router as protected_auth_router
 from app.modules.auth.router import public_router as public_auth_router
+from app.modules.backup.router import read_router as backup_read_router
+from app.modules.backup.router import write_router as backup_write_router
 from app.modules.categories.router import read_router as categories_read_router
 from app.modules.categories.router import write_router as categories_write_router
 from app.modules.forecasting.router import read_router as forecasting_read_router
@@ -34,6 +36,7 @@ def create_api_router() -> APIRouter:
     protected.include_router(funds_read_router)
     protected.include_router(scheduling_read_router)
     protected.include_router(forecasting_read_router)
+    protected.include_router(backup_read_router)
     protected.include_router(
         settings_write_router,
         dependencies=[Depends(require_csrf_session)],
@@ -56,6 +59,10 @@ def create_api_router() -> APIRouter:
     )
     protected.include_router(
         scheduling_write_router,
+        dependencies=[Depends(require_csrf_session)],
+    )
+    protected.include_router(
+        backup_write_router,
         dependencies=[Depends(require_csrf_session)],
     )
     router.include_router(protected)

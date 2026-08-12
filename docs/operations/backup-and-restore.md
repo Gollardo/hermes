@@ -1,14 +1,27 @@
 # Backup and restore
 
-## Current status
+## Application JSON backup
 
-The owner-confirmed target is a full, versioned JSON export with transactional
-restore. That application feature is **not implemented** in the foundation. Its
-required envelope and open format questions are documented in
-[import and export](../domains/import-export.md).
+Open **Настройки → Экспорт и восстановление** and select **Скачать проверенный
+backup**. Store the JSON file outside the Hermes host, protect it as financial
+data and periodically test it on a separately initialized instance. The file is
+not encrypted by Hermes.
 
-Until then, a PostgreSQL dump is the only complete technical backup. It is
-database-version dependent and is not the promised portable JSON format.
+To restore, initialize the destination instance, sign in, choose the JSON file
+and review the count/currency/timezone summary. Type `ЗАМЕНИТЬ ВСЕ ДАННЫЕ`, enter
+the destination instance's current master password and confirm. Current
+financial and planning data is replaced; the current owner credential and
+current session are retained, while other sessions are ended. A checksum,
+strict schema and references are checked
+before mutation. Table locks, one database transaction and post-write domain
+checks guarantee that a failed restore leaves the old data intact.
+The UI and API reject JSON backup payloads larger than 50 MiB before parsing.
+The SHA-256 digest detects accidental corruption but is not an authenticity
+signature, so only restore files from a trusted source.
+
+Schema 1 restore accepts only `hermes-json-backup`. Keep an old application
+image available when retaining older backup formats; no compatibility beyond
+schema 1 is currently promised.
 
 ## Interim PostgreSQL backup
 
@@ -41,7 +54,7 @@ Then inspect logs and verify `/api/v1/health`. A successful health response does
 not prove financial correctness; future restore verification must include schema
 version and domain-level counts/invariants.
 
-## Required future JSON restore behavior
+## Implemented JSON restore behavior
 
 1. Read and validate `format`, `schema_version`, `app_version` and `exported_at`.
 2. Reject unsupported or malformed input before mutation.
@@ -49,6 +62,5 @@ version and domain-level counts/invariants.
 4. Restore all module state inside one database transaction.
 5. Recheck cross-module invariants and commit once; roll back everything on any
    failure.
-6. Invalidate restored sessions unless a later explicit decision says otherwise.
-
-Step 6 is a security assumption, not yet an owner-approved backup rule.
+6. Preserve the destination credential and current session, import no
+   authentication state and end other sessions after successful replacement.
