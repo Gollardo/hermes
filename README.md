@@ -7,6 +7,16 @@ independent of external cloud services.
 > **Release candidate:** `0.1.0-rc.1` adds full versioned JSON backup and
 > transactional restore with domain validation.
 
+## Project priorities and contributions
+
+Hermes is first and foremost a personal project. Its direction and development
+priorities follow the maintainer's own needs and use of the application.
+
+Issues and pull requests are welcome, but there is no guaranteed response time,
+review schedule or commitment to implement requested features. Contributions
+and suggestions may be considered when they align with the project's direction
+and the maintainer's available time.
+
 ## Current capabilities
 
 - one-time setup with a master password, base currency and IANA timezone;
