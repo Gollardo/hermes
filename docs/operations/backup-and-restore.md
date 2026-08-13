@@ -2,8 +2,8 @@
 
 ## Application JSON backup
 
-Open **Настройки → Экспорт и восстановление** and select **Скачать проверенный
-backup**. Store the JSON file outside the Hermes host, protect it as financial
+Open **Настройки → Экспорт и восстановление** and select **Скачать backup**.
+Store the JSON file outside the Hermes host, protect it as financial
 data and periodically test it on a separately initialized instance. The file is
 not encrypted by Hermes.
 

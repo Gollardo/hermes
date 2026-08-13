@@ -53,6 +53,37 @@ describe('AccountsPage', () => {
     http.expectNone('/api/v1/accounts');
   });
 
+  it('accepts a comma and normalizes the initial balance on blur', () => {
+    fixture.detectChanges();
+    http.expectOne('/api/v1/accounts').flush([]);
+    fixture.detectChanges();
+    clickButton('Добавить счёт');
+    const name = fixture.nativeElement.querySelector('#account-name') as HTMLInputElement;
+    name.value = 'Wallet';
+    name.dispatchEvent(new Event('input'));
+    const balance = fixture.nativeElement.querySelector('#initial-balance') as HTMLInputElement;
+    balance.value = '1000,5';
+    balance.dispatchEvent(new Event('input'));
+    balance.dispatchEvent(new FocusEvent('blur'));
+    fixture.detectChanges();
+    expect(balance.value).toBe('1000.50');
+    fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit'));
+    expect(http.expectOne('/api/v1/accounts').request.body.initial_balance).toBe('1000.50');
+  });
+
+  it('shows a validation error for malformed money after blur', () => {
+    fixture.detectChanges();
+    http.expectOne('/api/v1/accounts').flush([]);
+    fixture.detectChanges();
+    clickButton('Добавить счёт');
+    const balance = fixture.nativeElement.querySelector('#initial-balance') as HTMLInputElement;
+    balance.value = '12,3,4';
+    balance.dispatchEvent(new Event('input'));
+    balance.dispatchEvent(new FocusEvent('blur'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Введите неотрицательное число');
+  });
+
   function clickButton(label: string): void {
     const button = [...fixture.nativeElement.querySelectorAll('button')].find(
       (item: HTMLButtonElement) => item.textContent.trim() === label,

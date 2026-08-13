@@ -60,6 +60,17 @@ def test_complete_operation_lifecycle_and_journal_filters(
         target_id = _account(client, headers, "Savings", "10")
         income_category = _category(client, headers, "Salary", "income")
         expense_category = _category(client, headers, "Food", "expense")
+        expense_leaf_response = client.post(
+            "/api/v1/categories",
+            headers=headers,
+            json={
+                "type": "expense",
+                "name": "Groceries",
+                "parent_id": expense_category,
+            },
+        )
+        assert expense_leaf_response.status_code == 201
+        expense_leaf = str(expense_leaf_response.json()["id"])
 
         income = client.post(
             "/api/v1/operations",
@@ -91,7 +102,7 @@ def test_complete_operation_lifecycle_and_journal_filters(
                 "occurred_on": "2026-08-02",
                 "amount": "70",
                 "account_id": source_id,
-                "category_id": expense_category,
+                "category_id": expense_leaf,
             },
         )
         assert expense.status_code == 201
@@ -138,11 +149,30 @@ def test_complete_operation_lifecycle_and_journal_filters(
         assert journal.json()["total"] == 3
         assert journal.json()["total_amount"] == "5.0000"
         assert len(journal.json()["items"]) == 2
+        category_summary = client.get(
+            "/api/v1/operations/category-summary?from_on=2026-08-01&through_on=2026-08-31"
+        )
+        assert category_summary.status_code == 200
+        assert category_summary.json()["income"][0]["amount"] == "50.0000"
+        assert category_summary.json()["expense"][0]["amount"] == "70.0000"
+        assert category_summary.json()["expense"][0]["category_id"] == expense_category
         assert (
             client.get(f"/api/v1/operations?type=expense&category_id={expense_category}").json()[
                 "total"
             ]
             == 1
+        )
+        assert (
+            client.get(f"/api/v1/operations?type=expense&category_id={expense_leaf}").json()[
+                "total"
+            ]
+            == 1
+        )
+        assert (
+            client.get(
+                "/api/v1/operations/category-summary?from_on=2026-08-31&through_on=2026-08-01"
+            ).status_code
+            == 422
         )
 
         updated_income = client.put(
@@ -168,7 +198,7 @@ def test_complete_operation_lifecycle_and_journal_filters(
                 "occurred_on": "2026-08-02",
                 "amount": "65",
                 "account_id": source_id,
-                "category_id": expense_category,
+                "category_id": expense_leaf,
                 "version": 1,
             },
         )

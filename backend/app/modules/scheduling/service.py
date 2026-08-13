@@ -75,6 +75,8 @@ def calendar_year_later(value: date) -> date:
 def recurrence_dates(
     *,
     frequency: RecurrenceFrequency,
+    interval: int = 1,
+    weekdays: list[int] | None = None,
     anchor: date,
     range_from: date,
     range_to: date,
@@ -85,8 +87,8 @@ def recurrence_dates(
     lower = max(range_from, anchor)
     if upper < lower:
         return []
-    if frequency in {RecurrenceFrequency.DAILY, RecurrenceFrequency.WEEKLY}:
-        step = 1 if frequency == RecurrenceFrequency.DAILY else 7
+    if frequency == RecurrenceFrequency.DAILY:
+        step = 1
         elapsed = (lower - anchor).days
         skipped = (elapsed + step - 1) // step
         current = anchor + timedelta(days=skipped * step)
@@ -95,31 +97,49 @@ def recurrence_dates(
             result.append(current)
             current += timedelta(days=step)
         return result
+    if frequency == RecurrenceFrequency.WEEKLY:
+        selected = sorted(weekdays or [anchor.isoweekday()])
+        anchor_week = anchor - timedelta(days=anchor.isoweekday() - 1)
+        current_week = lower - timedelta(days=lower.isoweekday() - 1)
+        elapsed_weeks = (current_week - anchor_week).days // 7
+        if elapsed_weeks % interval:
+            current_week += timedelta(weeks=interval - elapsed_weeks % interval)
+        result = []
+        while current_week <= upper:
+            for weekday in selected:
+                current = current_week + timedelta(days=weekday - 1)
+                if current >= anchor and lower <= current <= upper:
+                    result.append(current)
+            current_week += timedelta(weeks=interval)
+        return result
     if frequency == RecurrenceFrequency.MONTHLY:
         start_index = anchor.year * 12 + anchor.month - 1
         lower_index = lower.year * 12 + lower.month - 1
         index = max(start_index, lower_index)
+        remainder = (index - start_index) % interval
+        if remainder:
+            index += interval - remainder
         current = date(index // 12, index % 12 + 1, anchor.day)
         if current < lower:
-            index += 1
+            index += interval
         result = []
         while True:
             current = date(index // 12, index % 12 + 1, anchor.day)
             if current > upper:
                 return result
             result.append(current)
-            index += 1
+            index += interval
     year = max(anchor.year, lower.year)
     current = date(year, anchor.month, anchor.day)
     if current < lower:
-        year += 1
+        year += interval
     result = []
     while True:
         current = date(year, anchor.month, anchor.day)
         if current > upper:
             return result
         result.append(current)
-        year += 1
+        year += interval
 
 
 def _today(session: Session) -> date:
@@ -232,6 +252,8 @@ def _synchronize_rule(
         set(
             recurrence_dates(
                 frequency=rule.frequency,
+                interval=rule.interval,
+                weekdays=rule.weekdays,
                 anchor=rule.start_on,
                 range_from=horizon_from,
                 range_to=horizon_to,
@@ -350,6 +372,8 @@ def _rule_response(session: Session, rule: RecurringRule) -> RecurringRuleRespon
         id=rule.id,
         type=rule.type,
         frequency=rule.frequency,
+        interval=rule.interval,
+        weekdays=rule.weekdays,
         start_on=rule.start_on,
         end_on=rule.end_on,
         amount=format_money(Decimal(rule.amount)),

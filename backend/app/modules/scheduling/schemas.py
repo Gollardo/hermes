@@ -13,6 +13,8 @@ from app.modules.scheduling.models import OccurrenceStatus, RecurrenceFrequency
 class RecurringRuleCreateRequest(BaseModel):
     type: OperationType
     frequency: RecurrenceFrequency
+    interval: int = Field(default=1, ge=1, le=3)
+    weekdays: list[int] | None = None
     start_on: date
     end_on: date | None = None
     amount: Money
@@ -40,6 +42,19 @@ class RecurringRuleCreateRequest(BaseModel):
             self.start_on.month == 2 and self.start_on.day == 29
         ):
             raise ValueError("yearly rules cannot start on February 29")
+        if self.frequency == RecurrenceFrequency.WEEKLY:
+            if not self.weekdays or len(self.weekdays) != len(set(self.weekdays)):
+                raise ValueError("weekly rules require unique weekdays")
+            if any(day < 1 or day > 7 for day in self.weekdays):
+                raise ValueError("weekday must be between 1 and 7")
+            self.weekdays.sort()
+        elif self.weekdays is not None:
+            raise ValueError("weekdays are only valid for weekly rules")
+        if (
+            self.frequency in {RecurrenceFrequency.DAILY, RecurrenceFrequency.YEARLY}
+            and self.interval != 1
+        ):
+            raise ValueError("daily and yearly rules use interval 1")
         if self.type in {OperationType.INCOME, OperationType.EXPENSE}:
             if self.category_id is None or self.destination_account_id is not None:
                 raise ValueError("income and expense require category and one account")
@@ -61,6 +76,8 @@ class RecurringRuleResponse(BaseModel):
     id: UUID
     type: OperationType
     frequency: RecurrenceFrequency
+    interval: int
+    weekdays: list[int] | None
     start_on: date
     end_on: date | None
     amount: str

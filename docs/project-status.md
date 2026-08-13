@@ -6,7 +6,7 @@
 
 ## Last updated
 
-2026-08-13
+2026-08-14
 
 ## Current phase
 
@@ -35,6 +35,10 @@
   суммы имеют единый формат с группировкой тысяч, категории разделены на
   доходы/расходы, а обзор показывает фактическую краткую сводку вместо
   onboarding/release-карточек.
+- Owner feedback 2026-08-14 добавил на обзор три компактные круговые диаграммы:
+  расходы и доходы текущего месяца по корневым категориям и доли фондов в общей
+  сумме отложенных средств. Категории свёрнуты по умолчанию, одновременно
+  раскрывается один родитель каждого типа.
 - Для доходов и расходов подтверждены обязательная категория, дата
   финансового факта без времени, серийный ручной ввод и отсутствие отдельного
   payee в MVP. Posting model отдельно проверена и описана в ADR 0001; её
@@ -153,6 +157,8 @@
 - Миграция `0006_recurring_operations` добавляет регулярные правила, ожидаемые
   экземпляры, recurrence/status enum-типы, уникальный identity правила/даты,
   confirmation link и calendar indexes.
+- Миграция `0007_fund_targets_recurrence` добавляет необязательные цели фондов,
+  интервалы/дни недели регулярных правил и тип виртуального перевода между фондами.
 
 ### Financial operations and journal
 
@@ -172,6 +178,10 @@
 - Выбор счетов и категорий в журнале, регулярных правилах, фондах, прогнозе и
   дереве категорий использует общий searchable combobox: prefix-поиск и до пяти
   последних вариантов при пустом запросе.
+- Общий combobox поддерживает выбор клавиатурой и мышью; денежные поля принимают
+  точку или запятую и при потере фокуса нормализуются либо показывают ошибку.
+- Панель фильтров журнала по умолчанию свёрнута, активные условия остаются
+  видимыми chips.
 - Удаление счёта блокирует identity до проверки истории, поэтому конкурентное
   проведение не превращается в необработанную FK-ошибку.
 
@@ -192,6 +202,10 @@
   назначения без физического движения и атомарный физический перевод с
   последующим процентным распределением на счёте назначения.
 - ADR 0002 отдельно фиксирует posting model, lock order, rounding и archive policy.
+- Фонд имеет необязательную целевую сумму с точным прогрессом; экран показывает
+  прогресс каждого фонда и общий прогресс всех заданных целей.
+- Создание фонда может атомарно выделить сумму только ему. Перевод между двумя
+  фондами на одном счёте сохраняет физический баланс и общий reserved.
 
 ### Recurring rules and calendar
 
@@ -217,8 +231,18 @@
 - Monthly правила ограничены днями 1–28, yearly не принимает 29 февраля;
   после первого правила timezone заблокирован, а домен хранит calendar date без
   времени.
+- Weekly правила выбирают несколько дней недели и интервал 1–3 недели; monthly
+  поддерживает интервал 1–3 месяца.
 - ADR 0003 фиксирует recurrence, materialization, synchronization и
   confirmation policies.
+
+## Latest verification
+
+- Backend без PostgreSQL: 52 passed, 45 skipped.
+- PostgreSQL integration: 46 passed.
+- Frontend: 63 passed в 15 test files.
+- `make lint`, `make typecheck`, docs-check и Alembic model/schema check входят
+  в итоговую проверку этого среза.
 
 ### Balance forecasting
 
@@ -255,11 +279,11 @@
 
 ## Verification snapshot
 
-- `rc.1`: 91 backend-сценарий (48 non-PostgreSQL passed, 43 skipped без opt-in);
-  полный PostgreSQL integration snapshot 44/44 passed, включая атомарный
+- `rc.1`: 97 backend-сценариев (52 non-PostgreSQL passed, 45 skipped без opt-in);
+  полный PostgreSQL integration snapshot 46/46 passed, включая атомарный
   first-run restore, transfer-and-allocation и их rollback, а также forecasting
   snapshot с обновлённым series contract.
-  Frontend: 49/49 тестов passed; lint/format/typecheck/docs passed.
+  Frontend: 63/63 теста passed; lint/format/typecheck/docs passed.
 - Полный `npm audit` после совместимых security patch overrides для build-only
   `hono` и `nanoid` сообщает 0 известных advisories; production dependency graph
   также чист.
@@ -292,7 +316,11 @@
   Setup отдельно проверяет выбранные category templates, отклонение повторных
   групп и атомарный first-run restore: ошибка после создания owner откатывает
   credential и оставляет экземпляр неинициализированным.
-- Frontend Vitest: 49 тестов для access shell, session expiry, setup, settings,
+- Новые PostgreSQL regression-сценарии проверяют rollback определения фонда при
+  недоступной начальной сумме, сохранение physical/reserved при переводе между
+  фондами, прогресс выше 100%, агрегацию подкатегории в корень и database checks
+  для уникальных weekdays и допустимых recurrence intervals.
+- Frontend Vitest: 63 теста для access shell, session expiry, setup, settings,
   health UI, счетов, категорий и журнала, включая timezone default, expected-balance
   adjustment, archived edit reference, transfer direction, loading continuity,
   точный manual allocation preview, invalidation устаревшего preview, процентный
@@ -301,6 +329,9 @@
   пагинацию месяца, честный upcoming count, archived-reference edit state и
   exact-operation link; forecast risk/explanation, account/horizon switches,
   stale-loading, event-free state и календарную шкалу X.
+  Дополнительно проверены dashboard drill-down и частичная ошибка аналитики,
+  exact fund progress, optional decimal normalisation, recurrence weekdays и
+  скрытая/resettable панель фильтров журнала.
   Settings дополнительно проверяет preview, полную replacement summary, точную
   destructive phrase, restore payload и очистку пароля после ошибки. Новые
   проверки фиксируют atomic first-run restore, disabled setup action при
@@ -405,9 +436,9 @@
 - Account-specific overdraft, pending bank transactions, полноценный
   reconciliation workflow и currency-specific precision/rounding.
 - Автоматическое/мультисчётное распределение, несколько фондов на одну операцию,
-  fund goals и immutable audit trail.
+  target dates и immutable audit trail.
 - Liabilities, debts и их будущие платежи в прогнозе.
-- Custom recurrence intervals, weekdays, дни 29–31, leap-day policy,
+- Recurrence intervals за пределами 1–3, дни месяца 29–31, leap-day policy,
   drag-and-drop, уведомления и background materialization.
 - Импорт CSV/Excel, совместимость backup-схем после schema 1 и password recovery.
 - Несколько пользователей, роли, permissions, organizations и tenants.

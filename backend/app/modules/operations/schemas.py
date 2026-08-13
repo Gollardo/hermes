@@ -111,3 +111,16 @@ class OperationPageResponse(BaseModel):
     page_size: int
     total: int
     total_amount: str
+
+
+class CategoryAmountResponse(BaseModel):
+    category_id: UUID
+    category_name: str
+    amount: str
+
+
+class CategorySummaryResponse(BaseModel):
+    from_on: date
+    through_on: date
+    income: list[CategoryAmountResponse]
+    expense: list[CategoryAmountResponse]

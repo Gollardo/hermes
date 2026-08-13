@@ -48,6 +48,8 @@ export class CategoriesPage implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly editingId = signal<string | null>(null);
   protected readonly formOpen = signal(false);
+  protected readonly expandedIncome = signal<string | null>(null);
+  protected readonly expandedExpense = signal<string | null>(null);
   protected readonly form = this.builder.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
     type: this.builder.control<CategoryType>('expense', Validators.required),
@@ -73,6 +75,17 @@ export class CategoriesPage implements OnInit {
 
   protected children(parentId: string): Category[] {
     return this.categories().filter((item) => item.parent_id === parentId);
+  }
+
+  protected expanded(category: Category): boolean {
+    return (
+      (category.type === 'income' ? this.expandedIncome() : this.expandedExpense()) === category.id
+    );
+  }
+
+  protected toggleExpanded(category: Category): void {
+    const state = category.type === 'income' ? this.expandedIncome : this.expandedExpense;
+    state.set(state() === category.id ? null : category.id);
   }
 
   protected categoryTypeLabel(type: CategoryType): string {

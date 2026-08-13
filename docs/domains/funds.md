@@ -9,8 +9,9 @@ posting model is recorded in [ADR 0002](../decisions/0002-virtual-fund-ledger.md
 
 ## Implemented model in 0.1.0-alpha.4
 
-- A fund has a name, optional description, exact allocation percentage,
-  lifecycle state and optimistic version.
+- A fund has a name, optional description, optional positive target amount,
+  exact allocation percentage, lifecycle state and optimistic version. A target
+  is planning metadata and never changes ledger balance.
 - Active percentages total at most 100%. Changing a percentage never moves
   existing money.
 - Fund totals and positions are sums of `NUMERIC(20,4)` movements; there is no
@@ -19,6 +20,9 @@ posting model is recorded in [ADR 0002](../decisions/0002-virtual-fund-ledger.md
   `0 <= reserved <= physical` and non-negative individual fund positions.
 - Explicit allocation reserves a selected part of one account's free balance;
   the remainder stays free.
+- Fund creation may atomically reserve an explicitly entered amount from one
+  account for the newly created fund only. It does not invoke percentage
+  distribution and rolls the definition back if allocation is invalid.
 - A convenience command may atomically transfer physical money to another
   account and explicitly distribute the transferred amount across active funds
   by their configured percentages. It produces one ordinary transfer plus one
@@ -27,6 +31,9 @@ posting model is recorded in [ADR 0002](../decisions/0002-virtual-fund-ledger.md
   carry one virtual part no greater than its physical amount.
 - Virtual redistribution moves one fund between accounts without physical
   movements. Both transfer forms preserve the total fund balance.
+- A fund-to-fund transfer moves a virtual position between two different funds
+  on the same physical account. It preserves account balance, account reserved
+  total and the total held by all funds.
 - Create, edit and delete of fund-linked financial operations replace both
   ledgers atomically and recheck the resulting state.
 - History includes allocations, redistributions, fund expenses and transfers.
@@ -62,7 +69,7 @@ is never silently released or moved.
 
 - automatic allocation while posting income;
 - splitting one expense or transfer across several funds;
-- target amount/date, icons, colours or gamification;
+- target date, icons, colours or gamification;
 - batch allocation across multiple accounts;
 - edit/delete lifecycle for explicit allocation and redistribution facts;
 - immutable audit history and bulk actions;

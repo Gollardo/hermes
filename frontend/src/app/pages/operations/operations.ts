@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { formatMoney, MoneyPipe } from '../../shared/money.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
+import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
 
 type OperationType = 'income' | 'expense' | 'transfer' | 'balance_adjustment';
 type CategoryType = 'income' | 'expense';
@@ -91,7 +92,7 @@ interface ApplicationSettings {
 
 @Component({
   selector: 'app-operations-page',
-  imports: [ReactiveFormsModule, MoneyPipe, EntityCombobox],
+  imports: [ReactiveFormsModule, MoneyPipe, EntityCombobox, DecimalInput],
   templateUrl: './operations.html',
   styleUrl: './operations.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -121,18 +122,19 @@ export class OperationsPage implements OnInit {
   protected readonly editingId = signal<string | null>(null);
   protected readonly expandedId = signal<string | null>(null);
   protected readonly formOpen = signal(false);
+  protected readonly filtersOpen = signal(false);
 
   protected readonly form = this.builder.group({
     type: this.builder.control<OperationType | ''>('', Validators.required),
     occurredOn: [this.today(), Validators.required],
     categoryId: [''],
-    amount: ['', [Validators.required, Validators.pattern(/^-?\d{1,16}(?:\.\d{1,4})?$/)]],
+    amount: ['', [Validators.required, Validators.pattern(/^-?\d{1,16}(?:[.,]\d{1,4})?$/)]],
     accountId: ['', Validators.required],
     destinationAccountId: [''],
     description: ['', Validators.maxLength(2000)],
     reason: ['', Validators.maxLength(2000)],
     fundId: [''],
-    fundAmount: ['', Validators.pattern(/^\d{1,16}(?:\.\d{1,4})?$/)],
+    fundAmount: ['', Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)],
   });
 
   protected readonly filters = this.builder.group({
@@ -144,12 +146,28 @@ export class OperationsPage implements OnInit {
   });
 
   ngOnInit(): void {
-    const focusedId = this.route?.snapshot.queryParamMap.get('focus');
+    const query = this.route?.snapshot.queryParamMap;
+    const focusedId = query?.get('focus');
     if (focusedId) this.loadFocusedOperation(focusedId);
+    const queryType = query?.get('type');
+    const filterType: OperationType | '' =
+      queryType === 'income' ||
+      queryType === 'expense' ||
+      queryType === 'transfer' ||
+      queryType === 'balance_adjustment'
+        ? queryType
+        : '';
+    this.filters.patchValue({
+      occurredFrom: query?.get('occurred_from') ?? '',
+      occurredTo: query?.get('occurred_to') ?? '',
+      categoryId: query?.get('category_id') ?? '',
+      type: filterType,
+    });
+    if (this.filterChips().length) this.filtersOpen.set(true);
     this.loadSettings();
     this.loadDirectories();
     this.load();
-    if (this.route?.snapshot.queryParamMap.get('new') === '1') this.openCreate();
+    if (query?.get('new') === '1') this.openCreate();
   }
 
   protected currentOperation(): Operation | undefined {
@@ -334,14 +352,17 @@ export class OperationsPage implements OnInit {
     const body: Record<string, unknown> = {
       type: value.type,
       occurred_on: value.occurredOn,
-      amount: postingAmount,
+      amount: decimalPayload(postingAmount),
       account_id: value.accountId,
       destination_account_id: value.type === 'transfer' ? value.destinationAccountId : null,
       category_id: value.type === 'income' || value.type === 'expense' ? value.categoryId : null,
       description: value.description || null,
       reason: value.type === 'balance_adjustment' ? value.reason : null,
       fund_id: value.type === 'expense' || value.type === 'transfer' ? value.fundId || null : null,
-      fund_amount: value.type === 'transfer' && value.fundId ? value.fundAmount || null : null,
+      fund_amount:
+        value.type === 'transfer' && value.fundId && value.fundAmount
+          ? decimalPayload(value.fundAmount)
+          : null,
     };
     const id = this.editingId();
     const existing = this.operations().find((item) => item.id === id);

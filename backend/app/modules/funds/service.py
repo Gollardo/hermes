@@ -18,6 +18,7 @@ from app.modules.funds.schemas import (
     FundPositionResponse,
     FundResponse,
     FundSummaryResponse,
+    FundTransferCreateRequest,
     FundUpdateRequest,
     RedistributionCreateRequest,
 )
@@ -84,7 +85,12 @@ def _check_percentage(session: Session, value: Decimal, *, excluding: UUID | Non
 
 
 def create_fund(
-    session: Session, *, name: str, description: str | None, percentage: Decimal
+    session: Session,
+    *,
+    name: str,
+    description: str | None,
+    percentage: Decimal,
+    target_amount: Decimal | None,
 ) -> Fund:
     _lock_definitions(session)
     _check_percentage(session, percentage)
@@ -93,6 +99,7 @@ def create_fund(
         name=name,
         description=description,
         allocation_percentage=percentage,
+        target_amount=target_amount,
         created_at=now,
         updated_at=now,
         version=1,
@@ -112,6 +119,7 @@ def update_fund(session: Session, fund_id: UUID, payload: FundUpdateRequest) -> 
     fund.name = payload.name
     fund.description = payload.description
     fund.allocation_percentage = payload.allocation_percentage
+    fund.target_amount = payload.target_amount
     fund.updated_at = datetime.now(UTC)
     fund.version += 1
     session.flush()
@@ -175,12 +183,16 @@ def archive_fund(
 
 
 def _fund_response(session: Session, fund: Fund) -> FundResponse:
+    balance = fund_balance(session, fund.id)
+    progress = balance * 100 / fund.target_amount if fund.target_amount is not None else None
     return FundResponse(
         id=fund.id,
         name=fund.name,
         description=fund.description,
         allocation_percentage=format(fund.allocation_percentage, "f"),
-        total_balance=format(fund_balance(session, fund.id), "f"),
+        target_amount=format(fund.target_amount, "f") if fund.target_amount is not None else None,
+        total_balance=format(balance, "f"),
+        progress_percentage=format(progress, ".2f") if progress is not None else None,
         archived=fund.archived_at is not None,
         version=fund.version,
         created_at=fund.created_at,
@@ -356,6 +368,36 @@ def create_redistribution_with_physical_balances(
     )
     session.flush()
     validate_account_coverage(session, physical_balances)
+    return event
+
+
+def create_fund_transfer(session: Session, payload: FundTransferCreateRequest) -> FundEvent:
+    funds = _lock_fund_references(session, {payload.source_fund_id, payload.destination_fund_id})
+    if any(fund.archived_at is not None for fund in funds.values()):
+        raise FundNotFoundError
+    if fund_balance(session, payload.source_fund_id, payload.account_id) < payload.amount:
+        raise FundBalanceError
+    event = _event(session, FundEventType.FUND_TRANSFER, payload.occurred_on, payload.description)
+    _add_fund_movements(
+        session,
+        [
+            FundMovement(
+                fund_id=payload.source_fund_id,
+                account_id=payload.account_id,
+                event_id=event.id,
+                operation_id=None,
+                amount=-payload.amount,
+            ),
+            FundMovement(
+                fund_id=payload.destination_fund_id,
+                account_id=payload.account_id,
+                event_id=event.id,
+                operation_id=None,
+                amount=payload.amount,
+            ),
+        ],
+    )
+    session.flush()
     return event
 
 

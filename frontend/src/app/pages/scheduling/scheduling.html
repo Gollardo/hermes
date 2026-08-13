@@ -226,7 +226,7 @@
                 <span class="item-symbol" [class.neutral]="!rule.active" aria-hidden="true">↻</span>
                 <div class="item-copy">
                   <span class="badge"
-                    >{{ frequencyLabel(rule.frequency) }} · {{ typeLabel(rule.type) }}</span
+                    >{{ recurrenceLabel(rule) }} · {{ typeLabel(rule.type) }}</span
                   >
                   <h3>{{ ruleTitle(rule) }}</h3>
                   <p>
@@ -307,9 +307,49 @@
               <option value="yearly">Ежегодно</option>
             </select>
           </label>
+          @if (
+            ruleForm.controls.frequency.value === 'weekly' ||
+            ruleForm.controls.frequency.value === 'monthly'
+          ) {
+            <label>
+              Частота повторения
+              <select formControlName="interval">
+                @if (ruleForm.controls.frequency.value === 'weekly') {
+                  <option [ngValue]="1">Каждую неделю</option>
+                  <option [ngValue]="2">Каждую 2-ю неделю</option>
+                  <option [ngValue]="3">Каждую 3-ю неделю</option>
+                } @else {
+                  <option [ngValue]="1">Каждый месяц</option>
+                  <option [ngValue]="2">Каждый 2-й месяц</option>
+                  <option [ngValue]="3">Каждый 3-й месяц</option>
+                }
+              </select>
+            </label>
+          }
+          @if (ruleForm.controls.frequency.value === 'weekly') {
+            <fieldset class="weekday-picker">
+              <legend>Дни недели</legend>
+              <label><input type="checkbox" formControlName="monday" />Пн</label>
+              <label><input type="checkbox" formControlName="tuesday" />Вт</label>
+              <label><input type="checkbox" formControlName="wednesday" />Ср</label>
+              <label><input type="checkbox" formControlName="thursday" />Чт</label>
+              <label><input type="checkbox" formControlName="friday" />Пт</label>
+              <label><input type="checkbox" formControlName="saturday" />Сб</label>
+              <label><input type="checkbox" formControlName="sunday" />Вс</label>
+            </fieldset>
+            @if (ruleForm.touched && !selectedWeekdays().length) {
+              <p class="field-error">Выберите хотя бы один день недели.</p>
+            }
+          }
           <div class="date-fields">
             <label>
-              Дата начала
+              {{
+                ruleForm.controls.frequency.value === 'monthly'
+                  ? 'Дата первого события (число месяца)'
+                  : ruleForm.controls.frequency.value === 'yearly'
+                    ? 'Дата ежегодного события'
+                    : 'Дата начала'
+              }}
               <input type="date" formControlName="startOn" />
             </label>
             <label>
@@ -322,8 +362,17 @@
           }
           <label>
             Сумма, {{ baseCurrency() }}
-            <input type="text" inputmode="decimal" formControlName="amount" autocomplete="off" />
+            <input
+              appDecimalInput
+              type="text"
+              inputmode="decimal"
+              formControlName="amount"
+              autocomplete="off"
+            />
           </label>
+          @if (ruleForm.controls.amount.touched && ruleForm.controls.amount.invalid) {
+            <p class="field-error">Введите положительную сумму, не более четырёх знаков дроби.</p>
+          }
           <div class="control-label">
             Счёт
             <app-entity-combobox

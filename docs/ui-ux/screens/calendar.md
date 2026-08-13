@@ -48,13 +48,15 @@ events merely because they are within the next 30 days.
 - Income and expense require a matching category and one account.
 - Transfer requires two different accounts and no category.
 - Start date is visible; end date is optional and inclusive.
+- Weekly rules expose weekday checkboxes and an every 1–3 weeks interval.
+- Monthly rules expose the anchor day through `start_on` and an every 1–3
+  months interval. Yearly rules keep the month/day while the year advances.
 - Monthly rules explain the supported 1–28 day range before submission.
 - Description is optional and used as the human calendar title.
 
 ## Deliberately deferred
 
 - Drag-and-drop rescheduling.
-- Custom intervals and weekday sets.
 - Notification delivery outside the application.
 - Forecast balances or insufficiency projections inside calendar cells.
 - Final decision whether Calendar and Forecast share a permanent top-level

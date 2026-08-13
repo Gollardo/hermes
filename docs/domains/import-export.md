@@ -45,6 +45,9 @@ The data section contains application settings, accounts, categories, financial
 operation headers and physical movements, funds, fund events and virtual
 movements, recurring rules and expected occurrences. Stable identifiers,
 calendar dates, timestamps, archive state and optimistic versions are retained.
+Optional fund targets and recurrence interval/weekday fields are included.
+Schema 1 readers supply compatible defaults for backups written before these
+fields existed.
 
 Owner credential, password hash, login throttle and sessions are deliberately
 excluded: they are security state of the destination instance, not portable

@@ -12,6 +12,8 @@ from app.modules.accounts.contracts import account_names, lock_account_reference
 from app.modules.categories.contracts import (
     CategoryType,
     category_name,
+    category_root_map,
+    category_subtree_ids,
     validate_category_reference,
 )
 from app.modules.funds.contracts import (
@@ -23,6 +25,8 @@ from app.modules.funds.contracts import (
 from app.modules.operations.ledger import account_balance
 from app.modules.operations.models import AccountMovement, FinancialOperation, OperationType
 from app.modules.operations.schemas import (
+    CategoryAmountResponse,
+    CategorySummaryResponse,
     MovementResponse,
     OperationCreateRequest,
     OperationFundMovementResponse,
@@ -339,7 +343,9 @@ def list_operation_responses(
     if operation_type is not None:
         conditions.append(FinancialOperation.type == operation_type)
     if category_id is not None:
-        conditions.append(FinancialOperation.category_id == category_id)
+        conditions.append(
+            FinancialOperation.category_id.in_(category_subtree_ids(session, category_id))
+        )
     if account_id is not None:
         conditions.append(
             FinancialOperation.id.in_(
@@ -373,4 +379,53 @@ def list_operation_responses(
         page_size=page_size,
         total=int(total or 0),
         total_amount=format(Decimal(total_amount or 0), "f"),
+    )
+
+
+def category_summary(
+    session: Session, *, from_on: date, through_on: date
+) -> CategorySummaryResponse:
+    roots = category_root_map(session)
+    roots_by_id = {root.id: root for root in roots.values()}
+    totals: dict[tuple[CategoryType, UUID], Decimal] = {}
+    rows = session.execute(
+        select(
+            FinancialOperation.category_id,
+            FinancialOperation.type,
+            func.sum(AccountMovement.amount),
+        )
+        .join(AccountMovement, AccountMovement.operation_id == FinancialOperation.id)
+        .where(
+            FinancialOperation.occurred_on.between(from_on, through_on),
+            FinancialOperation.type.in_([OperationType.INCOME, OperationType.EXPENSE]),
+        )
+        .group_by(FinancialOperation.category_id, FinancialOperation.type)
+    )
+    for category_id, operation_type, raw_amount in rows:
+        if category_id is None or category_id not in roots:
+            continue
+        root = roots[category_id]
+        category_type = (
+            CategoryType.INCOME if operation_type == OperationType.INCOME else CategoryType.EXPENSE
+        )
+        key = (category_type, root.id)
+        totals[key] = totals.get(key, Decimal(0)) + abs(Decimal(raw_amount))
+
+    def response(category_type: CategoryType) -> list[CategoryAmountResponse]:
+        items = [
+            CategoryAmountResponse(
+                category_id=root_id,
+                category_name=roots_by_id[root_id].name,
+                amount=format(amount, "f"),
+            )
+            for (item_type, root_id), amount in totals.items()
+            if item_type == category_type
+        ]
+        return sorted(items, key=lambda item: (-Decimal(item.amount), item.category_name))
+
+    return CategorySummaryResponse(
+        from_on=from_on,
+        through_on=through_on,
+        income=response(CategoryType.INCOME),
+        expense=response(CategoryType.EXPENSE),
     )

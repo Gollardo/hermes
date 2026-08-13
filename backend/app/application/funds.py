@@ -10,21 +10,28 @@ from app.modules.accounts.contracts import (
 )
 from app.modules.funds.contracts import (
     AllocationCreateRequest,
+    AllocationItem,
     AllocationPreviewResponse,
     FundBalanceError,
+    FundCreateRequest,
     FundEventResponse,
     FundHistoryResponse,
     FundMovementResponse,
+    FundResponse,
     FundSummaryResponse,
+    FundTransferCreateRequest,
     RedistributionCreateRequest,
     TransferAllocationCreateRequest,
     TransferAllocationResponse,
     allocation_preview_with_free_balance,
     create_allocation_with_free_balance,
+    create_fund_definition,
+    create_fund_transfer,
     create_redistribution_with_physical_balances,
     event_response,
     event_responses,
     fund_names,
+    fund_response,
     history_source_ids,
     operation_fund_movements,
     reserved_balance,
@@ -42,6 +49,44 @@ def fund_summary(session: Session) -> FundSummaryResponse:
     account_ids = {account.id for account in list_account_identities(session)}
     physical = {account_id: account_balance(session, account_id) for account_id in account_ids}
     return summary_with_physical_balances(session, physical)
+
+
+def create_fund_with_initial_allocation(
+    session: Session, payload: FundCreateRequest
+) -> FundResponse:
+    """Create one fund and optionally reserve free money only for that fund atomically."""
+    initial_free: Decimal | None = None
+    if payload.initial_account_id is not None:
+        lock_account_references(session, {payload.initial_account_id})
+        initial_free = account_balance(session, payload.initial_account_id) - reserved_balance(
+            session, payload.initial_account_id
+        )
+
+    fund_id = create_fund_definition(
+        session,
+        name=payload.name,
+        description=payload.description,
+        percentage=payload.allocation_percentage,
+        target_amount=payload.target_amount,
+    )
+    if (
+        payload.initial_account_id is not None
+        and payload.initial_amount is not None
+        and payload.initial_occurred_on is not None
+    ):
+        assert initial_free is not None
+        create_allocation_with_free_balance(
+            session,
+            AllocationCreateRequest(
+                account_id=payload.initial_account_id,
+                amount=payload.initial_amount,
+                occurred_on=payload.initial_occurred_on,
+                description=None,
+                allocations=[AllocationItem(fund_id=fund_id, amount=payload.initial_amount)],
+            ),
+            initial_free,
+        )
+    return fund_response(session, fund_id)
 
 
 def preview_allocation(
@@ -67,6 +112,13 @@ def redistribute_fund(session: Session, payload: RedistributionCreateRequest) ->
     physical = {account_id: account_balance(session, account_id) for account_id in account_ids}
     event = create_redistribution_with_physical_balances(session, payload, physical)
     return event_response(session, event)
+
+
+def transfer_between_funds(
+    session: Session, payload: FundTransferCreateRequest
+) -> FundEventResponse:
+    lock_account_references(session, {payload.account_id})
+    return event_response(session, create_fund_transfer(session, payload))
 
 
 def transfer_and_allocate(

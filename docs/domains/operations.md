@@ -80,6 +80,12 @@ visible page. Without an account filter they represent the net change across all
 modelled accounts, so transfers contribute zero. With an account filter they sum
 that account's matching movements.
 
+Filtering by a root category includes its direct children; filtering by a leaf
+uses that leaf only. The current-month category summary rolls child operations
+up to their root, separates income from expense, uses absolute category amounts
+and orders roots by amount before name. This read model powers dashboard
+drill-down without giving the dashboard access to private ledger tables.
+
 For this alpha, an operation mutation may not leave any affected physical
 account below zero. Affected accounts are locked in deterministic order before
 the ledger-derived post-mutation balances are checked. This conservative rule

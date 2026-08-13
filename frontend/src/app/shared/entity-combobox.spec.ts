@@ -81,6 +81,17 @@ describe('EntityCombobox', () => {
     expect(fixture.componentInstance.control.value).toBe('housing');
   });
 
+  it('selects an option with a pointer without losing the open list', () => {
+    const input = focusInput();
+    input.value = 'зар';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    const option = fixture.nativeElement.querySelector('[role="option"]') as HTMLButtonElement;
+    option.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    option.click();
+    expect(fixture.componentInstance.control.value).toBe('salary');
+  });
+
   it('ignores malformed recent-option storage instead of breaking the form', () => {
     localStorage.setItem('hermes-recent-test-options', JSON.stringify({ id: 'housing' }));
     focusInput();

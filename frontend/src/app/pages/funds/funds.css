@@ -32,7 +32,22 @@
   padding: 0.75rem;
 }
 .fund-summary {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.fund-progress {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.65rem;
+  max-width: 24rem;
+}
+.fund-progress div {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.fund-progress progress {
+  accent-color: var(--accent);
+  width: 100%;
 }
 .fund-summary article,
 .coverage-grid article,

@@ -57,6 +57,17 @@
                       </div>
                     </div>
                     <div class="item-actions">
+                      @if (children(category.id).length) {
+                        <button
+                          type="button"
+                          class="secondary"
+                          (click)="toggleExpanded(category)"
+                          [attr.aria-expanded]="expanded(category)"
+                          [attr.aria-controls]="'category-children-' + category.id"
+                        >
+                          {{ expanded(category) ? 'Свернуть' : 'Показать подкатегории' }}
+                        </button>
+                      }
                       <button type="button" class="secondary" (click)="edit(category)">
                         Изменить
                       </button>
@@ -66,8 +77,8 @@
                     </div>
                   </div>
 
-                  @if (children(category.id).length > 0) {
-                    <div class="subcategory-list">
+                  @if (children(category.id).length > 0 && expanded(category)) {
+                    <div class="subcategory-list" [id]="'category-children-' + category.id">
                       @for (child of children(category.id); track child.id) {
                         <div class="subcategory" [class.archived]="child.archived">
                           <span><i aria-hidden="true"></i>{{ child.name }}</span>
@@ -113,6 +124,17 @@
                       </div>
                     </div>
                     <div class="item-actions">
+                      @if (children(category.id).length) {
+                        <button
+                          type="button"
+                          class="secondary"
+                          (click)="toggleExpanded(category)"
+                          [attr.aria-expanded]="expanded(category)"
+                          [attr.aria-controls]="'category-children-' + category.id"
+                        >
+                          {{ expanded(category) ? 'Свернуть' : 'Показать подкатегории' }}
+                        </button>
+                      }
                       <button type="button" class="secondary" (click)="edit(category)">
                         Изменить
                       </button>
@@ -121,8 +143,8 @@
                       </button>
                     </div>
                   </div>
-                  @if (children(category.id).length > 0) {
-                    <div class="subcategory-list">
+                  @if (children(category.id).length > 0 && expanded(category)) {
+                    <div class="subcategory-list" [id]="'category-children-' + category.id">
                       @for (child of children(category.id); track child.id) {
                         <div class="subcategory" [class.archived]="child.archived">
                           <span><i aria-hidden="true"></i>{{ child.name }}</span>

@@ -283,3 +283,24 @@
     grid-template-columns: 1fr;
   }
 }
+.weekday-picker {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin: 0.8rem 0;
+}
+.weekday-picker legend {
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+.weekday-picker label {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+  margin: 0;
+}
+.weekday-picker input {
+  min-height: auto;
+  width: auto;
+}

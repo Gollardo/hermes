@@ -19,8 +19,8 @@ the sum of its movements; a fund/account balance is that sum restricted to one
 account. No cached balance is authoritative.
 
 Each fund movement belongs to exactly one source: a financial operation for an
-expense or physical transfer, or a fund event for an explicit allocation or
-virtual redistribution.
+expense or physical transfer, or a fund event for an explicit allocation,
+virtual redistribution or transfer between funds.
 
 An expense may consume one fund on its physical account. Its virtual movement
 equals the complete expense amount and is negative. An expense without a fund
@@ -29,10 +29,22 @@ portion. The virtual portion must be positive and no greater than the physical
 transfer amount. Equal opposite movements are written on source and destination,
 so the fund total is unchanged. A virtual redistribution is a separate fund
 event with equal opposite movements and does not change physical money.
+A fund-to-fund transfer is another virtual event: it decreases one fund and
+increases another on the same physical account. It preserves that account's
+reserved total and all physical balances.
+
+A fund definition may carry an optional positive target amount. The target and
+its exact progress ratio are planning metadata; neither is a balance source and
+progress may legitimately exceed 100%. Creating a definition may include one
+explicit positive allocation from one account to that new fund only. Definition
+and movement commit together or both roll back; percentage distribution is not
+invoked by this command.
 
 Creating, replacing or deleting a financial operation replaces its associated
 physical and virtual movements in one database transaction. Affected accounts
-are locked in UUID order before balances are checked. The resulting state must
+are locked in UUID order before affected funds are locked and balances are
+checked. Definition creation with an initial allocation follows the same
+account-before-fund order before taking the definition advisory lock. The resulting state must
 satisfy, for every affected account:
 
 ```text
@@ -76,6 +88,6 @@ so Funds never imports Operations and the modular graph stays acyclic.
 - Allocation is reproducible and exposes its remainder.
 - Cross-module writes share the request transaction through public contracts.
 - One expense or transfer can use at most one fund in this alpha release.
-- Allocation/redistribution events have no premature mutable lifecycle or
+- Allocation/redistribution/fund-transfer events have no premature mutable lifecycle or
   unused event version; immutable revision history for editable financial
   operations remains deferred.

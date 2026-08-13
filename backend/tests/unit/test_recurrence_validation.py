@@ -89,6 +89,49 @@ def test_daily_horizon_including_leap_day_contains_367_dates() -> None:
     assert dates[-1] == date(2024, 3, 1)
 
 
+def test_weekly_weekdays_and_interval_are_deterministic() -> None:
+    assert recurrence_dates(
+        frequency=RecurrenceFrequency.WEEKLY,
+        interval=2,
+        weekdays=[1, 5],
+        anchor=date(2026, 8, 3),
+        range_from=date(2026, 8, 3),
+        range_to=date(2026, 8, 31),
+        end_on=None,
+    ) == [
+        date(2026, 8, 3),
+        date(2026, 8, 7),
+        date(2026, 8, 17),
+        date(2026, 8, 21),
+        date(2026, 8, 31),
+    ]
+
+
+def test_monthly_interval_uses_anchor_day() -> None:
+    assert recurrence_dates(
+        frequency=RecurrenceFrequency.MONTHLY,
+        interval=3,
+        anchor=date(2026, 1, 12),
+        range_from=date(2026, 1, 1),
+        range_to=date(2026, 10, 12),
+        end_on=None,
+    ) == [date(2026, 1, 12), date(2026, 4, 12), date(2026, 7, 12), date(2026, 10, 12)]
+
+
+def test_weekly_rule_requires_unique_valid_weekdays() -> None:
+    with pytest.raises(ValidationError):
+        RecurringRuleCreateRequest(
+            type="income",
+            frequency="weekly",
+            interval=2,
+            weekdays=[1, 1],
+            start_on="2026-08-03",
+            amount="10",
+            account_id=ACCOUNT,
+            category_id=CATEGORY,
+        )
+
+
 def test_recurring_rule_shape_and_exact_money() -> None:
     rule = RecurringRuleCreateRequest(
         type="transfer",

@@ -5,6 +5,7 @@ import { FormArray, NonNullableFormBuilder, ReactiveFormsModule, Validators } fr
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
+import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
 import { formatMoney, MoneyPipe } from '../../shared/money.pipe';
 
 interface Fund {
@@ -12,7 +13,9 @@ interface Fund {
   name: string;
   description: string | null;
   allocation_percentage: string;
+  target_amount: string | null;
   total_balance: string;
+  progress_percentage: string | null;
   archived: boolean;
   version: number;
 }
@@ -68,7 +71,7 @@ interface FundMovement {
 
 interface FundEvent {
   id: string;
-  type: 'allocation' | 'redistribution' | 'expense' | 'transfer';
+  type: 'allocation' | 'redistribution' | 'fund_transfer' | 'expense' | 'transfer';
   occurred_on: string;
   description: string | null;
   movements: FundMovement[];
@@ -90,7 +93,7 @@ interface AllocationTotals {
 
 @Component({
   selector: 'app-funds-page',
-  imports: [ReactiveFormsModule, MoneyPipe, EntityCombobox],
+  imports: [ReactiveFormsModule, MoneyPipe, EntityCombobox, DecimalInput],
   templateUrl: './funds.html',
   styleUrls: ['../directory.css', './funds.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -114,7 +117,7 @@ export class FundsPage implements OnInit {
   protected readonly baseCurrency = signal('RUB');
   protected readonly Math = Math;
   protected readonly activeModal = signal<
-    'fund' | 'allocation' | 'transfer' | 'redistribution' | null
+    'fund' | 'allocation' | 'transfer' | 'redistribution' | 'fundTransfer' | null
   >(null);
 
   protected readonly fundForm = this.builder.group({
@@ -122,12 +125,16 @@ export class FundsPage implements OnInit {
     description: ['', Validators.maxLength(2000)],
     percentage: [
       '0',
-      [Validators.required, Validators.pattern(/^(?:100(?:\.0{1,4})?|\d{1,2}(?:\.\d{1,4})?)$/)],
+      [Validators.required, Validators.pattern(/^(?:100(?:[.,]0{1,4})?|\d{1,2}(?:[.,]\d{1,4})?)$/)],
     ],
+    targetAmount: ['', Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)],
+    initialAccountId: [''],
+    initialAmount: ['', Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)],
+    initialOccurredOn: [''],
   });
   protected readonly allocationForm = this.builder.group({
     accountId: ['', Validators.required],
-    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:\.\d{1,4})?$/)]],
+    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)]],
     occurredOn: ['', Validators.required],
     description: ['', Validators.maxLength(2000)],
     allocations: this.builder.array([]),
@@ -136,14 +143,22 @@ export class FundsPage implements OnInit {
     fundId: ['', Validators.required],
     sourceAccountId: ['', Validators.required],
     destinationAccountId: ['', Validators.required],
-    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:\.\d{1,4})?$/)]],
+    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)]],
     occurredOn: ['', Validators.required],
     description: ['', Validators.maxLength(2000)],
   });
   protected readonly transferAllocationForm = this.builder.group({
     sourceAccountId: ['', Validators.required],
     destinationAccountId: ['', Validators.required],
-    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:\.\d{1,4})?$/)]],
+    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)]],
+    occurredOn: ['', Validators.required],
+    description: ['', Validators.maxLength(2000)],
+  });
+  protected readonly fundTransferForm = this.builder.group({
+    sourceFundId: ['', Validators.required],
+    destinationFundId: ['', Validators.required],
+    accountId: ['', Validators.required],
+    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)]],
     occurredOn: ['', Validators.required],
     description: ['', Validators.maxLength(2000)],
   });
@@ -165,6 +180,21 @@ export class FundsPage implements OnInit {
 
   protected fundIsEmpty(fund: Fund): boolean {
     return moneyUnits(fund.total_balance) === 0n;
+  }
+
+  protected overallTargetProgress(): string | null {
+    const targeted = this.activeFunds().filter((fund) => fund.target_amount);
+    if (!targeted.length) return null;
+    const balance = targeted.reduce(
+      (total, fund) => total + (moneyUnits(fund.total_balance) ?? 0n),
+      0n,
+    );
+    const target = targeted.reduce(
+      (total, fund) => total + (moneyUnits(fund.target_amount ?? '0') ?? 0n),
+      0n,
+    );
+    const percent = target > 0n ? (balance * 10_000n) / target : 0n;
+    return target > 0n ? `${percent / 100n}.${String(percent % 100n).padStart(2, '0')}` : null;
   }
 
   protected positionsFor(fundId: string): Position[] {
@@ -209,6 +239,19 @@ export class FundsPage implements OnInit {
     }));
   }
 
+  protected fundTransferAccountOptions(): EntityOption[] {
+    const fundId = this.fundTransferForm.controls.sourceFundId.value;
+    return this.activeAccounts()
+      .filter(
+        (account) => (moneyUnits(this.positionBalance(fundId, account.account_id)) ?? 0n) > 0n,
+      )
+      .map((account) => ({
+        id: account.account_id,
+        label: account.account_name,
+        detail: `В исходном фонде ${formatMoney(this.positionBalance(fundId, account.account_id))} ${this.baseCurrency()}`,
+      }));
+  }
+
   protected sourceAccounts(): Coverage[] {
     const fundId = this.redistributionForm.controls.fundId.value;
     const eligibleIds = new Set(
@@ -238,7 +281,33 @@ export class FundsPage implements OnInit {
   protected canSaveFund(): boolean {
     const value = percentageUnits(this.fundForm.controls.percentage.value);
     const available = percentageUnits(this.availablePercentage());
-    return this.fundForm.valid && value !== null && available !== null && value <= available;
+    const initialAccountId = this.fundForm.controls.initialAccountId.value;
+    const initialAmount = this.fundForm.controls.initialAmount.value;
+    const initialOccurredOn = this.fundForm.controls.initialOccurredOn.value;
+    const initialAllocationComplete =
+      this.editingId() !== null ||
+      (!initialAccountId && !initialAmount) ||
+      Boolean(initialAccountId && initialAmount && initialOccurredOn);
+    const targetAmount = this.fundForm.controls.targetAmount.value;
+    return (
+      this.fundForm.valid &&
+      initialAllocationComplete &&
+      (!targetAmount || positiveMoney(targetAmount)) &&
+      (!initialAmount || positiveMoney(initialAmount)) &&
+      value !== null &&
+      available !== null &&
+      value <= available
+    );
+  }
+
+  protected percentageExceedsAvailable(): boolean {
+    const value = percentageUnits(this.fundForm.controls.percentage.value);
+    const available = percentageUnits(this.availablePercentage());
+    return value !== null && available !== null && value > available;
+  }
+
+  protected optionalMoneyInvalid(value: string): boolean {
+    return Boolean(value) && !positiveMoney(value);
   }
 
   protected submitFund(): void {
@@ -254,10 +323,17 @@ export class FundsPage implements OnInit {
     const body = {
       name: value.name,
       description: value.description || null,
-      allocation_percentage: value.percentage,
+      allocation_percentage: decimalPayload(value.percentage),
+      target_amount: value.targetAmount ? decimalPayload(value.targetAmount) : null,
+      ...(!existing && value.initialAmount
+        ? {
+            initial_account_id: value.initialAccountId,
+            initial_amount: decimalPayload(value.initialAmount),
+            initial_occurred_on: value.initialOccurredOn,
+          }
+        : {}),
       ...(existing ? { version: existing.version } : {}),
     };
-    const created = !id;
     const request = id
       ? this.http.put<Fund>(`${environment.apiBaseUrl}/funds/${id}`, body)
       : this.http.post<Fund>(`${environment.apiBaseUrl}/funds`, body);
@@ -266,7 +342,6 @@ export class FundsPage implements OnInit {
         this.saving.set(false);
         this.cancelEdit();
         this.load();
-        if (created) this.openAllocation();
       },
       error: (error: unknown) => this.failed(error, 'Не удалось сохранить фонд.'),
     });
@@ -278,6 +353,10 @@ export class FundsPage implements OnInit {
       name: fund.name,
       description: fund.description ?? '',
       percentage: fund.allocation_percentage,
+      targetAmount: fund.target_amount ?? '',
+      initialAccountId: '',
+      initialAmount: '',
+      initialOccurredOn: '',
     });
     this.activeModal.set('fund');
   }
@@ -299,6 +378,10 @@ export class FundsPage implements OnInit {
     this.activeModal.set('redistribution');
   }
 
+  protected openFundTransfer(): void {
+    this.activeModal.set('fundTransfer');
+  }
+
   protected closeModal(): void {
     if (this.activeModal() === 'fund') this.cancelEdit();
     else this.activeModal.set(null);
@@ -306,7 +389,15 @@ export class FundsPage implements OnInit {
 
   protected cancelEdit(): void {
     this.editingId.set(null);
-    this.fundForm.reset({ name: '', description: '', percentage: '0' });
+    this.fundForm.reset({
+      name: '',
+      description: '',
+      percentage: '0',
+      targetAmount: '',
+      initialAccountId: '',
+      initialAmount: '',
+      initialOccurredOn: this.allocationForm.controls.occurredOn.value,
+    });
     this.activeModal.set(null);
   }
 
@@ -386,12 +477,12 @@ export class FundsPage implements OnInit {
     this.http
       .post(`${environment.apiBaseUrl}/funds/allocations`, {
         account_id: value.accountId,
-        amount: value.amount,
+        amount: decimalPayload(value.amount),
         occurred_on: value.occurredOn,
         description: value.description || null,
         allocations: (value.allocations as { fundId: string; amount: string }[]).map((item) => ({
           fund_id: item.fundId,
-          amount: item.amount,
+          amount: decimalPayload(item.amount),
         })),
       })
       .subscribe({
@@ -423,7 +514,7 @@ export class FundsPage implements OnInit {
         fund_id: value.fundId,
         source_account_id: value.sourceAccountId,
         destination_account_id: value.destinationAccountId,
-        amount: value.amount,
+        amount: decimalPayload(value.amount),
         occurred_on: value.occurredOn,
         description: value.description || null,
       })
@@ -449,7 +540,7 @@ export class FundsPage implements OnInit {
       .post(`${environment.apiBaseUrl}/funds/transfer-and-allocate`, {
         source_account_id: value.sourceAccountId,
         destination_account_id: value.destinationAccountId,
-        amount: value.amount,
+        amount: decimalPayload(value.amount),
         occurred_on: value.occurredOn,
         description: value.description || null,
       })
@@ -463,6 +554,56 @@ export class FundsPage implements OnInit {
         error: (error: unknown) =>
           this.failed(error, 'Не удалось перевести и распределить деньги.'),
       });
+  }
+
+  protected transferBetweenFunds(): void {
+    if (!this.canTransferBetweenFunds()) {
+      this.fundTransferForm.markAllAsTouched();
+      return;
+    }
+    const value = this.fundTransferForm.getRawValue();
+    this.saving.set(true);
+    this.http
+      .post(`${environment.apiBaseUrl}/funds/transfers`, {
+        source_fund_id: value.sourceFundId,
+        destination_fund_id: value.destinationFundId,
+        account_id: value.accountId,
+        amount: decimalPayload(value.amount),
+        occurred_on: value.occurredOn,
+        description: value.description || null,
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.activeModal.set(null);
+          this.load();
+        },
+        error: (error: unknown) => this.failed(error, 'Не удалось перевести деньги между фондами.'),
+      });
+  }
+
+  protected canTransferBetweenFunds(): boolean {
+    const value = this.fundTransferForm.getRawValue();
+    const available = moneyUnits(this.positionBalance(value.sourceFundId, value.accountId));
+    const amount = moneyUnits(value.amount);
+    return Boolean(
+      this.fundTransferForm.valid &&
+      value.sourceFundId !== value.destinationFundId &&
+      amount !== null &&
+      amount > 0n &&
+      available !== null &&
+      amount <= available,
+    );
+  }
+
+  protected fundOptions(excludeId = ''): EntityOption[] {
+    return this.activeFunds()
+      .filter((fund) => fund.id !== excludeId)
+      .map((fund) => ({
+        id: fund.id,
+        label: fund.name,
+        detail: `${formatMoney(fund.total_balance)} ${this.baseCurrency()}`,
+      }));
   }
 
   protected canTransferAndAllocate(): boolean {
@@ -546,6 +687,7 @@ export class FundsPage implements OnInit {
     return {
       allocation: 'Распределение',
       redistribution: 'Перераспределение',
+      fund_transfer: 'Перевод между фондами',
       expense: 'Расход из фонда',
       transfer: 'Перевод с фондом',
     }[event.type];
@@ -613,6 +755,8 @@ export class FundsPage implements OnInit {
         this.allocationForm.patchValue({ occurredOn: today });
         this.redistributionForm.patchValue({ occurredOn: today });
         this.transferAllocationForm.patchValue({ occurredOn: today });
+        this.fundTransferForm.patchValue({ occurredOn: today });
+        this.fundForm.patchValue({ initialOccurredOn: today });
       });
   }
 
@@ -630,9 +774,14 @@ export class FundsPage implements OnInit {
 }
 
 function moneyUnits(value: string): bigint | null {
-  const match = /^(\d{1,16})(?:\.(\d{1,4}))?$/.exec(value.trim());
+  const match = /^(\d{1,16})(?:\.(\d{1,4}))?$/.exec(decimalPayload(value));
   if (!match) return null;
   return BigInt(match[1]) * 10_000n + BigInt((match[2] ?? '').padEnd(4, '0'));
+}
+
+function positiveMoney(value: string): boolean {
+  const units = moneyUnits(value);
+  return units !== null && units > 0n;
 }
 
 function percentageUnits(value: string): bigint | null {

@@ -11,9 +11,11 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Numeric,
+    SmallInteger,
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -48,6 +50,29 @@ class RecurringRule(Base):
     __table_args__ = (
         CheckConstraint("amount > 0", name="ck_recurring_rules_amount_positive"),
         CheckConstraint("version > 0", name="ck_recurring_rules_version_positive"),
+        CheckConstraint("interval BETWEEN 1 AND 3", name="ck_recurring_rules_interval"),
+        CheckConstraint(
+            "frequency IN ('weekly', 'monthly') OR interval = 1",
+            name="ck_recurring_rules_interval_frequency",
+        ),
+        CheckConstraint(
+            "(frequency = 'weekly' AND weekdays IS NOT NULL "
+            "AND cardinality(weekdays) BETWEEN 1 AND 7 "
+            "AND weekdays <@ ARRAY[1,2,3,4,5,6,7]::smallint[]) OR "
+            "(frequency <> 'weekly' AND weekdays IS NULL)",
+            name="ck_recurring_rules_weekdays",
+        ),
+        CheckConstraint(
+            "weekdays IS NULL OR cardinality(weekdays) = "
+            "(CASE WHEN 1 = ANY(weekdays) THEN 1 ELSE 0 END + "
+            "CASE WHEN 2 = ANY(weekdays) THEN 1 ELSE 0 END + "
+            "CASE WHEN 3 = ANY(weekdays) THEN 1 ELSE 0 END + "
+            "CASE WHEN 4 = ANY(weekdays) THEN 1 ELSE 0 END + "
+            "CASE WHEN 5 = ANY(weekdays) THEN 1 ELSE 0 END + "
+            "CASE WHEN 6 = ANY(weekdays) THEN 1 ELSE 0 END + "
+            "CASE WHEN 7 = ANY(weekdays) THEN 1 ELSE 0 END)",
+            name="ck_recurring_rules_weekdays_unique",
+        ),
         CheckConstraint("end_on IS NULL OR end_on >= start_on", name="ck_recurring_rules_dates"),
         CheckConstraint(
             "frequency <> 'monthly' OR extract(day from start_on) <= 28",
@@ -77,6 +102,8 @@ class RecurringRule(Base):
             values_callable=lambda values: [value.value for value in values],
         )
     )
+    interval: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)
+    weekdays: Mapped[list[int] | None] = mapped_column(ARRAY(SmallInteger))
     start_on: Mapped[date]
     end_on: Mapped[date | None]
     amount: Mapped[Decimal] = mapped_column(Numeric(20, 4), nullable=False)

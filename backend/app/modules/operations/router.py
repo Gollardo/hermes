@@ -14,6 +14,7 @@ from app.modules.funds.contracts import (
 )
 from app.modules.operations.models import OperationType
 from app.modules.operations.schemas import (
+    CategorySummaryResponse,
     OperationCreateRequest,
     OperationPageResponse,
     OperationResponse,
@@ -24,6 +25,7 @@ from app.modules.operations.service import (
     OperationConflictError,
     OperationLinkedError,
     OperationNotFoundError,
+    category_summary,
     create_operation,
     delete_operation,
     get_operation_response,
@@ -112,6 +114,15 @@ def read_operations(
         operation_type=type,
         category_id=category_id,
     )
+
+
+@read_router.get("/category-summary", response_model=CategorySummaryResponse)
+def read_category_summary(
+    session: DatabaseSession, from_on: date, through_on: date
+) -> CategorySummaryResponse:
+    if through_on < from_on:
+        raise HTTPException(422, detail={"code": "invalid_period", "message": "Invalid period"})
+    return category_summary(session, from_on=from_on, through_on=through_on)
 
 
 @read_router.get("/{operation_id}", response_model=OperationResponse)

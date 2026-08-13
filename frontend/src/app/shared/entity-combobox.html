@@ -37,6 +37,7 @@
           [class.active]="index === activeIndex()"
           [attr.aria-selected]="option.id === value"
           [disabled]="option.disabled"
+          (pointerdown)="$event.preventDefault()"
           (click)="select(option)"
         >
           <strong>{{ option.label }}</strong>

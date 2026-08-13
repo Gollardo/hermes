@@ -168,6 +168,34 @@ class CategoryReference:
     archived: bool
 
 
+@dataclass(frozen=True, slots=True)
+class CategoryRoot:
+    id: UUID
+    name: str
+    type: CategoryType
+
+
+def category_root_map(session: Session) -> dict[UUID, CategoryRoot]:
+    categories = session.scalars(select(Category)).all()
+    by_id = {category.id: category for category in categories}
+    result: dict[UUID, CategoryRoot] = {}
+    for category in categories:
+        root = by_id[category.parent_id] if category.parent_id is not None else category
+        result[category.id] = CategoryRoot(id=root.id, name=root.name, type=root.type)
+    return result
+
+
+def category_subtree_ids(session: Session, category_id: UUID) -> set[UUID]:
+    """Resolve a two-level journal filter through the Categories public boundary."""
+    return set(
+        session.scalars(
+            select(Category.id).where(
+                (Category.id == category_id) | (Category.parent_id == category_id)
+            )
+        )
+    )
+
+
 def validate_category_reference(
     session: Session,
     category_id: UUID,
@@ -195,9 +223,12 @@ def category_name(session: Session, category_id: UUID) -> str | None:
 
 __all__ = [
     "CategoryReferenceError",
+    "CategoryRoot",
     "CategoryType",
     "OnboardingExpenseGroup",
     "category_name",
+    "category_root_map",
+    "category_subtree_ids",
     "create_onboarding_categories",
     "validate_category_reference",
 ]

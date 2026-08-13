@@ -33,11 +33,13 @@ describe('OperationsPage', () => {
   let fixture: ComponentFixture<OperationsPage>;
   let http: HttpTestingController;
   let focusedId: string | null;
+  let queryParams: Record<string, string>;
 
   beforeEach(async () => {
     localStorage.setItem('hermes-recent-accounts', JSON.stringify(['account-1', 'account-2']));
     localStorage.setItem('hermes-recent-categories-expense', JSON.stringify(['category-1']));
     focusedId = null;
+    queryParams = {};
     await TestBed.configureTestingModule({
       imports: [OperationsPage],
       providers: [
@@ -46,7 +48,11 @@ describe('OperationsPage', () => {
         {
           provide: ActivatedRoute,
           useFactory: () => ({
-            snapshot: { queryParamMap: { get: () => focusedId } },
+            snapshot: {
+              queryParamMap: {
+                get: (key: string) => (key === 'focus' ? focusedId : (queryParams[key] ?? null)),
+              },
+            },
           }),
         },
       ],
@@ -71,6 +77,7 @@ describe('OperationsPage', () => {
     totalAmount?: string;
     timezone?: string;
     focusedOperation?: TestOperation;
+    expectedJournalParams?: Record<string, string>;
   }): void {
     fixture.detectChanges();
     if (focusedId) {
@@ -107,6 +114,9 @@ describe('OperationsPage', () => {
     const journal = http.expectOne(
       (request) => request.url === '/api/v1/operations' && request.params.get('page') === '1',
     );
+    for (const [key, value] of Object.entries(options?.expectedJournalParams ?? {})) {
+      expect(journal.request.params.get(key)).toBe(value);
+    }
     const operations = options?.operations ?? [];
     journal.flush({
       items: operations,
@@ -167,6 +177,45 @@ describe('OperationsPage', () => {
     http
       .expectOne((candidate) => candidate.url === '/api/v1/operations')
       .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+  });
+
+  it('keeps filters collapsed by default and applies dashboard drill-down parameters', () => {
+    queryParams = {
+      occurred_from: '2026-08-01',
+      occurred_to: '2026-08-31',
+      type: 'expense',
+      category_id: 'category-1',
+    };
+    flushInitial({
+      expectedJournalParams: {
+        occurred_from: '2026-08-01',
+        occurred_to: '2026-08-31',
+        type: 'expense',
+        category_id: 'category-1',
+      },
+    });
+    expect(fixture.nativeElement.querySelector('#operation-filters')).not.toBeNull();
+    const chips = fixture.nativeElement.querySelector('.filter-chips') as HTMLElement;
+    expect(chips.textContent).toContain('Food');
+
+    (chips.querySelector('button') as HTMLButtonElement).click();
+    const resetRequest = http.expectOne(
+      (request) => request.url === '/api/v1/operations' && request.params.get('page') === '1',
+    );
+    expect(resetRequest.request.params.has('category_id')).toBe(false);
+    expect(resetRequest.request.params.has('occurred_from')).toBe(false);
+    resetRequest.flush({
+      items: [],
+      page: 1,
+      page_size: 25,
+      total: 0,
+      total_amount: '0.0000',
+    });
+  });
+
+  it('keeps filters collapsed when there is no active selection', () => {
+    flushInitial();
+    expect(fixture.nativeElement.querySelector('#operation-filters')).toBeNull();
   });
 
   it('opens the exact actual operation linked from the calendar', () => {
@@ -401,6 +450,10 @@ describe('OperationsPage', () => {
       version: 1,
     };
     flushInitial({ operations: [expense], total: 26, totalAmount: '-260.0000' });
+    ([...fixture.nativeElement.querySelectorAll('button')] as HTMLButtonElement[])
+      .find((button) => button.textContent.includes('Показать фильтры'))!
+      .click();
+    fixture.detectChanges();
     setValue('.filters-panel select[formControlName="type"]', 'expense');
     fixture.nativeElement.querySelector('.filters-panel form').dispatchEvent(new Event('submit'));
     http

@@ -255,6 +255,95 @@ def test_fund_lifecycle_allocation_and_operation_invariants(
         assert history["total"] == 2
 
 
+def test_fund_target_initial_allocation_and_same_account_fund_transfer_are_atomic(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        account = _account(client, headers, "Savings", "100")
+        reserve = client.post(
+            "/api/v1/funds",
+            headers=headers,
+            json={
+                "name": "Reserve",
+                "allocation_percentage": "10",
+                "target_amount": "80",
+                "initial_account_id": account,
+                "initial_amount": "30",
+                "initial_occurred_on": "2026-08-14",
+            },
+        )
+        assert reserve.status_code == 201
+        assert reserve.json()["total_balance"] == "30.0000"
+        assert reserve.json()["progress_percentage"] == "37.50"
+        rejected_creation = client.post(
+            "/api/v1/funds",
+            headers=headers,
+            json={
+                "name": "Impossible",
+                "allocation_percentage": "5",
+                "initial_account_id": account,
+                "initial_amount": "1000",
+                "initial_occurred_on": "2026-08-14",
+            },
+        )
+        assert rejected_creation.status_code == 409
+        assert all(fund["name"] != "Impossible" for fund in client.get("/api/v1/funds").json())
+        travel = _fund(client, headers, "Travel", "10")
+
+        moved = client.post(
+            "/api/v1/funds/transfers",
+            headers=headers,
+            json={
+                "source_fund_id": reserve.json()["id"],
+                "destination_fund_id": travel["id"],
+                "account_id": account,
+                "amount": "5",
+                "occurred_on": "2026-08-14",
+            },
+        )
+        assert moved.status_code == 201
+        assert moved.json()["type"] == "fund_transfer"
+        summary = client.get("/api/v1/funds/summary").json()
+        assert summary["total_reserved"] == "30.0000"
+        totals = {fund["id"]: fund["total_balance"] for fund in summary["funds"]}
+        assert totals[reserve.json()["id"]] == "25.0000"
+        assert totals[travel["id"]] == "5.0000"
+        account_coverage = summary["accounts"][0]
+        assert account_coverage["physical_balance"] == "100.0000"
+        assert account_coverage["free_balance"] == "70.0000"
+
+        updated_target = client.put(
+            f"/api/v1/funds/{reserve.json()['id']}",
+            headers=headers,
+            json={
+                "name": "Reserve",
+                "description": None,
+                "allocation_percentage": "10",
+                "target_amount": "20",
+                "version": reserve.json()["version"],
+            },
+        )
+        assert updated_target.status_code == 200
+        assert updated_target.json()["progress_percentage"] == "125.00"
+
+        rejected = client.post(
+            "/api/v1/funds/transfers",
+            headers=headers,
+            json={
+                "source_fund_id": reserve.json()["id"],
+                "destination_fund_id": travel["id"],
+                "account_id": account,
+                "amount": "100",
+                "occurred_on": "2026-08-14",
+            },
+        )
+        assert rejected.status_code == 409
+        assert client.get("/api/v1/funds/summary").json()["total_reserved"] == "30.0000"
+
+
 def test_operation_change_that_breaks_coverage_is_rolled_back(
     postgres_database_settings: Settings,
 ) -> None:

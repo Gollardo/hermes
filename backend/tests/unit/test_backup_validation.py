@@ -5,6 +5,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 
 from app.modules.backup.schemas import BackupData
 from app.modules.backup.service import BackupInvariantError, validate_document
@@ -257,6 +258,30 @@ def valid_data() -> dict[str, Any]:
 
 def test_valid_backup_domain_shape() -> None:
     validate_document(BackupData.model_validate(valid_data()))
+
+
+def test_backup_rejects_invalid_target_and_duplicate_weekdays() -> None:
+    invalid_target = valid_data()
+    invalid_target["funds"].append(
+        {
+            "id": str(uuid4()),
+            "name": "Goal",
+            "description": None,
+            "allocation_percentage": "0",
+            "target_amount": "0",
+            "archived_at": None,
+            "created_at": invalid_target["settings"]["updated_at"],
+            "updated_at": invalid_target["settings"]["updated_at"],
+            "version": 1,
+        }
+    )
+    with pytest.raises(ValidationError, match="target amount must be positive"):
+        BackupData.model_validate(invalid_target)
+
+    duplicate_weekdays = valid_data()
+    duplicate_weekdays["recurring_rules"][0].update(frequency="weekly", interval=2, weekdays=[1, 1])
+    with pytest.raises(ValidationError, match="unique weekdays"):
+        BackupData.model_validate(duplicate_weekdays)
 
 
 @pytest.mark.parametrize(

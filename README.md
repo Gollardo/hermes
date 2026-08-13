@@ -28,10 +28,11 @@ and the maintainer's available time.
 - exact initial-balance adjustments stored in the operation ledger;
 - income/expense category trees with archive-safe lifecycle rules.
 - income, expense, transfer and balance-adjustment CRUD with exact movements;
-- journal filters, details and pagination with optimistic edit protection.
+- collapsible journal filters, details and pagination with optimistic edit protection.
 - virtual funds, physical/free coverage, explicit percentage allocation and
-  virtual redistribution between accounts.
-- recurring income, expense and transfer rules with exact dated snapshots;
+  virtual redistribution between accounts and funds, optional targets and progress.
+- recurring income, expense and transfer rules with selectable weekly weekdays,
+  weekly/monthly intervals and exact dated snapshots;
 - monthly calendar, upcoming/overdue list and confirm/postpone/cancel actions;
 - idempotent confirmation that atomically links one posted financial operation.
 - per-account and combined balance forecasts with five horizons, risk warnings

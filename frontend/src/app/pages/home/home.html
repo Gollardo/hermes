@@ -60,6 +60,56 @@
       </section>
     }
 
+    @if (analyticsError(); as message) {
+      <p class="form-error analytics-error" role="status">{{ message }}</p>
+    }
+    <section class="analytics-grid" aria-label="Структура доходов, расходов и фондов">
+      @for (chart of analyticsCharts(); track chart.title) {
+        <article class="panel donut-card">
+          <div>
+            <p class="section-label">{{ chart.context }}</p>
+            <h2>{{ chart.title }}</h2>
+          </div>
+          @if (chartItems(chart.items).length) {
+            <div
+              class="donut"
+              [style.background]="donutStyle(chart.items)"
+              role="img"
+              [attr.aria-label]="chart.title"
+            ></div>
+            <ul>
+              @for (item of chartItems(chart.items); track item.category_id) {
+                <li>
+                  <i
+                    class="chart-swatch"
+                    aria-hidden="true"
+                    [style.background]="chartColor($index)"
+                  ></i>
+                  @if (chart.operationType) {
+                    <a
+                      routerLink="/operations"
+                      [queryParams]="{
+                        occurred_from: analyticsFrom(),
+                        occurred_to: analyticsThrough(),
+                        type: chart.operationType,
+                        category_id: item.category_id === 'other' ? null : item.category_id,
+                      }"
+                      >{{ item.category_name }}</a
+                    >
+                  } @else {
+                    <a routerLink="/funds">{{ item.category_name }}</a>
+                  }
+                  <strong>{{ item.amount | money }} {{ baseCurrency() }}</strong>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="empty-state">За период данных нет.</p>
+          }
+        </article>
+      }
+    </section>
+
     <div class="overview-columns">
       <section class="panel" aria-labelledby="attention-title">
         <div class="panel-heading">

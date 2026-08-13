@@ -23,6 +23,9 @@ a transactional cross-module use case. The flow appears in
 ## Confirmed recurrence and materialization policy
 
 - Supported frequencies are `daily`, `weekly`, `monthly` and `yearly`.
+- Weekly rules select one or more ISO weekdays and repeat every 1–3 weeks.
+  Monthly rules repeat every 1–3 months on the `start_on` day. Yearly rules
+  repeat on the month and day of `start_on`; its year advances automatically.
 - `start_on` anchors the recurrence; `end_on` is optional and inclusive.
 - Monthly starts are limited to days 1–28. Yearly rules cannot start on
   29 February. A nonexistent occurrence date is never silently shifted.
@@ -75,7 +78,7 @@ The complete decision and persistence consequences are recorded in
 
 ## Deferred questions
 
-- Custom intervals, weekdays and richer recurrence expressions.
+- Richer recurrence expressions beyond the implemented weekly/monthly interval.
 - A user-selectable missing-day policy for dates 29–31 and leap day.
 - Background materialization without an external job queue.
 - Migration semantics if instance timezone changes after schedules exist.

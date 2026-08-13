@@ -6,13 +6,14 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 
 from app.core.config import Settings
 from app.main import create_app
 from app.modules.operations.models import AccountMovement, FinancialOperation
 from app.modules.scheduling import service as scheduling_service
-from app.modules.scheduling.models import ExpectedOccurrence
+from app.modules.scheduling.models import ExpectedOccurrence, RecurrenceFrequency, RecurringRule
 from app.modules.scheduling.service import list_occurrence_responses, materialize_all
 
 MASTER_PASSWORD = "correct-master-password"
@@ -605,3 +606,56 @@ def test_alpha4_database_upgrades_and_beta1_schema_downgrades(
     with upgraded_app.state.database_engine.connect() as connection:
         assert connection.scalar(select(func.count()).select_from(FinancialOperation)) == 1
         assert connection.scalar(select(func.count()).select_from(AccountMovement)) == 1
+
+
+def test_flexible_weekly_rule_round_trips_and_materializes_selected_days(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        account = _account(client, headers, "Flexible", "0")
+        category = _category(client, headers, "Salary", "income")
+        today = _horizon_today(client, headers)
+        monday = today + timedelta(days=8 - today.isoweekday())
+        payload = _rule_payload(
+            operation_type="income",
+            start_on=monday,
+            end_on=monday + timedelta(days=20),
+            amount="10",
+            account_id=account,
+            category_id=category,
+        )
+        payload.update({"frequency": "weekly", "interval": 2, "weekdays": [1, 5]})
+
+        created = client.post("/api/v1/scheduling/rules", headers=headers, json=payload)
+        assert created.status_code == 201
+        assert created.json()["interval"] == 2
+        assert created.json()["weekdays"] == [1, 5]
+        due_dates = [
+            date.fromisoformat(str(item["due_on"]))
+            for item in _occurrences(client, created.json()["id"])
+        ]
+        assert due_dates == [
+            monday,
+            monday + timedelta(days=4),
+            monday + timedelta(days=14),
+            monday + timedelta(days=18),
+        ]
+
+    rule_id = created.json()["id"]
+    with pytest.raises(IntegrityError), app.state.session_factory.begin() as session:
+        session.execute(
+            update(RecurringRule).where(RecurringRule.id == rule_id).values(weekdays=[1, 1])
+        )
+    with pytest.raises(IntegrityError), app.state.session_factory.begin() as session:
+        session.execute(
+            update(RecurringRule)
+            .where(RecurringRule.id == rule_id)
+            .values(
+                frequency=RecurrenceFrequency.DAILY,
+                interval=2,
+                weekdays=None,
+            )
+        )

@@ -5,6 +5,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { MoneyPipe } from '../../shared/money.pipe';
+import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
 
 type AccountType = 'cash' | 'debit' | 'savings';
 
@@ -19,7 +20,7 @@ interface Account {
 
 @Component({
   selector: 'app-accounts-page',
-  imports: [ReactiveFormsModule, MoneyPipe],
+  imports: [ReactiveFormsModule, MoneyPipe, DecimalInput],
   templateUrl: './accounts.html',
   styleUrl: './accounts.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,7 +39,7 @@ export class AccountsPage implements OnInit {
     name: ['', [Validators.required, Validators.maxLength(120)]],
     type: this.builder.control<AccountType>('cash', Validators.required),
     description: ['', Validators.maxLength(2000)],
-    initialBalance: ['0', [Validators.required, Validators.pattern(/^\d{1,16}(?:\.\d{1,4})?$/)]],
+    initialBalance: ['0', [Validators.required, Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)]],
   });
 
   ngOnInit(): void {
@@ -59,7 +60,7 @@ export class AccountsPage implements OnInit {
       ? this.http.put<Account>(`${environment.apiBaseUrl}/accounts/${id}`, body)
       : this.http.post<Account>(`${environment.apiBaseUrl}/accounts`, {
           ...body,
-          initial_balance: value.initialBalance,
+          initial_balance: decimalPayload(value.initialBalance),
         });
     request.subscribe({
       next: () => {

@@ -58,6 +58,64 @@
   gap: 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.analytics-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.donut-card {
+  display: grid;
+  gap: 1rem;
+}
+.donut-card h2 {
+  margin: 0.2rem 0 0;
+}
+.donut {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  margin: auto;
+  max-width: 10rem;
+  position: relative;
+  width: 60%;
+}
+.donut::after {
+  background: var(--surface);
+  border-radius: 50%;
+  content: '';
+  inset: 24%;
+  position: absolute;
+}
+.donut-card ul {
+  display: grid;
+  gap: 0.45rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.donut-card li {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+.donut-card li a {
+  color: var(--ink-soft);
+  flex: 1;
+  text-decoration: none;
+}
+.donut-card li a:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+.chart-swatch {
+  border-radius: 50%;
+  flex: 0 0 0.75rem;
+  height: 0.75rem;
+}
+.donut-card li strong {
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
 .overview-list {
   border-top: 1px solid var(--line);
   display: grid;
@@ -91,6 +149,9 @@
   display: inline-block;
   margin-top: 1rem;
 }
+.analytics-error {
+  margin: 0;
+}
 @media (max-width: 70rem) {
   .overview-balances {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -98,6 +159,7 @@
 }
 @media (max-width: 48rem) {
   .overview-columns,
+  .analytics-grid,
   .overview-balances {
     grid-template-columns: 1fr;
   }

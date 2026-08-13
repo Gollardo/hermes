@@ -15,6 +15,7 @@ import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { MoneyPipe } from '../../shared/money.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
+import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
 
 type OperationType = 'income' | 'expense' | 'transfer';
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -42,6 +43,8 @@ interface RecurringRule {
   id: string;
   type: OperationType;
   frequency: Frequency;
+  interval: number;
+  weekdays: number[] | null;
   start_on: string;
   end_on: string | null;
   amount: string;
@@ -102,7 +105,7 @@ interface CalendarDay {
 
 @Component({
   selector: 'app-scheduling-page',
-  imports: [ReactiveFormsModule, RouterLink, MoneyPipe, EntityCombobox],
+  imports: [ReactiveFormsModule, RouterLink, MoneyPipe, EntityCombobox, DecimalInput],
   templateUrl: './scheduling.html',
   styleUrls: ['../directory.css', './scheduling.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -138,9 +141,17 @@ export class SchedulingPage implements OnInit {
   protected readonly ruleForm = this.builder.group({
     type: this.builder.control<OperationType>('expense', Validators.required),
     frequency: this.builder.control<Frequency>('monthly', Validators.required),
+    interval: [1, [Validators.required, Validators.min(1), Validators.max(3)]],
+    monday: [false],
+    tuesday: [false],
+    wednesday: [false],
+    thursday: [false],
+    friday: [false],
+    saturday: [false],
+    sunday: [false],
     startOn: ['', Validators.required],
     endOn: [''],
-    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:\.\d{1,4})?$/)]],
+    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)]],
     description: ['', Validators.maxLength(2000)],
     accountId: ['', Validators.required],
     destinationAccountId: [''],
@@ -250,11 +261,13 @@ export class SchedulingPage implements OnInit {
   protected canSaveRule(): boolean {
     if (this.ruleForm.invalid) return false;
     const value = this.ruleForm.getRawValue();
+    if (!positiveDecimal(value.amount)) return false;
     if (this.hasUnavailableReference()) return false;
     if (value.endOn && value.endOn < value.startOn) return false;
     const day = Number(value.startOn.slice(8, 10));
     if (value.frequency === 'monthly' && day > 28) return false;
     if (value.frequency === 'yearly' && value.startOn.slice(5) === '02-29') return false;
+    if (value.frequency === 'weekly' && !this.selectedWeekdays().length) return false;
     if (value.type === 'transfer') {
       return Boolean(value.destinationAccountId && value.destinationAccountId !== value.accountId);
     }
@@ -292,9 +305,17 @@ export class SchedulingPage implements OnInit {
 
   protected editRule(rule: RecurringRule): void {
     this.editingId.set(rule.id);
-    this.ruleForm.setValue({
+    this.ruleForm.patchValue({
       type: rule.type,
       frequency: rule.frequency,
+      interval: rule.interval ?? 1,
+      monday: rule.weekdays?.includes(1) ?? false,
+      tuesday: rule.weekdays?.includes(2) ?? false,
+      wednesday: rule.weekdays?.includes(3) ?? false,
+      thursday: rule.weekdays?.includes(4) ?? false,
+      friday: rule.weekdays?.includes(5) ?? false,
+      saturday: rule.weekdays?.includes(6) ?? false,
+      sunday: rule.weekdays?.includes(7) ?? false,
       startOn: rule.start_on,
       endOn: rule.end_on ?? '',
       amount: rule.amount,
@@ -316,6 +337,14 @@ export class SchedulingPage implements OnInit {
     this.ruleForm.reset({
       type: 'expense',
       frequency: 'monthly',
+      interval: 1,
+      monday: false,
+      tuesday: false,
+      wednesday: false,
+      thursday: false,
+      friday: false,
+      saturday: false,
+      sunday: false,
       startOn: this.today(),
       endOn: '',
       amount: '',
@@ -341,6 +370,8 @@ export class SchedulingPage implements OnInit {
       .put<RecurringRule>(`${environment.apiBaseUrl}/scheduling/rules/${rule.id}`, {
         type: rule.type,
         frequency: rule.frequency,
+        interval: rule.interval,
+        weekdays: rule.weekdays,
         start_on: rule.start_on,
         end_on: rule.end_on,
         amount: rule.amount,
@@ -392,6 +423,19 @@ export class SchedulingPage implements OnInit {
     return { daily: 'Ежедневно', weekly: 'Еженедельно', monthly: 'Ежемесячно', yearly: 'Ежегодно' }[
       frequency
     ];
+  }
+
+  protected recurrenceLabel(rule: RecurringRule): string {
+    if (rule.frequency === 'weekly') {
+      const weekdayLabels = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+      const days = (rule.weekdays ?? []).map((day) => weekdayLabels[day - 1]).join(', ');
+      const interval = rule.interval === 1 ? 'каждую неделю' : `каждую ${rule.interval}-ю неделю`;
+      return `${interval}${days ? ` · ${days}` : ''}`;
+    }
+    if (rule.frequency === 'monthly') {
+      return rule.interval === 1 ? 'каждый месяц' : `каждый ${rule.interval}-й месяц`;
+    }
+    return this.frequencyLabel(rule.frequency).toLowerCase();
   }
 
   protected statusLabel(status: OccurrenceStatus): string {
@@ -636,14 +680,29 @@ export class SchedulingPage implements OnInit {
     this.ruleForm.controls.destinationAccountId.setValue('');
   }
 
-  private ruleBody(): Record<string, string | null> {
+  protected selectedWeekdays(): number[] {
+    const value = this.ruleForm.getRawValue();
+    return [
+      value.monday,
+      value.tuesday,
+      value.wednesday,
+      value.thursday,
+      value.friday,
+      value.saturday,
+      value.sunday,
+    ].flatMap((selected, index) => (selected ? [index + 1] : []));
+  }
+
+  private ruleBody(): Record<string, string | number | number[] | null> {
     const value = this.ruleForm.getRawValue();
     return {
       type: value.type,
       frequency: value.frequency,
+      interval: value.frequency === 'weekly' || value.frequency === 'monthly' ? value.interval : 1,
+      weekdays: value.frequency === 'weekly' ? this.selectedWeekdays() : null,
       start_on: value.startOn,
       end_on: value.endOn || null,
-      amount: value.amount,
+      amount: decimalPayload(value.amount),
       description: value.description || null,
       account_id: value.accountId,
       destination_account_id: value.type === 'transfer' ? value.destinationAccountId || null : null,
@@ -667,6 +726,12 @@ function toIsoDate(value: Date): string {
 function addDays(value: string, amount: number): string {
   const parsed = parseIsoDate(value);
   return toIsoDate(new Date(parsed.year, parsed.month - 1, parsed.day + amount));
+}
+
+function positiveDecimal(value: string): boolean {
+  const match = /^(\d{1,16})(?:\.(\d{1,4}))?$/.exec(decimalPayload(value));
+  if (!match) return false;
+  return BigInt(match[1]) > 0n || BigInt(match[2] ?? '0') > 0n;
 }
 
 function calendarGridRange(month: string): { start: string; end: string } {

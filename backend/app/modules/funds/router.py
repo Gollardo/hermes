@@ -4,11 +4,13 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.application.funds import (
     allocate_funds,
+    create_fund_with_initial_allocation,
     fund_history,
     fund_summary,
     preview_allocation,
     redistribute_fund,
     transfer_and_allocate,
+    transfer_between_funds,
 )
 from app.core.database import DatabaseSession
 from app.modules.accounts.contracts import AccountReferenceError
@@ -22,6 +24,7 @@ from app.modules.funds.schemas import (
     FundLifecycleRequest,
     FundResponse,
     FundSummaryResponse,
+    FundTransferCreateRequest,
     FundUpdateRequest,
     RedistributionCreateRequest,
     TransferAllocationCreateRequest,
@@ -35,7 +38,6 @@ from app.modules.funds.service import (
     FundNotFoundError,
     FundPercentageLimitError,
     archive_fund,
-    create_fund,
     get_fund_response,
     list_funds,
     update_fund,
@@ -99,14 +101,14 @@ def read_history(
 @write_router.post("", response_model=FundResponse, status_code=status.HTTP_201_CREATED)
 def add_fund(payload: FundCreateRequest, session: DatabaseSession) -> FundResponse:
     try:
-        fund = create_fund(
-            session,
-            name=payload.name,
-            description=payload.description,
-            percentage=payload.allocation_percentage,
-        )
-        return get_fund_response(session, fund.id)
-    except FundPercentageLimitError as error:
+        return create_fund_with_initial_allocation(session, payload)
+    except (
+        AccountReferenceError,
+        FundBalanceError,
+        FundCoverageError,
+        FundNotFoundError,
+        FundPercentageLimitError,
+    ) as error:
         _raise_domain_error(error)
         raise AssertionError from error
 
@@ -173,6 +175,19 @@ def redistribute(
     try:
         return redistribute_fund(session, payload)
     except (AccountReferenceError, FundNotFoundError, FundCoverageError, FundBalanceError) as error:
+        _raise_domain_error(error)
+        raise AssertionError from error
+
+
+@write_router.post(
+    "/transfers", response_model=FundEventResponse, status_code=status.HTTP_201_CREATED
+)
+def transfer_fund(
+    payload: FundTransferCreateRequest, session: DatabaseSession
+) -> FundEventResponse:
+    try:
+        return transfer_between_funds(session, payload)
+    except (AccountReferenceError, FundNotFoundError, FundBalanceError) as error:
         _raise_domain_error(error)
         raise AssertionError from error
 

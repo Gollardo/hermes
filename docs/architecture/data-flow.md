@@ -116,6 +116,16 @@ flowchart LR
 Virtual redistribution uses the same lock and coverage order but posts equal
 opposite fund movements and no account movement.
 
+Creating a fund with an initial amount locks the selected account before the
+fund definition lock, calculates its free balance, then writes the definition
+and one explicit allocation only to that new fund. A coverage or reference
+failure rolls back the definition as well as the virtual movement.
+
+A transfer between funds locks the physical account and then both fund
+definitions in deterministic order. Equal opposite virtual movements stay on
+that account, so physical balance, account reserved total and the total across
+all funds are unchanged.
+
 ## Transfer and percentage allocation
 
 The UI may compose a physical transfer and an explicit percentage allocation

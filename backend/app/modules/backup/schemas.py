@@ -1,8 +1,17 @@
 from datetime import date
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, SecretStr
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 
 from app.core.validation import Money
 from app.modules.accounts.contracts import AccountType
@@ -69,10 +78,18 @@ class FundRecord(BackupModel):
     name: str = Field(min_length=1, max_length=120)
     description: str | None = Field(max_length=2000)
     allocation_percentage: Money
+    target_amount: Money | None = None
     archived_at: AwareDatetime | None
     created_at: AwareDatetime
     updated_at: AwareDatetime
     version: int = Field(ge=1)
+
+    @field_validator("target_amount")
+    @classmethod
+    def positive_target(cls, value: Decimal | None) -> Decimal | None:
+        if value is not None and value <= 0:
+            raise ValueError("target amount must be positive")
+        return value
 
 
 class FundEventRecord(BackupModel):
@@ -96,6 +113,8 @@ class RecurringRuleRecord(BackupModel):
     id: UUID
     type: OperationType
     frequency: RecurrenceFrequency
+    interval: int = Field(default=1, ge=1, le=3)
+    weekdays: list[int] | None = None
     start_on: date
     end_on: date | None
     amount: Money
@@ -107,6 +126,27 @@ class RecurringRuleRecord(BackupModel):
     version: int = Field(ge=1)
     created_at: AwareDatetime
     updated_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def validate_recurrence(self) -> "RecurringRuleRecord":
+        if self.frequency == RecurrenceFrequency.WEEKLY and self.weekdays is None:
+            self.weekdays = [self.start_on.isoweekday()]
+        if self.frequency == RecurrenceFrequency.WEEKLY:
+            if (
+                not self.weekdays
+                or len(self.weekdays) != len(set(self.weekdays))
+                or any(day < 1 or day > 7 for day in self.weekdays)
+            ):
+                raise ValueError("weekly rules require unique weekdays from 1 through 7")
+            self.weekdays.sort()
+        elif self.weekdays is not None:
+            raise ValueError("weekdays are only valid for weekly rules")
+        if (
+            self.frequency in {RecurrenceFrequency.DAILY, RecurrenceFrequency.YEARLY}
+            and self.interval != 1
+        ):
+            raise ValueError("daily and yearly rules use interval 1")
+        return self
 
 
 class ExpectedOccurrenceRecord(BackupModel):

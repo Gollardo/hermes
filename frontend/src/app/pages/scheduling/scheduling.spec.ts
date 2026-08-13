@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FormGroup } from '@angular/forms';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 
 import { SchedulingPage } from './scheduling';
@@ -26,11 +27,18 @@ const OCCURRENCE = {
   version: 1,
 };
 
-let routeParams: Record<string, string>;
+interface SchedulingHarness {
+  accounts: { set(value: object[]): void };
+  categories: { set(value: object[]): void };
+  ruleForm: FormGroup;
+  canSaveRule(): boolean;
+  submitRule(): void;
+}
 
-describe('SchedulingPage', () => {
-  let fixture: ComponentFixture<SchedulingPage>;
+describe('SchedulingPage recurrence editor', () => {
   let http: HttpTestingController;
+  let fixture: ComponentFixture<SchedulingPage>;
+  let routeParams: Record<string, string>;
 
   beforeEach(async () => {
     localStorage.setItem('hermes-recent-accounts', JSON.stringify(['account-1']));
@@ -57,6 +65,62 @@ describe('SchedulingPage', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('submits selected weekdays, interval and a normalized decimal amount', () => {
+    const page = fixture.componentInstance as unknown as SchedulingHarness;
+    page.accounts.set([{ id: 'account-1', name: 'Main', archived: false }]);
+    page.categories.set([
+      {
+        id: 'category-1',
+        name: 'Salary',
+        type: 'income',
+        parent_id: null,
+        archived: false,
+      },
+    ]);
+    page.ruleForm.setValue({
+      type: 'income',
+      frequency: 'weekly',
+      interval: 2,
+      monday: true,
+      tuesday: false,
+      wednesday: false,
+      thursday: false,
+      friday: true,
+      saturday: false,
+      sunday: false,
+      startOn: '2026-08-17',
+      endOn: '2026-12-31',
+      amount: '10,5',
+      description: '',
+      accountId: 'account-1',
+      destinationAccountId: '',
+      categoryId: 'category-1',
+    });
+    expect(page.canSaveRule()).toBe(true);
+
+    page.submitRule();
+    const request = http.expectOne('/api/v1/scheduling/rules');
+    expect(request.request.body.interval).toBe(2);
+    expect(request.request.body.weekdays).toEqual([1, 5]);
+    expect(request.request.body.amount).toBe('10.5');
+    request.flush({});
+    http.expectOne('/api/v1/scheduling/rules').flush([]);
+  });
+
+  it('rejects a weekly rule without days and a zero amount', () => {
+    const page = fixture.componentInstance as unknown as SchedulingHarness;
+    page.ruleForm.patchValue({
+      type: 'income',
+      frequency: 'weekly',
+      interval: 1,
+      startOn: '2026-08-17',
+      amount: '0',
+      accountId: 'account-1',
+      categoryId: 'category-1',
+    });
+    expect(page.canSaveRule()).toBe(false);
+  });
 
   it('renders a monthly calendar and marks an overdue occurrence in text', () => {
     flushInitial([OCCURRENCE]);
@@ -87,6 +151,8 @@ describe('SchedulingPage', () => {
     expect(request.request.body).toMatchObject({
       type: 'income',
       frequency: 'monthly',
+      interval: 1,
+      weekdays: null,
       start_on: '2026-08-28',
       amount: '100.2500',
       account_id: 'account-1',
@@ -111,18 +177,7 @@ describe('SchedulingPage', () => {
 
   it('loads every calendar page and reports the limited upcoming total honestly', () => {
     fixture.detectChanges();
-    http.expectOne('/api/v1/scheduling/materialize').flush({
-      horizon_from: '2026-08-11',
-      horizon_to: '2027-08-11',
-      created: 0,
-      updated: 0,
-      cancelled: 0,
-    });
-    http.expectOne('/api/v1/accounts').flush([]);
-    http.expectOne('/api/v1/categories').flush([]);
-    http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
-    http.expectOne('/api/v1/scheduling/rules').flush([]);
-
+    flushMaterializationAndReferences();
     const firstPage = http.expectOne(
       (request) =>
         request.url === '/api/v1/scheduling/occurrences' &&
@@ -151,7 +206,6 @@ describe('SchedulingPage', () => {
       )
       .flush({ items: [OCCURRENCE], page: 1, page_size: 12, total: 31 });
     fixture.detectChanges();
-
     expect(fixture.nativeElement.querySelectorAll('.calendar-event')).toHaveLength(2);
     expect(fixture.nativeElement.textContent).toContain('1 из 31');
     expect(fixture.nativeElement.textContent).toContain('Показаны первые 1 событий');
@@ -169,19 +223,7 @@ describe('SchedulingPage', () => {
   it('opens the month and exact occurrence requested by forecast drill-down', () => {
     routeParams = { month: '2026-09', focus: 'occurrence-1' };
     fixture.detectChanges();
-    http.expectOne('/api/v1/scheduling/materialize').flush({
-      horizon_from: '2026-08-11',
-      horizon_to: '2027-08-11',
-      created: 0,
-      updated: 0,
-      cancelled: 0,
-    });
-    http
-      .expectOne('/api/v1/accounts')
-      .flush([{ id: 'account-1', name: 'Основной', archived: false }]);
-    http.expectOne('/api/v1/categories').flush([]);
-    http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
-    http.expectOne('/api/v1/scheduling/rules').flush([]);
+    flushMaterializationAndReferences();
     http
       .expectOne(
         (request) =>
@@ -203,7 +245,6 @@ describe('SchedulingPage', () => {
       )
       .flush({ items: [], page: 1, page_size: 12, total: 0 });
     fixture.detectChanges();
-
     expect(fixture.nativeElement.textContent).toContain('сентябрь 2026');
     expect(fixture.nativeElement.querySelector('#occurrence-occurrence-1')).not.toBeNull();
   });
@@ -229,6 +270,8 @@ describe('SchedulingPage', () => {
         id: 'rule-1',
         type: 'expense',
         frequency: 'monthly',
+        interval: 1,
+        weekdays: null,
         start_on: '2026-08-11',
         end_on: null,
         amount: '12.5000',
@@ -244,13 +287,7 @@ describe('SchedulingPage', () => {
       },
     ]);
     flushOccurrenceRequests([]);
-
-    const edit = [...fixture.nativeElement.querySelectorAll('button')].find(
-      (button: HTMLButtonElement) => button.textContent.trim() === 'Изменить',
-    ) as HTMLButtonElement;
-    edit.click();
-    fixture.detectChanges();
-
+    clickButton('Изменить');
     const selectedAccount = fixture.nativeElement.querySelector(
       '.form-panel app-entity-combobox[formControlName="accountId"] input',
     ) as HTMLInputElement;
@@ -275,6 +312,11 @@ describe('SchedulingPage', () => {
 
   function flushInitial(occurrences: object[]): void {
     fixture.detectChanges();
+    flushMaterializationAndReferences();
+    flushOccurrenceRequests(occurrences);
+  }
+
+  function flushMaterializationAndReferences(): void {
     http.expectOne('/api/v1/scheduling/materialize').flush({
       horizon_from: '2026-08-11',
       horizon_to: '2027-08-11',
@@ -286,12 +328,23 @@ describe('SchedulingPage', () => {
       .expectOne('/api/v1/accounts')
       .flush([{ id: 'account-1', name: 'Основной', archived: false }]);
     http.expectOne('/api/v1/categories').flush([
-      { id: 'category-1', name: 'Связь', type: 'expense', archived: false },
-      { id: 'category-income', name: 'Зарплата', type: 'income', archived: false },
+      {
+        id: 'category-1',
+        name: 'Связь',
+        type: 'expense',
+        parent_id: null,
+        archived: false,
+      },
+      {
+        id: 'category-income',
+        name: 'Зарплата',
+        type: 'income',
+        parent_id: null,
+        archived: false,
+      },
     ]);
     http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
     http.expectOne('/api/v1/scheduling/rules').flush([]);
-    flushOccurrenceRequests(occurrences);
   }
 
   function flushOccurrenceRequests(occurrences: object[]): void {

@@ -30,6 +30,12 @@
       <article>
         <span>Нераспределённая доля</span><strong>{{ remainingPercentage() | money }}%</strong>
       </article>
+      <article>
+        <span>Общий прогресс целей</span
+        ><strong>{{
+          overallTargetProgress() === null ? 'Цели не заданы' : overallTargetProgress() + '%'
+        }}</strong>
+      </article>
     </section>
 
     <section class="fund-primary-actions panel" aria-labelledby="fund-actions-title">
@@ -47,6 +53,9 @@
         </button>
         <button type="button" class="secondary" (click)="openRedistribution()">
           Перенести назначение между счетами
+        </button>
+        <button type="button" class="secondary" (click)="openFundTransfer()">
+          Перевести между фондами
         </button>
       </div>
     </section>
@@ -81,6 +90,19 @@
                         (fund.archived ? 'Фонд находится в архиве' : 'Без описания')
                     }}
                   </p>
+                  @if (fund.target_amount) {
+                    <div class="fund-progress">
+                      <div>
+                        <span>Цель {{ fund.target_amount | money }} {{ baseCurrency() }}</span>
+                        <strong>{{ fund.progress_percentage }}%</strong>
+                      </div>
+                      <progress
+                        [value]="Math.min(100, +(fund.progress_percentage || 0))"
+                        max="100"
+                        [attr.aria-label]="'Прогресс фонда ' + fund.name"
+                      ></progress>
+                    </div>
+                  }
                   @for (position of positionsFor(fund.id); track position.account_id) {
                     <small
                       >{{ position.account_name }} · {{ position.balance | money }}
@@ -230,6 +252,9 @@
                   @case ('redistribution') {
                     Перенести назначение фонда
                   }
+                  @case ('fundTransfer') {
+                    Перевести между фондами
+                  }
                 }
               </h2>
             </div>
@@ -254,17 +279,81 @@
                 maxlength="2000"
               ></textarea>
               <label for="fund-percentage">Процент при распределении новых сумм</label
-              ><input id="fund-percentage" formControlName="percentage" inputmode="decimal" />
+              ><input
+                appDecimalInput
+                id="fund-percentage"
+                formControlName="percentage"
+                inputmode="decimal"
+              />
               <p class="hint">
                 Доступно: {{ availablePercentage() }}%. Процент не меняет уже назначенные деньги.
               </p>
-              @if (fundForm.controls.percentage.touched && !canSaveFund()) {
+              @if (fundForm.controls.percentage.touched && fundForm.controls.percentage.invalid) {
+                <p class="field-error">Введите процент от 0 до 100, не более четырёх знаков.</p>
+              } @else if (fundForm.controls.percentage.touched && percentageExceedsAvailable()) {
                 <p class="field-error">Сумма процентов активных фондов не может превышать 100%.</p>
               }
+              <label for="fund-target">Целевая сумма</label
+              ><input
+                appDecimalInput
+                id="fund-target"
+                formControlName="targetAmount"
+                inputmode="decimal"
+                placeholder="Необязательно"
+              />
+              @if (
+                fundForm.controls.targetAmount.touched &&
+                (fundForm.controls.targetAmount.invalid ||
+                  optionalMoneyInvalid(fundForm.controls.targetAmount.value))
+              ) {
+                <p class="field-error">Введите положительную целевую сумму.</p>
+              }
+              @if (!editingId()) {
+                <p class="modal-explanation">
+                  Можно сразу выделить свободные деньги только в создаваемый фонд — процентное
+                  распределение не применяется.
+                </p>
+                <label for="fund-initial-account">Счёт со свободными деньгами</label>
+                <app-entity-combobox
+                  inputId="fund-initial-account"
+                  formControlName="initialAccountId"
+                  [options]="accountOptions()"
+                  recentKey="accounts"
+                  placeholder="Не пополнять сейчас"
+                  [allowEmpty]="true"
+                />
+                <label for="fund-initial-amount">Начальная сумма фонда</label
+                ><input
+                  appDecimalInput
+                  id="fund-initial-amount"
+                  formControlName="initialAmount"
+                  inputmode="decimal"
+                  placeholder="Необязательно"
+                />
+                @if (
+                  fundForm.controls.initialAmount.touched &&
+                  (fundForm.controls.initialAmount.invalid ||
+                    optionalMoneyInvalid(fundForm.controls.initialAmount.value))
+                ) {
+                  <p class="field-error">Введите положительную начальную сумму.</p>
+                }
+                <label for="fund-initial-date">Дата</label
+                ><input id="fund-initial-date" type="date" formControlName="initialOccurredOn" />
+                @if (
+                  fundForm.touched &&
+                  (fundForm.controls.initialAccountId.value ||
+                    fundForm.controls.initialAmount.value) &&
+                  !(
+                    fundForm.controls.initialAccountId.value &&
+                    fundForm.controls.initialAmount.value &&
+                    fundForm.controls.initialOccurredOn.value
+                  )
+                ) {
+                  <p class="field-error">Для пополнения укажите счёт, сумму и дату.</p>
+                }
+              }
               <button type="submit" [disabled]="saving() || !canSaveFund()">
-                {{
-                  saving() ? 'Сохраняем…' : editingId() ? 'Сохранить' : 'Создать и выделить деньги'
-                }}
+                {{ saving() ? 'Сохраняем…' : editingId() ? 'Сохранить' : 'Создать фонд' }}
               </button>
             </form>
           }
@@ -284,7 +373,17 @@
                 placeholder="Введите название счёта"
               />
               <label for="allocation-amount">Сколько выделить</label
-              ><input id="allocation-amount" formControlName="amount" inputmode="decimal" />
+              ><input
+                appDecimalInput
+                id="allocation-amount"
+                formControlName="amount"
+                inputmode="decimal"
+              />
+              @if (
+                allocationForm.controls.amount.touched && allocationForm.controls.amount.invalid
+              ) {
+                <p class="field-error">Введите положительную сумму.</p>
+              }
               <label for="allocation-date">Дата</label
               ><input id="allocation-date" type="date" formControlName="occurredOn" />
               <button
@@ -308,10 +407,14 @@
                           fundName(control.value.fundId)
                         }}</label
                         ><input
+                          appDecimalInput
                           [id]="'allocation-' + $index"
                           formControlName="amount"
                           inputmode="decimal"
                         />
+                        @if (control.get('amount')?.touched && control.get('amount')?.invalid) {
+                          <p class="field-error">Проверьте сумму фонда.</p>
+                        }
                       </div>
                     }
                   </div>
@@ -364,6 +467,7 @@
               />
               <label for="transfer-allocation-amount">Сумма перевода</label
               ><input
+                appDecimalInput
                 id="transfer-allocation-amount"
                 formControlName="amount"
                 inputmode="decimal"
@@ -421,7 +525,12 @@
                 placeholder="Введите название счёта"
               />
               <label for="redistribution-amount">Сумма</label
-              ><input id="redistribution-amount" formControlName="amount" inputmode="decimal" />
+              ><input
+                appDecimalInput
+                id="redistribution-amount"
+                formControlName="amount"
+                inputmode="decimal"
+              />
               <label for="redistribution-date">Дата</label
               ><input id="redistribution-date" type="date" formControlName="occurredOn" />
               <label for="redistribution-description">Описание</label
@@ -431,6 +540,57 @@
               }
               <button type="submit" [disabled]="saving() || !canRedistribute()">
                 Перенести назначение
+              </button>
+            </form>
+          }
+
+          @if (activeModal() === 'fundTransfer') {
+            <p class="modal-explanation">
+              Физические деньги остаются на том же счёте. Меняется только их назначение.
+            </p>
+            <form [formGroup]="fundTransferForm" (ngSubmit)="transferBetweenFunds()">
+              <label for="fund-transfer-source">Из фонда</label>
+              <app-entity-combobox
+                inputId="fund-transfer-source"
+                formControlName="sourceFundId"
+                [options]="fundOptions()"
+                recentKey="funds"
+                placeholder="Введите название фонда"
+              />
+              <label for="fund-transfer-target">В фонд</label>
+              <app-entity-combobox
+                inputId="fund-transfer-target"
+                formControlName="destinationFundId"
+                [options]="fundOptions(fundTransferForm.controls.sourceFundId.value)"
+                recentKey="funds"
+                placeholder="Введите название фонда"
+              />
+              <label for="fund-transfer-account">На счёте</label>
+              <app-entity-combobox
+                inputId="fund-transfer-account"
+                formControlName="accountId"
+                [options]="fundTransferAccountOptions()"
+                recentKey="accounts"
+                placeholder="Введите название счёта"
+              />
+              <label for="fund-transfer-amount">Сумма</label>
+              <input
+                appDecimalInput
+                id="fund-transfer-amount"
+                formControlName="amount"
+                inputmode="decimal"
+              />
+              <label for="fund-transfer-date">Дата</label>
+              <input id="fund-transfer-date" type="date" formControlName="occurredOn" />
+              <label for="fund-transfer-description">Описание</label>
+              <input id="fund-transfer-description" formControlName="description" />
+              @if (fundTransferForm.touched && !canTransferBetweenFunds()) {
+                <p class="field-error">
+                  Выберите разные фонды, счёт с остатком исходного фонда и доступную сумму.
+                </p>
+              }
+              <button type="submit" [disabled]="saving() || !canTransferBetweenFunds()">
+                Перевести между фондами
               </button>
             </form>
           }
