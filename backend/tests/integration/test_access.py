@@ -15,6 +15,7 @@ from app.main import create_app
 from app.modules.auth.models import AuthSession, OwnerCredential
 from app.modules.auth.security import hash_token
 from app.modules.auth.service import LoginStatus, login
+from app.modules.categories.models import Category, CategoryType
 from app.modules.settings.models import ApplicationSettings
 from app.modules.settings.service import (
     BaseCurrencyLockedError,
@@ -71,6 +72,84 @@ def test_first_run_protection_login_and_logout(postgres_database_settings: Setti
         login = client.post("/api/v1/auth/login", json={"master_password": MASTER_PASSWORD})
         assert login.status_code == 200
         assert client.get("/api/v1/auth/session").status_code == 200
+
+
+def test_setup_creates_only_selected_expense_trees_and_default_income_categories(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/setup",
+            json={
+                **SETUP_PAYLOAD,
+                "create_default_categories": True,
+                "onboarding_expense_groups": ["housing", "pets"],
+            },
+        )
+        assert response.status_code == 201
+
+    session_factory = create_session_factory(create_database_engine(postgres_database_settings))
+    with session_factory() as session:
+        categories = list(session.scalars(select(Category)))
+        income_names = {item.name for item in categories if item.type == CategoryType.INCOME}
+        expense_names = {item.name for item in categories if item.type == CategoryType.EXPENSE}
+        assert income_names == {"Зарплата", "Аванс", "Бизнес", "Процент банка", "Прочее"}
+        assert {"🏠 Жильё", "Аренда / ипотека", "🐕 Домашние животные", "Корм"} <= expense_names
+        assert "🚗 Автомобиль" not in expense_names
+        assert len(categories) == 17
+        housing = next(item for item in categories if item.name == "🏠 Жильё")
+        rent = next(item for item in categories if item.name == "Аренда / ипотека")
+        assert housing.parent_id is None
+        assert rent.parent_id == housing.id
+        assert all(
+            item.parent_id is None for item in categories if item.type == CategoryType.INCOME
+        )
+
+
+def test_skipped_expense_questions_still_create_default_income_categories(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/setup",
+            json={**SETUP_PAYLOAD, "create_default_categories": True},
+        )
+        assert response.status_code == 201
+
+    session_factory = create_session_factory(create_database_engine(postgres_database_settings))
+    with session_factory() as session:
+        categories = list(session.scalars(select(Category)))
+        assert {item.name for item in categories} == {
+            "Зарплата",
+            "Аванс",
+            "Бизнес",
+            "Процент банка",
+            "Прочее",
+        }
+        assert all(item.type == CategoryType.INCOME for item in categories)
+
+
+def test_setup_rejects_duplicate_or_inconsistent_onboarding_groups_without_initializing(
+    postgres_database_settings: Settings,
+) -> None:
+    with TestClient(create_app(postgres_database_settings)) as client:
+        duplicate = client.post(
+            "/api/v1/setup",
+            json={
+                **SETUP_PAYLOAD,
+                "create_default_categories": True,
+                "onboarding_expense_groups": ["housing", "housing"],
+            },
+        )
+        assert duplicate.status_code == 422
+        inconsistent = client.post(
+            "/api/v1/setup",
+            json={**SETUP_PAYLOAD, "onboarding_expense_groups": ["housing"]},
+        )
+        assert inconsistent.status_code == 422
+        assert client.get("/api/v1/setup/status").json() == {"initialized": False}
 
 
 def test_password_change_and_logout_all_revoke_sessions(

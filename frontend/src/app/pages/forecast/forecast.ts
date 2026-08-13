@@ -14,6 +14,7 @@ import { forkJoin } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { MoneyPipe } from '../../shared/money.pipe';
+import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 
 type Horizon = 'week' | 'month' | 'quarter' | 'half_year' | 'year';
 type OperationType = 'income' | 'expense' | 'transfer';
@@ -103,7 +104,7 @@ interface TrendLine {
 
 @Component({
   selector: 'app-forecast-page',
-  imports: [FormsModule, RouterLink, MoneyPipe],
+  imports: [FormsModule, RouterLink, MoneyPipe, EntityCombobox],
   templateUrl: './forecast.html',
   styleUrl: './forecast.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -132,6 +133,14 @@ export class ForecastPage implements OnInit {
   protected readonly hasFutureEvents = computed(
     () => this.forecast()?.points.some((point) => point.events.length > 0) ?? false,
   );
+
+  protected accountOptions(): EntityOption[] {
+    return this.accounts().map((account) => ({
+      id: account.id,
+      label: account.name,
+      detail: account.archived ? 'В архиве' : undefined,
+    }));
+  }
 
   protected readonly selectedPoint = computed(() => {
     const value = this.forecast();

@@ -4,7 +4,7 @@
 
 | Module | Owns | Collaborates through |
 | --- | --- | --- |
-| `auth` | owner setup, password hash, sessions, login throttle | authentication dependency and settings setup contract |
+| `auth` | owner credential, password hash, sessions, login throttle | authentication dependency and settings setup contract |
 | `settings` | persisted preferences and base-currency lock | explicit settings queries/commands |
 | `accounts` | account identity and account rules | account references and balance read contract |
 | `categories` | category tree | category reference validation |
@@ -33,6 +33,7 @@ flowchart TB
     API["API composition"] --> Auth
     API --> Settings
     API --> Application["Application use cases"]
+    Application --> Auth
     Application --> Settings
     Application --> Accounts
     Application --> Operations
@@ -67,9 +68,9 @@ flowchart TB
     Backup --> Modules["All module export/restore contracts"]
 ```
 
-Authentication guards every API except setup, login and health. It does not own
-financial data. Backup may orchestrate all modules, but must not duplicate their
-validation rules.
+Authentication guards every API except setup status, fresh setup, first-run
+setup restore, login and health. It does not own financial data. Backup may
+orchestrate all modules, but must not duplicate their validation rules.
 
 For schema-level round trips, every owning module exposes a narrow `backup.py`
 persistence surface. It is separate from ordinary runtime contracts: only
@@ -80,10 +81,13 @@ Scheduling validates account/category snapshots and the application timezone
 through those modules' public contracts. It posts confirmed occurrences only
 through the Operations contract and never writes the physical ledger directly.
 
-The auth setup use case calls the settings module's public initialization
-command with the same SQLAlchemy session so credential, preferences and first
-session commit atomically. A future module creating the first financial record
-must call settings' public currency-lock command in that write transaction.
+The application setup use case calls Auth, Categories and Backup only through
+their public contracts. Fresh setup commits credential, preferences, optional
+category templates and the first session atomically. First-run restore validates
+the document and replaces the new settings/data in that same transaction, so a
+failed restore cannot leave a partially initialized instance. A future module
+creating the first financial record must call settings' public currency-lock
+command in that write transaction.
 These Python-level commands and validators are exported by
 `app.modules.settings.contracts`; HTTP authentication and CSRF dependencies are
 composed by `app.api`, so the settings module does not depend on auth internals.

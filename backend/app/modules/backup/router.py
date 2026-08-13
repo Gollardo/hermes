@@ -1,14 +1,9 @@
-from collections.abc import Callable, Coroutine
-from typing import Any
-
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
-from fastapi.routing import APIRoute
 from sqlalchemy.exc import IntegrityError
-from starlette.responses import Response as StarletteResponse
-from starlette.types import Message
 
 from app.core.database import DatabaseSession
+from app.core.http_limits import BackupBodyLimitRoute
 from app.modules.auth.dependencies import AuthenticatedSession, get_runtime_settings
 from app.modules.auth.service import (
     LoginStatus,
@@ -29,54 +24,6 @@ from app.modules.backup.service import (
     preview_backup,
     restore_backup,
 )
-
-MAX_BACKUP_BYTES = 50 * 1024 * 1024
-
-
-class BackupBodyLimitRoute(APIRoute):
-    """Reject oversized backup bodies before FastAPI buffers and parses JSON."""
-
-    def get_route_handler(
-        self,
-    ) -> Callable[[Request], Coroutine[Any, Any, StarletteResponse]]:
-        original_handler = super().get_route_handler()
-
-        async def limited_handler(request: Request) -> StarletteResponse:
-            content_length = request.headers.get("content-length")
-            if content_length is not None:
-                try:
-                    declared_size = int(content_length)
-                except ValueError:
-                    declared_size = MAX_BACKUP_BYTES + 1
-                if declared_size > MAX_BACKUP_BYTES:
-                    raise _backup_too_large()
-
-            received = 0
-            original_receive = request.receive
-
-            async def limited_receive() -> Message:
-                nonlocal received
-                message = await original_receive()
-                if message["type"] == "http.request":
-                    received += len(message.get("body", b""))
-                    if received > MAX_BACKUP_BYTES:
-                        raise _backup_too_large()
-                return message
-
-            return await original_handler(Request(request.scope, limited_receive))
-
-        return limited_handler
-
-
-def _backup_too_large() -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-        detail={
-            "code": "backup_too_large",
-            "message": "Backup exceeds the 50 MiB request limit",
-        },
-    )
-
 
 read_router = APIRouter(prefix="/backup", tags=["backup"])
 write_router = APIRouter(

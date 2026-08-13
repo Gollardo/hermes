@@ -7,14 +7,19 @@ backup**. Store the JSON file outside the Hermes host, protect it as financial
 data and periodically test it on a separately initialized instance. The file is
 not encrypted by Hermes.
 
-To restore, initialize the destination instance, sign in, choose the JSON file
-and review the count/currency/timezone summary. Type `ЗАМЕНИТЬ ВСЕ ДАННЫЕ`, enter
-the destination instance's current master password and confirm. Current
-financial and planning data is replaced; the current owner credential and
-current session are retained, while other sessions are ended. A checksum,
-strict schema and references are checked
-before mutation. Table locks, one database transaction and post-write domain
-checks guarantee that a failed restore leaves the old data intact.
+On an empty destination, choose the JSON file on the first setup step and set a
+new destination master password. Backup validation, credential/session creation
+and data restore share one transaction; failure leaves the instance
+uninitialized and lets the owner choose another file or start fresh.
+
+On an initialized destination, sign in, choose the JSON file in Settings and
+review the count/currency/timezone summary. Type `ЗАМЕНИТЬ ВСЕ ДАННЫЕ`, enter the
+destination instance's current master password and confirm. Current financial
+and planning data is replaced; the current owner credential and current session
+are retained, while other sessions are ended. A checksum, strict schema and
+references are checked before mutation. Table locks, one database transaction
+and post-write domain checks guarantee that a failed restore leaves the old data
+intact.
 The UI and API reject JSON backup payloads larger than 50 MiB before parsing.
 The SHA-256 digest detects accidental corruption but is not an authenticity
 signature, so only restore files from a trusted source.
@@ -62,5 +67,7 @@ version and domain-level counts/invariants.
 4. Restore all module state inside one database transaction.
 5. Recheck cross-module invariants and commit once; roll back everything on any
    failure.
-6. Preserve the destination credential and current session, import no
-   authentication state and end other sessions after successful replacement.
+6. Import no source authentication state. Initialized restore preserves the
+   destination credential/current session and ends other sessions; first-run
+   restore creates a new destination credential/session in the restore
+   transaction.

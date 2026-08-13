@@ -31,8 +31,9 @@ curl --fail http://localhost:8000/api/v1/health
 curl --fail http://localhost:8000/
 ```
 
-On a clean database, opening the Angular URL presents the one-time setup screen.
-After setup, subsequent browsers see the master-password login screen. The app
+On a clean database, opening the Angular URL presents the one-time setup screen
+with a choice between atomic JSON restore and a fresh start. After setup,
+subsequent browsers see the master-password login screen. The app
 container applies all migrations through the current Alembic head
 automatically before serving traffic.
 

@@ -180,12 +180,14 @@
             <option value="income">Доход</option>
           </select>
           <label for="category-parent">Родительская категория</label>
-          <select id="category-parent" formControlName="parentId">
-            <option value="">Нет — верхний уровень</option>
-            @for (parent of availableParents(); track parent.id) {
-              <option [value]="parent.id">{{ parent.name }}</option>
-            }
-          </select>
+          <app-entity-combobox
+            inputId="category-parent"
+            formControlName="parentId"
+            [options]="parentOptions()"
+            [recentKey]="'category-parents-' + form.controls.type.value"
+            placeholder="Нет — верхний уровень"
+            [allowEmpty]="true"
+          />
           <label for="category-description">Описание</label>
           <textarea
             id="category-description"

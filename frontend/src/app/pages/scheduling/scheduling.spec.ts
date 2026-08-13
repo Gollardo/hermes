@@ -33,6 +33,8 @@ describe('SchedulingPage', () => {
   let http: HttpTestingController;
 
   beforeEach(async () => {
+    localStorage.setItem('hermes-recent-accounts', JSON.stringify(['account-1']));
+    localStorage.setItem('hermes-recent-categories-income', JSON.stringify(['category-income']));
     routeParams = {};
     await TestBed.configureTestingModule({
       imports: [SchedulingPage],
@@ -71,8 +73,8 @@ describe('SchedulingPage', () => {
     setValue('.form-panel select[formControlName="type"]', 'income');
     setValue('.form-panel input[formControlName="startOn"]', '2026-08-29');
     setValue('.form-panel input[formControlName="amount"]', '100.2500');
-    setValue('.form-panel select[formControlName="accountId"]', 'account-1');
-    setValue('.form-panel select[formControlName="categoryId"]', 'category-income');
+    setValue('.form-panel app-entity-combobox[formControlName="accountId"]', 'account-1');
+    setValue('.form-panel app-entity-combobox[formControlName="categoryId"]', 'category-income');
     const submit = fixture.nativeElement.querySelector(
       '.form-panel button[type="submit"]',
     ) as HTMLButtonElement;
@@ -250,12 +252,21 @@ describe('SchedulingPage', () => {
     fixture.detectChanges();
 
     const selectedAccount = fixture.nativeElement.querySelector(
-      '.form-panel select[formControlName="accountId"] option:checked',
-    ) as HTMLOptionElement;
+      '.form-panel app-entity-combobox[formControlName="accountId"] input',
+    ) as HTMLInputElement;
     const submit = fixture.nativeElement.querySelector(
       '.form-panel button[type="submit"]',
     ) as HTMLButtonElement;
-    expect(selectedAccount.disabled).toBe(true);
+    expect(selectedAccount.value).toBe('Основной');
+    selectedAccount.dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+    expect(
+      (
+        fixture.nativeElement.querySelector(
+          '.form-panel [data-option-id="account-1"]',
+        ) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
     expect(submit.disabled).toBe(true);
     expect(fixture.nativeElement.textContent).toContain(
       'Для активного правила выберите действующие счёт и категорию',
@@ -302,6 +313,16 @@ describe('SchedulingPage', () => {
 
   function setValue(selector: string, value: string): void {
     const control = fixture.nativeElement.querySelector(selector) as HTMLInputElement;
+    if (control.tagName === 'APP-ENTITY-COMBOBOX') {
+      const input = control.querySelector('input') as HTMLInputElement;
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+      input.dispatchEvent(new Event('focus'));
+      fixture.detectChanges();
+      (control.querySelector(`[data-option-id="${value}"]`) as HTMLButtonElement).click();
+      fixture.detectChanges();
+      return;
+    }
     control.value = value;
     control.dispatchEvent(new Event('input'));
     control.dispatchEvent(new Event('change'));

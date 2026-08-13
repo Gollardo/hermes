@@ -61,12 +61,13 @@
 
           @if (form.controls.type.value === 'income' || form.controls.type.value === 'expense') {
             <label for="operation-category">Категория</label>
-            <select id="operation-category" formControlName="categoryId">
-              <option value="">Выберите категорию</option>
-              @for (category of availableCategories(); track category.id) {
-                <option [value]="category.id">{{ categoryLabel(category) }}</option>
-              }
-            </select>
+            <app-entity-combobox
+              inputId="operation-category"
+              formControlName="categoryId"
+              [options]="categoryOptions(availableCategories())"
+              [recentKey]="'categories-' + form.controls.type.value"
+              placeholder="Введите название категории"
+            />
           }
 
           <label for="operation-amount">
@@ -86,12 +87,13 @@
           <label for="operation-account">
             {{ form.controls.type.value === 'transfer' ? 'Счёт списания' : 'Счёт' }}
           </label>
-          <select id="operation-account" formControlName="accountId">
-            <option value="">Выберите счёт</option>
-            @for (account of activeAccounts(currentOperation()); track account.id) {
-              <option [value]="account.id">{{ accountLabel(account) }}</option>
-            }
-          </select>
+          <app-entity-combobox
+            inputId="operation-account"
+            formControlName="accountId"
+            [options]="accountOptions(activeAccounts(currentOperation()))"
+            recentKey="accounts"
+            placeholder="Введите название счёта"
+          />
 
           @if (
             form.controls.type.value === 'balance_adjustment' && adjustmentBaseBalance();
@@ -107,14 +109,13 @@
 
           @if (form.controls.type.value === 'transfer') {
             <label for="destination-account">Счёт зачисления</label>
-            <select id="destination-account" formControlName="destinationAccountId">
-              <option value="">Выберите счёт</option>
-              @for (account of activeAccounts(currentOperation()); track account.id) {
-                @if (account.id !== form.controls.accountId.value) {
-                  <option [value]="account.id">{{ accountLabel(account) }}</option>
-                }
-              }
-            </select>
+            <app-entity-combobox
+              inputId="destination-account"
+              formControlName="destinationAccountId"
+              [options]="destinationAccountOptions()"
+              recentKey="accounts"
+              placeholder="Введите название счёта"
+            />
             <p class="impact-preview">Одна операция: списание и зачисление сохранятся вместе.</p>
           }
 
@@ -188,15 +189,17 @@
       <form class="filter-grid" [formGroup]="filters" (ngSubmit)="applyFilters()">
         <label>С даты <input type="date" formControlName="occurredFrom" /></label>
         <label>По дату <input type="date" formControlName="occurredTo" /></label>
-        <label
-          >Счёт
-          <select formControlName="accountId">
-            <option value="">Все счета</option>
-            @for (account of accounts(); track account.id) {
-              <option [value]="account.id">{{ account.name }}</option>
-            }
-          </select>
-        </label>
+        <div class="control-label">
+          Счёт
+          <app-entity-combobox
+            formControlName="accountId"
+            accessibleLabel="Счёт"
+            [options]="accountOptions()"
+            recentKey="accounts"
+            placeholder="Все счета"
+            [allowEmpty]="true"
+          />
+        </div>
         <label
           >Тип
           <select formControlName="type">
@@ -207,15 +210,17 @@
             <option value="balance_adjustment">Корректировка</option>
           </select>
         </label>
-        <label
-          >Категория
-          <select formControlName="categoryId">
-            <option value="">Все категории</option>
-            @for (category of categories(); track category.id) {
-              <option [value]="category.id">{{ categoryLabel(category) }}</option>
-            }
-          </select>
-        </label>
+        <div class="control-label">
+          Категория
+          <app-entity-combobox
+            formControlName="categoryId"
+            accessibleLabel="Категория"
+            [options]="categoryOptions()"
+            recentKey="categories"
+            placeholder="Все категории"
+            [allowEmpty]="true"
+          />
+        </div>
         <div class="filter-actions">
           <button type="submit">Применить</button
           ><button type="button" class="secondary" (click)="clearFilters()">Сбросить</button>

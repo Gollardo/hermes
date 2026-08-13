@@ -35,6 +35,8 @@ describe('OperationsPage', () => {
   let focusedId: string | null;
 
   beforeEach(async () => {
+    localStorage.setItem('hermes-recent-accounts', JSON.stringify(['account-1', 'account-2']));
+    localStorage.setItem('hermes-recent-categories-expense', JSON.stringify(['category-1']));
     focusedId = null;
     await TestBed.configureTestingModule({
       imports: [OperationsPage],
@@ -123,6 +125,19 @@ describe('OperationsPage', () => {
 
   function setValue(selector: string, value: string): void {
     const control = fixture.nativeElement.querySelector(selector) as HTMLInputElement;
+    const combobox =
+      control.closest('app-entity-combobox') ??
+      (control.tagName === 'APP-ENTITY-COMBOBOX' ? control : null);
+    if (combobox) {
+      const input = combobox.querySelector('input') as HTMLInputElement;
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+      input.dispatchEvent(new Event('focus'));
+      fixture.detectChanges();
+      (combobox.querySelector(`[data-option-id="${value}"]`) as HTMLButtonElement).click();
+      fixture.detectChanges();
+      return;
+    }
     control.value = value;
     control.dispatchEvent(new Event('input'));
     control.dispatchEvent(new Event('change'));
@@ -349,11 +364,14 @@ describe('OperationsPage', () => {
     fixture.detectChanges();
     fixture.nativeElement.querySelector('.row-actions .secondary').click();
     fixture.detectChanges();
-    const destination = fixture.nativeElement.querySelector(
+    const destinationInput = fixture.nativeElement.querySelector(
       '#destination-account',
-    ) as HTMLSelectElement;
-    expect(destination.value).toBe('account-2');
-    expect(destination.textContent).toContain('Old savings · 25.00 · в архиве');
+    ) as HTMLInputElement;
+    const destination = destinationInput.closest('app-entity-combobox') as HTMLElement;
+    expect(destinationInput.value).toBe('Old savings');
+    destinationInput.dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+    expect(destination.textContent).toContain('25.00 RUB · в архиве');
   });
 
   it('uses application timezone for the default financial date', () => {

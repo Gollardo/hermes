@@ -14,6 +14,7 @@ import { EMPTY, Observable, expand, forkJoin, reduce } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { MoneyPipe } from '../../shared/money.pipe';
+import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 
 type OperationType = 'income' | 'expense' | 'transfer';
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -30,6 +31,7 @@ interface Category {
   name: string;
   type: 'income' | 'expense';
   archived: boolean;
+  parent_id: string | null;
 }
 
 interface Settings {
@@ -100,7 +102,7 @@ interface CalendarDay {
 
 @Component({
   selector: 'app-scheduling-page',
-  imports: [ReactiveFormsModule, RouterLink, MoneyPipe],
+  imports: [ReactiveFormsModule, RouterLink, MoneyPipe, EntityCombobox],
   templateUrl: './scheduling.html',
   styleUrls: ['../directory.css', './scheduling.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -210,6 +212,39 @@ export class SchedulingPage implements OnInit {
 
   protected categoryLabel(category: Category): string {
     return `${category.name}${category.archived ? ' · в архиве' : ''}`;
+  }
+
+  protected accountOptions(accounts = this.accounts()): EntityOption[] {
+    return accounts.map((account) => ({
+      id: account.id,
+      label: account.name,
+      detail: account.archived ? 'В архиве' : undefined,
+    }));
+  }
+
+  protected ruleAccountOptions(excludeId = ''): EntityOption[] {
+    return this.activeAccounts()
+      .filter((account) => account.id !== excludeId)
+      .map((account) => ({
+        id: account.id,
+        label: account.name,
+        detail: account.archived ? 'В архиве' : undefined,
+        disabled: account.archived && this.ruleWillBeActive(),
+      }));
+  }
+
+  protected ruleCategoryOptions(): EntityOption[] {
+    return this.availableCategories().map((category) => {
+      const parent = category.parent_id
+        ? this.categories().find((item) => item.id === category.parent_id)
+        : null;
+      return {
+        id: category.id,
+        label: category.name,
+        detail: `${category.type === 'income' ? 'Доход' : 'Расход'}${parent ? ` · ${parent.name}` : ''}${category.archived ? ' · в архиве' : ''}`,
+        disabled: category.archived && this.ruleWillBeActive(),
+      };
+    });
   }
 
   protected canSaveRule(): boolean {

@@ -3,7 +3,74 @@
 }
 
 .setup-shell {
-  max-width: 74rem;
+  max-width: 82rem;
+}
+
+.question-card {
+  max-width: 56rem;
+}
+.start-options {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.start-option {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  cursor: pointer;
+  margin: 0;
+  padding: 1.1rem;
+}
+.start-option strong,
+.start-option span {
+  display: block;
+}
+.start-option span {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  margin: 0.3rem 0 0.8rem;
+}
+.fresh-action {
+  width: 100%;
+}
+.question-list {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1.25rem;
+}
+.question-option {
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0.85rem;
+}
+.question-option:has(input:checked) {
+  background: var(--surface-accent);
+  border-color: var(--accent);
+}
+.question-option input {
+  flex: 0 0 auto;
+  min-height: auto;
+  margin-top: 0.3rem;
+  width: 1.05rem;
+}
+.question-option span span {
+  display: block;
+}
+.question-option span span {
+  color: var(--ink-soft);
+  font-weight: 450;
+  margin-top: 0.15rem;
+}
+.question-card > button {
+  margin-top: 1.25rem;
+  width: 100%;
 }
 
 .field-grid {
@@ -14,6 +81,10 @@
 
 @media (max-width: 44rem) {
   .field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .question-list {
     grid-template-columns: 1fr;
   }
 }

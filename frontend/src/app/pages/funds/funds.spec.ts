@@ -9,6 +9,7 @@ describe('FundsPage', () => {
   let http: HttpTestingController;
 
   beforeEach(async () => {
+    localStorage.setItem('hermes-recent-accounts', JSON.stringify(['account-1']));
     await TestBed.configureTestingModule({
       imports: [FundsPage],
       providers: [provideHttpClient(), provideHttpClientTesting()],
@@ -150,6 +151,19 @@ describe('FundsPage', () => {
 
   function setValue(selector: string, value: string): void {
     const control = fixture.nativeElement.querySelector(selector) as HTMLInputElement;
+    const combobox =
+      control.closest('app-entity-combobox') ??
+      (control.tagName === 'APP-ENTITY-COMBOBOX' ? control : null);
+    if (combobox) {
+      const input = combobox.querySelector('input') as HTMLInputElement;
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+      input.dispatchEvent(new Event('focus'));
+      fixture.detectChanges();
+      (combobox.querySelector(`[data-option-id="${value}"]`) as HTMLButtonElement).click();
+      fixture.detectChanges();
+      return;
+    }
     control.value = value;
     control.dispatchEvent(new Event('input'));
     control.dispatchEvent(new Event('change'));

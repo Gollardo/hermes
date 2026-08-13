@@ -1,10 +1,8 @@
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 
-from app.core.config import Settings
 from app.core.database import DatabaseSession
+from app.modules.auth.cookies import clear_auth_cookies, set_auth_cookies
 from app.modules.auth.dependencies import (
     AuthenticatedSession,
     CsrfSession,
@@ -14,101 +12,18 @@ from app.modules.auth.schemas import (
     LoginRequest,
     PasswordChangeRequest,
     SessionResponse,
-    SetupRequest,
-    SetupStatusResponse,
 )
-from app.modules.auth.security import CSRF_COOKIE_NAME
 from app.modules.auth.service import (
-    AlreadyInitializedError,
     CurrentPasswordInvalidError,
-    IssuedSession,
     LoginStatus,
     change_master_password,
-    is_initialized,
     login,
     logout_all,
     logout_current,
-    setup_owner,
 )
 
 public_router = APIRouter()
 protected_router = APIRouter()
-
-
-def _set_auth_cookies(response: Response, settings: Settings, issued: IssuedSession) -> None:
-    max_age = max(0, int((issued.row.expires_at - datetime.now(UTC)).total_seconds()))
-    response.set_cookie(
-        settings.session_cookie_name,
-        issued.session_token,
-        max_age=max_age,
-        expires=issued.row.expires_at,
-        path=settings.api_prefix,
-        secure=settings.secure_cookies,
-        httponly=True,
-        samesite="lax",
-    )
-    response.set_cookie(
-        CSRF_COOKIE_NAME,
-        issued.csrf_token,
-        max_age=max_age,
-        expires=issued.row.expires_at,
-        # The Angular page must be able to read this non-secret double-submit token.
-        path="/",
-        secure=settings.secure_cookies,
-        httponly=False,
-        samesite="lax",
-    )
-
-
-def _clear_auth_cookies(response: Response, settings: Settings) -> None:
-    response.delete_cookie(
-        settings.session_cookie_name,
-        path=settings.api_prefix,
-        secure=settings.secure_cookies,
-        httponly=True,
-        samesite="lax",
-    )
-    response.delete_cookie(
-        CSRF_COOKIE_NAME,
-        path="/",
-        secure=settings.secure_cookies,
-        httponly=False,
-        samesite="lax",
-    )
-
-
-@public_router.get("/setup/status", response_model=SetupStatusResponse, tags=["setup"])
-def setup_status(session: DatabaseSession) -> SetupStatusResponse:
-    return SetupStatusResponse(initialized=is_initialized(session))
-
-
-@public_router.post(
-    "/setup",
-    response_model=SessionResponse,
-    status_code=status.HTTP_201_CREATED,
-    tags=["setup"],
-)
-def setup(payload: SetupRequest, request: Request, session: DatabaseSession) -> Response:
-    settings = get_runtime_settings(request)
-    try:
-        issued = setup_owner(
-            session,
-            settings,
-            master_password=payload.master_password.get_secret_value(),
-            base_currency=payload.base_currency,
-            timezone=payload.timezone,
-        )
-    except AlreadyInitializedError as error:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={"code": "already_initialized", "message": "Setup is already complete"},
-        ) from error
-    body = SessionResponse(expires_at=issued.row.expires_at)
-    response = JSONResponse(
-        status_code=status.HTTP_201_CREATED, content=body.model_dump(mode="json")
-    )
-    _set_auth_cookies(response, settings, issued)
-    return response
 
 
 @public_router.post("/auth/login", tags=["authentication"])
@@ -139,7 +54,7 @@ def login_route(payload: LoginRequest, request: Request, session: DatabaseSessio
     assert result.issued_session is not None
     body = SessionResponse(expires_at=result.issued_session.row.expires_at)
     success = JSONResponse(content=body.model_dump(mode="json"))
-    _set_auth_cookies(success, settings, result.issued_session)
+    set_auth_cookies(success, settings, result.issued_session)
     return success
 
 
@@ -156,7 +71,7 @@ def logout_route(
 ) -> Response:
     logout_current(session, auth_session)
     settings = get_runtime_settings(request)
-    _clear_auth_cookies(response, settings)
+    clear_auth_cookies(response, settings)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 
@@ -170,7 +85,7 @@ def logout_all_route(
     del auth_session
     logout_all(session)
     settings = get_runtime_settings(request)
-    _clear_auth_cookies(response, settings)
+    clear_auth_cookies(response, settings)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 

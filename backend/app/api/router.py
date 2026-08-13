@@ -5,6 +5,7 @@ from app.api.routes.accounts import write_router as accounts_write_router
 from app.api.routes.health import router as health_router
 from app.api.routes.settings import read_router as settings_read_router
 from app.api.routes.settings import write_router as settings_write_router
+from app.api.routes.setup import router as setup_router
 from app.modules.auth.dependencies import require_authenticated_session, require_csrf_session
 from app.modules.auth.router import protected_router as protected_auth_router
 from app.modules.auth.router import public_router as public_auth_router
@@ -25,6 +26,7 @@ def create_api_router() -> APIRouter:
     """Compose the public HTTP API from module-owned routers."""
     router = APIRouter()
     router.include_router(health_router)
+    router.include_router(setup_router)
     router.include_router(public_auth_router)
 
     protected = APIRouter(dependencies=[Depends(require_authenticated_session)])

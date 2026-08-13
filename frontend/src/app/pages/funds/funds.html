@@ -276,15 +276,13 @@
             </p>
             <form [formGroup]="allocationForm" (ngSubmit)="saveAllocation()">
               <label for="allocation-account">Счёт со свободными деньгами</label
-              ><select id="allocation-account" formControlName="accountId">
-                <option value="">Выберите счёт</option>
-                @for (account of activeAccounts(); track account.account_id) {
-                  <option [value]="account.account_id">
-                    {{ account.account_name }} · свободно {{ account.free_balance | money }}
-                    {{ baseCurrency() }}
-                  </option>
-                }
-              </select>
+              ><app-entity-combobox
+                inputId="allocation-account"
+                formControlName="accountId"
+                [options]="accountOptions()"
+                recentKey="accounts"
+                placeholder="Введите название счёта"
+              />
               <label for="allocation-amount">Сколько выделить</label
               ><input id="allocation-amount" formControlName="amount" inputmode="decimal" />
               <label for="allocation-date">Дата</label
@@ -343,26 +341,27 @@
             </p>
             <form [formGroup]="transferAllocationForm" (ngSubmit)="transferAndAllocate()">
               <label for="transfer-allocation-source">С какого счёта перевести</label
-              ><select id="transfer-allocation-source" formControlName="sourceAccountId">
-                <option value="">Выберите счёт</option>
-                @for (account of activeAccounts(); track account.account_id) {
-                  <option [value]="account.account_id">
-                    {{ account.account_name }} · {{ account.physical_balance | money }}
-                    {{ baseCurrency() }}
-                  </option>
-                }
-              </select>
+              ><app-entity-combobox
+                inputId="transfer-allocation-source"
+                formControlName="sourceAccountId"
+                [options]="accountOptions(activeAccounts(), 'physical')"
+                recentKey="accounts"
+                placeholder="Введите название счёта"
+              />
               <label for="transfer-allocation-target">На какой счёт зачислить</label
-              ><select id="transfer-allocation-target" formControlName="destinationAccountId">
-                <option value="">Выберите счёт</option>
-                @for (account of activeAccounts(); track account.account_id) {
-                  @if (
-                    account.account_id !== transferAllocationForm.controls.sourceAccountId.value
-                  ) {
-                    <option [value]="account.account_id">{{ account.account_name }}</option>
-                  }
-                }
-              </select>
+              ><app-entity-combobox
+                inputId="transfer-allocation-target"
+                formControlName="destinationAccountId"
+                [options]="
+                  accountOptions(
+                    activeAccounts(),
+                    'free',
+                    transferAllocationForm.controls.sourceAccountId.value
+                  )
+                "
+                recentKey="accounts"
+                placeholder="Введите название счёта"
+              />
               <label for="transfer-allocation-amount">Сумма перевода</label
               ><input
                 id="transfer-allocation-amount"
@@ -400,31 +399,27 @@
                 }
               </select>
               <label for="redistribution-source">Где назначение сейчас</label
-              ><select id="redistribution-source" formControlName="sourceAccountId">
-                <option value="">Выберите счёт</option>
-                @for (account of sourceAccounts(); track account.account_id) {
-                  <option [value]="account.account_id">
-                    {{ account.account_name }} · в фонде
-                    {{
-                      positionBalance(redistributionForm.controls.fundId.value, account.account_id)
-                        | money
-                    }}
-                    {{ baseCurrency() }}
-                  </option>
-                }
-              </select>
+              ><app-entity-combobox
+                inputId="redistribution-source"
+                formControlName="sourceAccountId"
+                [options]="redistributionSourceOptions()"
+                recentKey="accounts"
+                placeholder="Введите название счёта"
+              />
               <label for="redistribution-target">Где учитывать назначение</label
-              ><select id="redistribution-target" formControlName="destinationAccountId">
-                <option value="">Выберите счёт</option>
-                @for (account of activeAccounts(); track account.account_id) {
-                  @if (account.account_id !== redistributionForm.controls.sourceAccountId.value) {
-                    <option [value]="account.account_id">
-                      {{ account.account_name }} · свободно {{ account.free_balance | money }}
-                      {{ baseCurrency() }}
-                    </option>
-                  }
-                }
-              </select>
+              ><app-entity-combobox
+                inputId="redistribution-target"
+                formControlName="destinationAccountId"
+                [options]="
+                  accountOptions(
+                    activeAccounts(),
+                    'free',
+                    redistributionForm.controls.sourceAccountId.value
+                  )
+                "
+                recentKey="accounts"
+                placeholder="Введите название счёта"
+              />
               <label for="redistribution-amount">Сумма</label
               ><input id="redistribution-amount" formControlName="amount" inputmode="decimal" />
               <label for="redistribution-date">Дата</label

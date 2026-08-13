@@ -12,6 +12,13 @@ export interface SetupPayload {
   master_password: string;
   base_currency: string;
   timezone: string;
+  create_default_categories?: boolean;
+  onboarding_expense_groups?: string[];
+}
+
+export interface RestoreSetupPayload {
+  master_password: string;
+  backup: unknown;
 }
 
 interface SetupStatusResponse {
@@ -53,6 +60,12 @@ export class AuthService {
   setup(payload: SetupPayload): Observable<SessionResponse> {
     return this.http
       .post<SessionResponse>(`${environment.apiBaseUrl}/setup`, payload)
+      .pipe(tap((session) => this.acceptSession(session)));
+  }
+
+  restoreSetup(payload: RestoreSetupPayload): Observable<SessionResponse> {
+    return this.http
+      .post<SessionResponse>(`${environment.apiBaseUrl}/setup/restore`, payload)
       .pipe(tap((session) => this.acceptSession(session)));
   }
 

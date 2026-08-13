@@ -9,6 +9,12 @@ claimed and can be reconsidered only with a UI and migration strategy.
 Every new `income` and `expense` operation requires an active category of the
 matching type.
 
+On a fresh first run, the owner may select any subset of the documented expense
+templates. Setup creates each selected root with its five children and creates
+the five base income roots. Selecting no expense template is valid. Template
+creation is a one-time convenience, not a permanent special category type; all
+created nodes immediately follow the ordinary tree and archive invariants.
+
 ## Boundary and invariants
 
 Categories owns tree structure and category lifecycle. Operations may reference

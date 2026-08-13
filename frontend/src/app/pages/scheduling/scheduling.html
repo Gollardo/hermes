@@ -41,17 +41,17 @@
     </div>
 
     <form class="calendar-filters" [formGroup]="filters">
-      <label>
+      <div class="control-label">
         Счёт
-        <select formControlName="accountId">
-          <option value="">Все счета</option>
-          @for (account of accounts(); track account.id) {
-            <option [value]="account.id">
-              {{ account.name }}{{ account.archived ? ' · в архиве' : '' }}
-            </option>
-          }
-        </select>
-      </label>
+        <app-entity-combobox
+          formControlName="accountId"
+          accessibleLabel="Счёт"
+          [options]="accountOptions()"
+          recentKey="accounts"
+          placeholder="Все счета"
+          [allowEmpty]="true"
+        />
+      </div>
       <label>
         Тип
         <select formControlName="type">
@@ -324,50 +324,38 @@
             Сумма, {{ baseCurrency() }}
             <input type="text" inputmode="decimal" formControlName="amount" autocomplete="off" />
           </label>
-          <label>
+          <div class="control-label">
             Счёт
-            <select formControlName="accountId">
-              <option value="">Выберите счёт</option>
-              @for (account of activeAccounts(); track account.id) {
-                <option [value]="account.id" [disabled]="account.archived && ruleWillBeActive()">
-                  {{ accountLabel(account) }}
-                </option>
-              }
-            </select>
-          </label>
+            <app-entity-combobox
+              formControlName="accountId"
+              accessibleLabel="Счёт"
+              [options]="ruleAccountOptions()"
+              recentKey="accounts"
+              placeholder="Введите название счёта"
+            />
+          </div>
           @if (ruleForm.controls.type.value === 'transfer') {
-            <label>
+            <div class="control-label">
               Счёт зачисления
-              <select formControlName="destinationAccountId">
-                <option value="">Выберите счёт</option>
-                @for (account of activeAccounts(); track account.id) {
-                  <option
-                    [value]="account.id"
-                    [disabled]="
-                      account.id === ruleForm.controls.accountId.value ||
-                      (account.archived && ruleWillBeActive())
-                    "
-                  >
-                    {{ accountLabel(account) }}
-                  </option>
-                }
-              </select>
-            </label>
+              <app-entity-combobox
+                formControlName="destinationAccountId"
+                accessibleLabel="Счёт зачисления"
+                [options]="ruleAccountOptions(ruleForm.controls.accountId.value)"
+                recentKey="accounts"
+                placeholder="Введите название счёта"
+              />
+            </div>
           } @else {
-            <label>
+            <div class="control-label">
               Категория
-              <select formControlName="categoryId">
-                <option value="">Выберите категорию</option>
-                @for (category of availableCategories(); track category.id) {
-                  <option
-                    [value]="category.id"
-                    [disabled]="category.archived && ruleWillBeActive()"
-                  >
-                    {{ categoryLabel(category) }}
-                  </option>
-                }
-              </select>
-            </label>
+              <app-entity-combobox
+                formControlName="categoryId"
+                accessibleLabel="Категория"
+                [options]="ruleCategoryOptions()"
+                [recentKey]="'categories-' + ruleForm.controls.type.value"
+                placeholder="Введите название категории"
+              />
+            </div>
             @if (editingId() && hasUnavailableReference()) {
               <p class="hint">
                 Для активного правила выберите действующие счёт и категорию. Архивные ссылки

@@ -12,12 +12,19 @@ flowchart LR
     Setup --> Tx["One database transaction"]
     Tx --> Credential["Argon2id owner credential"]
     Tx --> Preferences["Currency and timezone"]
+    Tx --> Categories["Optional category templates"]
     Tx --> Session["Hashed server session and CSRF tokens"]
     Session --> Cookie["HttpOnly session cookie"]
     Cookie --> Guard["Protected API guard"]
     Guard --> CSRF["CSRF check for writes"]
     CSRF --> UseCase["Authenticated use case"]
 ```
+
+First-run backup restore is an alternative branch of the same setup
+transaction: validate backup integrity and domain invariants, create the new
+destination credential/session, replace settings and financial data, run
+post-write checks, then commit. Any validation or insertion failure rolls back
+the credential as well as restored data.
 
 After credential commit, setup can only report a conflict. Login throttling is
 locked and updated in the same database transaction as password verification

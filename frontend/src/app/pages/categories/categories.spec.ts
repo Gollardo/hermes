@@ -69,13 +69,13 @@ describe('CategoriesPage', () => {
     editButtons[0].click();
     fixture.detectChanges();
     expect(
-      (fixture.nativeElement.querySelector('#category-parent') as HTMLSelectElement).disabled,
+      (fixture.nativeElement.querySelector('#category-parent') as HTMLInputElement).disabled,
     ).toBe(true);
 
     editButtons[1].click();
     fixture.detectChanges();
     expect(
-      (fixture.nativeElement.querySelector('#category-parent') as HTMLSelectElement).disabled,
+      (fixture.nativeElement.querySelector('#category-parent') as HTMLInputElement).disabled,
     ).toBe(false);
   });
 });

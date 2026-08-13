@@ -9,15 +9,18 @@
 - Authentication uses an Argon2id master-password hash and revocable
   server-side sessions. JWT and external identity providers are not used.
 - Every API route is authenticated by default except health, setup status,
-  setup and login.
+  fresh setup, first-run setup restore and login.
 
 ## Release 0.1.0-alpha.1 behavior
 
 An **uninitialized instance** has no owner credential. `GET /setup/status`
 reports that state without exposing settings. `POST /setup` atomically creates
 the owner credential, application settings, persistent login-throttle state and
-the first session. A repeated setup returns a conflict and cannot replace the
-credential or preferences.
+the first session. Fresh setup may create owner-selected category templates
+through the application coordinator. First-run restore validates a versioned
+backup and creates the destination credential, session, restored settings and
+financial data in one transaction. A repeated setup returns a conflict and
+cannot replace the credential or preferences.
 
 An uninitialized deployment is bound to loopback by default and must be claimed
 locally before it is exposed to another network. The public setup endpoint has no
@@ -44,8 +47,8 @@ password and revokes every other session while retaining the current one.
 - There can be at most one owner credential; the database enforces singleton
   identity `1`.
 - Plain master passwords, session identifiers and CSRF tokens are never stored.
-- Setup credential creation, initial preferences and first session commit in
-  one database transaction.
+- Setup credential creation, initial preferences, optional category templates
+  or restored backup data, and first session commit in one database transaction.
 - Successful setup, login and mutation responses are not sent until their
   database transaction commits.
 - A missing, unknown or expired session receives `401` before a protected use

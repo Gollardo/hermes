@@ -11,6 +11,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
+import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 
 type CategoryType = 'income' | 'expense';
 
@@ -25,7 +26,7 @@ interface Category {
 
 @Component({
   selector: 'app-categories-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, EntityCombobox],
   templateUrl: './categories.html',
   styleUrl: './categories.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -64,6 +65,10 @@ export class CategoriesPage implements OnInit {
       (item) =>
         !item.archived && !item.parent_id && item.type === type && item.id !== this.editingId(),
     );
+  }
+
+  protected parentOptions(): EntityOption[] {
+    return this.availableParents().map((parent) => ({ id: parent.id, label: parent.name }));
   }
 
   protected children(parentId: string): Category[] {

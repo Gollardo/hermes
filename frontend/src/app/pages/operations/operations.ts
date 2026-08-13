@@ -6,6 +6,7 @@ import { ActivatedRoute } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { formatMoney, MoneyPipe } from '../../shared/money.pipe';
+import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 
 type OperationType = 'income' | 'expense' | 'transfer' | 'balance_adjustment';
 type CategoryType = 'income' | 'expense';
@@ -90,7 +91,7 @@ interface ApplicationSettings {
 
 @Component({
   selector: 'app-operations-page',
-  imports: [ReactiveFormsModule, MoneyPipe],
+  imports: [ReactiveFormsModule, MoneyPipe, EntityCombobox],
   templateUrl: './operations.html',
   styleUrl: './operations.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -207,6 +208,35 @@ export class OperationsPage implements OnInit {
 
   protected accountLabel(account: Account): string {
     return `${account.name} · ${formatMoney(account.balance)}${account.archived ? ' · в архиве' : ''}`;
+  }
+
+  protected accountOptions(accounts = this.accounts()): EntityOption[] {
+    return accounts.map((account) => ({
+      id: account.id,
+      label: account.name,
+      detail: `${formatMoney(account.balance)} ${this.baseCurrency()}${account.archived ? ' · в архиве' : ''}`,
+    }));
+  }
+
+  protected destinationAccountOptions(): EntityOption[] {
+    return this.accountOptions(
+      this.activeAccounts(this.currentOperation()).filter(
+        (account) => account.id !== this.form.controls.accountId.value,
+      ),
+    );
+  }
+
+  protected categoryOptions(categories = this.categories()): EntityOption[] {
+    return categories.map((category) => {
+      const parent = category.parent_id
+        ? this.categories().find((item) => item.id === category.parent_id)
+        : null;
+      return {
+        id: category.id,
+        label: category.name,
+        detail: `${category.type === 'income' ? 'Доход' : 'Расход'}${parent ? ` · ${parent.name}` : ''}${category.archived ? ' · в архиве' : ''}`,
+      };
+    });
   }
 
   protected transferDirection(operation: Operation): string {

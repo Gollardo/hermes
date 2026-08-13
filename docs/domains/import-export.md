@@ -48,10 +48,13 @@ calendar dates, timestamps, archive state and optimistic versions are retained.
 
 Owner credential, password hash, login throttle and sessions are deliberately
 excluded: they are security state of the destination instance, not portable
-financial data. A target must first be initialized, and restore re-authenticates
-the current owner through the shared password throttle and ends other active
-sessions after success. Excluding authentication state is the security-first
-MVP assumption pending owner review; importing it remains outside scope.
+financial data. An initialized target re-authenticates its current owner through
+the shared password throttle and ends other active sessions after restore. An
+uninitialized target may instead use first-run restore: the destination owner
+chooses a new master password, and the new credential/session plus restored
+settings and financial data commit atomically. Excluding source authentication
+state is the security-first MVP assumption pending owner review; importing it
+remains outside scope.
 
 Only schema 1 is accepted. Compatibility translation between backup schemas is
 not implicit: a future version must add an explicit, tested reader before it

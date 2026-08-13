@@ -2,85 +2,172 @@
   <div class="access-shell setup-shell">
     <aside class="access-aside">
       <div>
-        <span class="brand-lockup">
-          <span class="brand-mark" aria-hidden="true">H</span>
-          <span>Hermes</span>
-        </span>
+        <span class="brand-lockup"
+          ><span class="brand-mark" aria-hidden="true">H</span><span>Hermes</span></span
+        >
         <h2>Ваш финансовый центр начинается здесь.</h2>
-        <p>Один локальный владелец, точные денежные данные и никакой зависимости от облака.</p>
+        <p>Сначала решите, начать с чистого листа или восстановить данные из прежней версии.</p>
       </div>
-      <p class="access-note">Первоначальная настройка выполняется один раз</p>
+      <p class="access-note">Шаг {{ step() }} из {{ mode() === 'fresh' ? 3 : 2 }}</p>
     </aside>
 
-    <section class="access-card" aria-labelledby="setup-title">
-      <p class="eyebrow">Первый запуск</p>
-      <h1 id="setup-title">Настройте Hermes</h1>
-      <p class="intro">
-        Создайте мастер-пароль и выберите базовые параметры финансового пространства.
-      </p>
+    <section class="access-card" [class.question-card]="step() === 3" aria-labelledby="setup-title">
+      <p class="eyebrow">Первый запуск · шаг {{ step() }}</p>
 
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <label for="setup-password">Мастер-пароль</label>
-        <input
-          id="setup-password"
-          type="password"
-          formControlName="password"
-          autocomplete="new-password"
-          placeholder="Не менее 12 символов"
-        />
-        @if (form.controls.password.touched && form.controls.password.invalid) {
-          <p class="field-error">Используйте от 12 до 1024 символов.</p>
-        }
-
-        <label for="setup-password-confirmation">Повторите пароль</label>
-        <input
-          id="setup-password-confirmation"
-          type="password"
-          formControlName="passwordConfirmation"
-          autocomplete="new-password"
-          placeholder="Введите пароль ещё раз"
-        />
-        @if (
-          form.controls.passwordConfirmation.touched &&
-          form.controls.password.value !== form.controls.passwordConfirmation.value
-        ) {
-          <p class="field-error">Пароли не совпадают.</p>
-        }
-
-        <div class="field-grid">
-          <div>
-            <label for="setup-currency">Основная валюта</label>
+      @if (step() === 1) {
+        <h1 id="setup-title">Добро пожаловать в Hermes</h1>
+        <p class="intro">
+          Можно восстановить JSON-backup из прежней версии или создать новое финансовое
+          пространство.
+        </p>
+        <div class="start-options">
+          <label class="start-option" for="setup-backup">
+            <strong>Загрузить backup</strong>
+            <span
+              >Счета, операции, фонды, правила и настройки будут проверены перед
+              восстановлением.</span
+            >
             <input
-              id="setup-currency"
-              formControlName="baseCurrency"
-              list="setup-currency-options"
-              maxlength="3"
-              autocapitalize="characters"
+              id="setup-backup"
+              type="file"
+              accept="application/json,.json"
+              (change)="chooseBackup($event)"
             />
-            <datalist id="setup-currency-options">
-              @for (currency of currencies; track currency) {
-                <option [value]="currency">{{ currency }}</option>
-              }
-            </datalist>
-          </div>
-          <div>
-            <label for="setup-timezone">Часовой пояс</label>
-            <select id="setup-timezone" formControlName="timezone">
-              @for (timezone of timezones; track timezone) {
-                <option [value]="timezone">{{ timezone }}</option>
-              }
-            </select>
-          </div>
+          </label>
+          <button type="button" class="secondary fresh-action" (click)="startFresh()">
+            Начать с чистого листа
+          </button>
         </div>
-        <p class="hint">Основную валюту можно изменить только до появления финансовых данных.</p>
-
-        @if (error(); as message) {
-          <p class="form-error" role="alert">{{ message }}</p>
+        @if (readingBackup()) {
+          <p class="hint">Читаем файл…</p>
         }
-        <button type="submit" [disabled]="!canSubmit()">
-          {{ submitting() ? 'Создаём пространство…' : 'Создать приложение' }}
+      }
+
+      @if (step() === 2) {
+        <h1 id="setup-title">Защитите приложение</h1>
+        <p class="intro">
+          @if (mode() === 'restore') {
+            После создания мастер-пароля проверим и восстановим {{ backupName() }}.
+          } @else {
+            Создайте мастер-пароль и выберите базовые параметры.
+          }
+        </p>
+        <form [formGroup]="form" (ngSubmit)="continueToCategories()">
+          <label for="setup-password">Мастер-пароль</label>
+          <input
+            id="setup-password"
+            type="password"
+            formControlName="password"
+            autocomplete="new-password"
+            placeholder="Не менее 12 символов"
+          />
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <p class="field-error">Используйте от 12 до 1024 символов.</p>
+          }
+
+          <label for="setup-password-confirmation">Повторите пароль</label>
+          <input
+            id="setup-password-confirmation"
+            type="password"
+            formControlName="passwordConfirmation"
+            autocomplete="new-password"
+            placeholder="Введите пароль ещё раз"
+          />
+          @if (
+            form.controls.passwordConfirmation.touched &&
+            form.controls.password.value !== form.controls.passwordConfirmation.value
+          ) {
+            <p class="field-error">Пароли не совпадают.</p>
+          }
+
+          @if (mode() === 'fresh') {
+            <div class="field-grid">
+              <div>
+                <label for="setup-currency">Основная валюта</label>
+                <input
+                  id="setup-currency"
+                  formControlName="baseCurrency"
+                  list="setup-currency-options"
+                  maxlength="3"
+                  autocapitalize="characters"
+                />
+                <datalist id="setup-currency-options">
+                  @for (currency of currencies; track currency) {
+                    <option [value]="currency">{{ currency }}</option>
+                  }
+                </datalist>
+              </div>
+              <div>
+                <label for="setup-timezone">Часовой пояс</label>
+                <select id="setup-timezone" formControlName="timezone">
+                  @for (timezone of timezones; track timezone) {
+                    <option [value]="timezone">{{ timezone }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <p class="hint">
+              Основную валюту можно изменить только до появления финансовых данных.
+            </p>
+          }
+          <button
+            type="submit"
+            [disabled]="
+              form.invalid ||
+              form.controls.password.value !== form.controls.passwordConfirmation.value ||
+              submitting()
+            "
+          >
+            @if (submitting()) {
+              {{ mode() === 'restore' ? 'Проверяем и восстанавливаем…' : 'Продолжаем…' }}
+            } @else {
+              {{ mode() === 'restore' ? 'Создать и восстановить' : 'Продолжить' }}
+            }
+          </button>
+          <button type="button" class="secondary" (click)="back()" [disabled]="submitting()">
+            Назад
+          </button>
+        </form>
+      }
+
+      @if (step() === 3) {
+        <h1 id="setup-title">Какие расходы вам важны?</h1>
+        <p class="intro">
+          Отметьте подходящие пункты — мы создадим для них категории и подкатегории. Этот шаг можно
+          пропустить.
+        </p>
+        <div class="question-list">
+          @for (question of questions; track question.key) {
+            <label class="question-option">
+              <input
+                type="checkbox"
+                [checked]="selectedGroups().has(question.key)"
+                (change)="toggleGroup(question.key, $any($event.target).checked)"
+              />
+              <span
+                ><strong>{{ question.title }}</strong
+                ><span>{{ question.question }}</span></span
+              >
+            </label>
+          }
+        </div>
+        <button type="button" (click)="submit()" [disabled]="submitting()">
+          {{
+            submitting()
+              ? 'Создаём категории…'
+              : selectedGroups().size
+                ? 'Создать приложение'
+                : 'Пропустить и создать приложение'
+          }}
         </button>
-      </form>
+        <button type="button" class="secondary" (click)="back()" [disabled]="submitting()">
+          Назад
+        </button>
+      }
+
+      @if (error(); as message) {
+        <p class="form-error" role="alert">{{ message }}</p>
+      }
     </section>
   </div>
 </main>

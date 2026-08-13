@@ -1,0 +1,52 @@
+<div class="combobox">
+  <input
+    role="combobox"
+    aria-autocomplete="list"
+    autocomplete="off"
+    [id]="inputId"
+    [attr.aria-label]="accessibleLabel"
+    [placeholder]="placeholder"
+    [value]="query()"
+    [disabled]="disabled()"
+    [attr.aria-expanded]="open()"
+    [attr.aria-controls]="optionsId"
+    [attr.aria-activedescendant]="activeOptionId()"
+    (input)="input($event)"
+    (focus)="focus($event)"
+    (keydown)="keydown($event)"
+  />
+  @if (allowEmpty && value) {
+    <button
+      type="button"
+      class="clear"
+      aria-label="Очистить выбор"
+      [disabled]="disabled()"
+      (click)="clear()"
+    >
+      ×
+    </button>
+  }
+  @if (open()) {
+    <div class="options" role="listbox" [id]="optionsId">
+      @for (option of visibleOptions(); track option.id; let index = $index) {
+        <button
+          type="button"
+          role="option"
+          [id]="optionId(option.id)"
+          [attr.data-option-id]="option.id"
+          [class.active]="index === activeIndex()"
+          [attr.aria-selected]="option.id === value"
+          [disabled]="option.disabled"
+          (click)="select(option)"
+        >
+          <strong>{{ option.label }}</strong>
+          @if (option.detail) {
+            <span>{{ option.detail }}</span>
+          }
+        </button>
+      } @empty {
+        <p>{{ emptyMessage() }}</p>
+      }
+    </div>
+  }
+</div>

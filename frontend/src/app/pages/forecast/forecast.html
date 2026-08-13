@@ -9,19 +9,19 @@
   </header>
 
   <section class="panel forecast-controls" aria-label="Параметры прогноза">
-    <label>
+    <div class="control-label">
       Счёт
-      <select
+      <app-entity-combobox
         [ngModel]="selectedAccountId()"
+        accessibleLabel="Счёт"
         (ngModelChange)="changeAccount($event)"
         [disabled]="loading()"
-      >
-        <option value="">Все счета</option>
-        @for (account of accounts(); track account.id) {
-          <option [value]="account.id">{{ accountLabel(account) }}</option>
-        }
-      </select>
-    </label>
+        [options]="accountOptions()"
+        recentKey="accounts"
+        placeholder="Все счета"
+        [allowEmpty]="true"
+      />
+    </div>
     <fieldset>
       <legend>Период</legend>
       <div class="period-switcher">

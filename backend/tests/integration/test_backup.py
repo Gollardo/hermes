@@ -1,13 +1,18 @@
 from copy import deepcopy
 
+import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sqlalchemy import delete
 
 from app import APP_VERSION
 from app.core.config import Settings
+from app.core.http_limits import MAX_BACKUP_BYTES
 from app.main import create_app
-from app.modules.backup.router import MAX_BACKUP_BYTES
+from app.modules.auth.models import AuthSession, OwnerCredential
 from app.modules.backup.schemas import BackupDocument
-from app.modules.backup.service import seal_backup, verify_integrity
+from app.modules.backup.service import BackupInvariantError, seal_backup, verify_integrity
+from app.modules.settings.models import ApplicationSettings
 
 MASTER_PASSWORD = "correct-master-password"
 SETUP = {
@@ -19,6 +24,75 @@ SETUP = {
 
 def csrf(client: TestClient) -> dict[str, str]:
     return {"X-XSRF-TOKEN": str(client.cookies.get("XSRF-TOKEN"))}
+
+
+def reset_to_uninitialized(app: FastAPI) -> None:
+    with app.state.session_factory.begin() as session:
+        session.execute(delete(AuthSession))
+        session.execute(delete(OwnerCredential))
+        session.execute(delete(ApplicationSettings))
+
+
+def test_first_run_restore_is_atomic_and_uses_backup_settings(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP).status_code == 201
+        backup = client.get("/api/v1/backup/export").json()
+        reset_to_uninitialized(app)
+
+        restored = client.post(
+            "/api/v1/setup/restore",
+            json={"master_password": "new-correct-master-password", "backup": backup},
+        )
+        assert restored.status_code == 201
+        assert restored.json()["authenticated"] is True
+        assert client.get("/api/v1/settings").json()["timezone"] == "Europe/Moscow"
+        repeated = client.post(
+            "/api/v1/setup/restore",
+            json={"master_password": "x" * 12, "backup": backup},
+        )
+        assert repeated.status_code == 409
+
+
+def test_invalid_first_run_restore_leaves_instance_uninitialized(
+    postgres_database_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP).status_code == 201
+        backup = client.get("/api/v1/backup/export").json()
+        reset_to_uninitialized(app)
+        invalid_backup = deepcopy(backup)
+        invalid_backup["integrity"]["digest"] = "0" * 64
+
+        oversized = client.post(
+            "/api/v1/setup/restore",
+            headers={"Content-Length": str(MAX_BACKUP_BYTES + 1)},
+            content=b"{}",
+        )
+        assert oversized.status_code == 413
+
+        rejected = client.post(
+            "/api/v1/setup/restore",
+            json={"master_password": "new-correct-master-password", "backup": invalid_backup},
+        )
+        assert rejected.status_code == 422
+        assert client.get("/api/v1/setup/status").json() == {"initialized": False}
+
+        def fail_after_owner_setup(*args: object, **kwargs: object) -> None:
+            raise BackupInvariantError("forced restore failure")
+
+        monkeypatch.setattr("app.application.setup.restore_backup", fail_after_owner_setup)
+        rolled_back = client.post(
+            "/api/v1/setup/restore",
+            json={"master_password": "new-correct-master-password", "backup": backup},
+        )
+        assert rolled_back.status_code == 422
+        assert client.get("/api/v1/setup/status").json() == {"initialized": False}
+        assert client.get("/api/v1/auth/session").status_code == 401
 
 
 def test_export_preview_and_transactional_restore_on_initialized_database(

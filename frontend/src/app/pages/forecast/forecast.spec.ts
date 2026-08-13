@@ -66,6 +66,7 @@ describe('ForecastPage', () => {
   let http: HttpTestingController;
 
   beforeEach(async () => {
+    localStorage.setItem('hermes-recent-accounts', JSON.stringify(['account-1']));
     await TestBed.configureTestingModule({
       imports: [ForecastPage],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
@@ -137,9 +138,10 @@ describe('ForecastPage', () => {
     http.expectOne('/api/v1/forecast?horizon=month').flush(FORECAST);
     fixture.detectChanges();
 
-    const account = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
-    account.value = 'account-1';
-    account.dispatchEvent(new Event('change'));
+    const account = fixture.nativeElement.querySelector('app-entity-combobox') as HTMLElement;
+    (account.querySelector('input') as HTMLInputElement).dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+    (account.querySelector('[data-option-id="account-1"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     http
       .expectOne(

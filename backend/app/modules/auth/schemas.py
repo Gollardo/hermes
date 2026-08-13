@@ -17,6 +17,10 @@ def _validate_password(value: SecretStr, *, enforce_minimum: bool) -> SecretStr:
     return value
 
 
+def validate_new_master_password(value: SecretStr) -> SecretStr:
+    return _validate_password(value, enforce_minimum=True)
+
+
 class SetupRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=False)
 
@@ -27,7 +31,7 @@ class SetupRequest(BaseModel):
     @field_validator("master_password")
     @classmethod
     def valid_master_password(cls, value: SecretStr) -> SecretStr:
-        return _validate_password(value, enforce_minimum=True)
+        return validate_new_master_password(value)
 
     @field_validator("base_currency")
     @classmethod
@@ -61,11 +65,7 @@ class PasswordChangeRequest(BaseModel):
     @field_validator("new_master_password")
     @classmethod
     def valid_new_password(cls, value: SecretStr) -> SecretStr:
-        return _validate_password(value, enforce_minimum=True)
-
-
-class SetupStatusResponse(BaseModel):
-    initialized: bool
+        return validate_new_master_password(value)
 
 
 class SessionResponse(BaseModel):

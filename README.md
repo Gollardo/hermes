@@ -19,7 +19,8 @@ and the maintainer's available time.
 
 ## Current capabilities
 
-- one-time setup with a master password, base currency and IANA timezone;
+- one-time setup with atomic JSON restore or a fresh start with optional expense
+  category templates, a master password, base currency and IANA timezone;
 - Argon2id password storage and revocable server-side browser sessions;
 - protected API and application shell, login throttling and session termination;
 - base settings and master-password changes;

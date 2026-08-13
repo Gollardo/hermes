@@ -6,7 +6,7 @@
 
 ## Last updated
 
-2026-08-12
+2026-08-13
 
 ## Current phase
 
@@ -46,6 +46,14 @@
 
 - Чистый экземпляр определяется через публичный setup-status и показывает
   Angular-мастер первоначальной настройки.
+- Первым шагом setup предлагает выбрать JSON-backup прежней версии или чистый
+  старт. Для чистого старта владелец может отметить необязательные вопросы о
+  расходах: выбранные двухуровневые деревья и пять базовых категорий доходов
+  создаются атомарно вместе с владельцем; все вопросы можно пропустить.
+- Выбранный при первом запуске backup после создания нового мастер-пароля
+  проходит integrity, domain и post-write проверки в одной setup-транзакции;
+  при ошибке экземпляр остаётся неинициализированным, credential из backup не
+  импортируется.
 - Production-like Compose публикует чистый экземпляр только на loopback;
   владелец завершает setup до намеренного LAN/remote exposure.
 - Setup атомарно создаёт единственного владельца, Argon2id-хеш мастер-пароля,
@@ -65,7 +73,7 @@
 - Смена мастер-пароля требует текущий пароль и завершает остальные сессии.
 - Persistent login throttle по умолчанию блокирует вход на 15 минут после пяти
   ошибок в 15-минутном окне.
-- Public API ограничен health, setup status, setup и login; прикладные роутеры
+- Public API ограничен health, setup status, двумя setup-командами и login; прикладные роутеры
   подключены через общий authentication dependency.
 - Транзакционная dependency завершается до отправки успешного HTTP-ответа и
   session cookies.
@@ -161,6 +169,9 @@
 - Журнал фильтруется по периоду, счёту, типу и категории, имеет server-side
   пагинацию, стабильный порядок, раскрываемую деталь, transfer direction,
   full-selection net total и локализованные ошибки.
+- Выбор счетов и категорий в журнале, регулярных правилах, фондах, прогнозе и
+  дереве категорий использует общий searchable combobox: prefix-поиск и до пяти
+  последних вариантов при пустом запросе.
 - Удаление счёта блокирует identity до проверки истории, поэтому конкурентное
   проведение не превращается в необработанную FK-ошибку.
 
@@ -244,12 +255,11 @@
 
 ## Verification snapshot
 
-- `rc.1`: 86 backend-сценариев (48 non-PostgreSQL passed, 38 skipped без opt-in);
-  focused PostgreSQL funds integration 9/9 passed, включая атомарный
-  transfer-and-allocation и его rollback; focused forecasting integration 2/2
-  passed с обновлённым series contract. Предыдущий полный PostgreSQL snapshot
-  38/38 остаётся базовой проверкой остальных интеграционных сценариев.
-  Frontend: 41/41 тест passed; lint/format/typecheck/docs passed.
+- `rc.1`: 91 backend-сценарий (48 non-PostgreSQL passed, 43 skipped без opt-in);
+  полный PostgreSQL integration snapshot 44/44 passed, включая атомарный
+  first-run restore, transfer-and-allocation и их rollback, а также forecasting
+  snapshot с обновлённым series contract.
+  Frontend: 49/49 тестов passed; lint/format/typecheck/docs passed.
 - Полный `npm audit` после совместимых security patch overrides для build-only
   `hono` и `nanoid` сообщает 0 известных advisories; production dependency graph
   также чист.
@@ -279,7 +289,10 @@
   upgrade и beta.1 downgrade; полный backup round trip на clean initialized
   target, rollback invalid restore, rate-limited re-authentication, other-session
   revocation и 50 MiB request limit.
-- Frontend Vitest: 41 тест для access shell, session expiry, setup, settings,
+  Setup отдельно проверяет выбранные category templates, отклонение повторных
+  групп и атомарный first-run restore: ошибка после создания owner откатывает
+  credential и оставляет экземпляр неинициализированным.
+- Frontend Vitest: 49 тестов для access shell, session expiry, setup, settings,
   health UI, счетов, категорий и журнала, включая timezone default, expected-balance
   adjustment, archived edit reference, transfer direction, loading continuity,
   точный manual allocation preview, invalidation устаревшего preview, процентный
@@ -290,8 +303,10 @@
   stale-loading, event-free state и календарную шкалу X.
   Settings дополнительно проверяет preview, полную replacement summary, точную
   destructive phrase, restore payload и очистку пароля после ошибки. Новые
-  проверки фиксируют disabled setup action при невалидном/несовпадающем пароле,
-  сохранение состояния скрытого sidebar и точный строковый формат денежных сумм.
+  проверки фиксируют atomic first-run restore, disabled setup action при
+  невалидном/несовпадающем пароле, выбор onboarding templates, строго последние
+  варианты combobox, emoji-prefix search и устойчивость к повреждённому
+  localStorage; также сохранение скрытого sidebar и точный строковый формат денег.
 
 - Beta.1 calendar flow проверен в браузере на desktop и mobile: все пункты
   narrow-навигации видимы, action list предшествует календарной сетке, статусы

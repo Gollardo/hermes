@@ -1,0 +1,60 @@
+:host {
+  display: block;
+  position: relative;
+}
+.combobox {
+  position: relative;
+}
+.clear {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  min-height: 2rem;
+  padding: 0;
+  position: absolute;
+  right: 0.5rem;
+  top: 0.45rem;
+  width: 2rem;
+}
+.options {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-card);
+  left: 0;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: 0.35rem;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.3rem);
+  z-index: 30;
+}
+.options button {
+  align-items: flex-start;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  min-height: auto;
+  padding: 0.65rem 0.7rem;
+  text-align: left;
+  width: 100%;
+}
+.options button:hover,
+.options button.active {
+  background: var(--surface-accent);
+  box-shadow: none;
+  transform: none;
+}
+.options span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 450;
+}
+.options p {
+  color: var(--muted);
+  margin: 0;
+  padding: 0.75rem;
+}

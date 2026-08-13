@@ -4,7 +4,8 @@ import { FormArray, NonNullableFormBuilder, ReactiveFormsModule, Validators } fr
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
-import { MoneyPipe } from '../../shared/money.pipe';
+import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
+import { formatMoney, MoneyPipe } from '../../shared/money.pipe';
 
 interface Fund {
   id: string;
@@ -89,7 +90,7 @@ interface AllocationTotals {
 
 @Component({
   selector: 'app-funds-page',
-  imports: [ReactiveFormsModule, MoneyPipe],
+  imports: [ReactiveFormsModule, MoneyPipe, EntityCombobox],
   templateUrl: './funds.html',
   styleUrls: ['../directory.css', './funds.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -180,6 +181,32 @@ export class FundsPage implements OnInit {
 
   protected activeAccounts(): Coverage[] {
     return this.summary()?.accounts.filter((account) => !account.archived) ?? [];
+  }
+
+  protected accountOptions(
+    accounts = this.activeAccounts(),
+    balance: 'free' | 'physical' = 'free',
+    excludeId = '',
+  ): EntityOption[] {
+    return accounts
+      .filter((account) => account.account_id !== excludeId)
+      .map((account) => ({
+        id: account.account_id,
+        label: account.account_name,
+        detail: `${balance === 'free' ? 'Свободно' : 'Остаток'} ${formatMoney(
+          balance === 'free' ? account.free_balance : account.physical_balance,
+        )} ${this.baseCurrency()}`,
+      }));
+  }
+
+  protected redistributionSourceOptions(): EntityOption[] {
+    return this.sourceAccounts().map((account) => ({
+      id: account.account_id,
+      label: account.account_name,
+      detail: `В фонде ${formatMoney(
+        this.positionBalance(this.redistributionForm.controls.fundId.value, account.account_id),
+      )} ${this.baseCurrency()}`,
+    }));
   }
 
   protected sourceAccounts(): Coverage[] {
