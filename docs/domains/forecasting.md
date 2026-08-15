@@ -2,7 +2,7 @@
 
 ## Owner-confirmed behavior
 
-Forecast horizons are week, month, quarter, half-year and year. A forecast can
+Forecast horizons are two weeks, month, quarter, half-year and year. A forecast can
 target one account or all accounts combined and includes:
 
 - current actual balance;

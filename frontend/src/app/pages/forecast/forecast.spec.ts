@@ -112,15 +112,15 @@ describe('ForecastPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Кассовых разрывов не ожидается');
 
     const week = [...fixture.nativeElement.querySelectorAll('.period-switcher button')].find(
-      (button: HTMLButtonElement) => button.textContent.trim() === 'Неделя',
+      (button: HTMLButtonElement) => button.textContent.trim() === '2 недели',
     ) as HTMLButtonElement;
     week.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Рассчитываем будущие остатки');
     expect(fixture.nativeElement.textContent).not.toContain('Прогноз на конец периода');
     http
-      .expectOne('/api/v1/forecast?horizon=week&balance_mode=free')
-      .flush({ ...noRiskForecast(), horizon: 'week' });
+      .expectOne('/api/v1/forecast?horizon=two_weeks&balance_mode=free')
+      .flush({ ...noRiskForecast(), horizon: 'two_weeks' });
   });
 
   it('requests a selected account and horizon', () => {

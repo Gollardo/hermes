@@ -23,6 +23,7 @@ const OCCURRENCE = {
   destination_account_name: null,
   category_id: 'category-1',
   category_name: 'Связь',
+  allocate_to_funds: false,
   actual_operation_id: null,
   version: 1,
 };
@@ -96,6 +97,7 @@ describe('SchedulingPage recurrence editor', () => {
       accountId: 'account-1',
       destinationAccountId: '',
       categoryId: 'category-1',
+      allocateToFunds: false,
     });
     expect(page.canSaveRule()).toBe(true);
 
@@ -163,6 +165,45 @@ describe('SchedulingPage recurrence editor', () => {
     flushOccurrenceRequests([]);
   });
 
+  it('persists the transfer-only fund allocation choice', () => {
+    flushInitial([]);
+    clickButton('Добавить правило');
+    setValue('.form-panel select[formControlName="type"]', 'transfer');
+    setValue('.form-panel input[formControlName="startOn"]', '2026-08-12');
+    setValue('.form-panel input[formControlName="amount"]', '100');
+    setValue('.form-panel app-entity-combobox[formControlName="accountId"]', 'account-1');
+    const destination = fixture.nativeElement.querySelector(
+      '.form-panel app-entity-combobox[formControlName="destinationAccountId"]',
+    ) as HTMLElement;
+    const destinationSearch = destination.querySelector('input') as HTMLInputElement;
+    destinationSearch.value = 'Накоп';
+    destinationSearch.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (destination.querySelector('[data-option-id="account-2"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const allocation = fixture.nativeElement.querySelector(
+      '.form-panel input[formControlName="allocateToFunds"]',
+    ) as HTMLInputElement;
+    allocation.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Будут использованы проценты активных фондов на момент подтверждения операции.',
+    );
+
+    fixture.nativeElement.querySelector('.form-panel form').dispatchEvent(new Event('submit'));
+    const request = http.expectOne('/api/v1/scheduling/rules');
+    expect(request.request.body).toMatchObject({
+      type: 'transfer',
+      account_id: 'account-1',
+      destination_account_id: 'account-2',
+      category_id: null,
+      allocate_to_funds: true,
+    });
+    request.flush({});
+    http.expectOne('/api/v1/scheduling/rules').flush([]);
+    flushOccurrenceRequests([]);
+  });
+
   it('quick confirmation posts the occurrence version and refreshes both views', () => {
     flushInitial([OCCURRENCE]);
     const confirm = [...fixture.nativeElement.querySelectorAll('button')].find(
@@ -170,9 +211,47 @@ describe('SchedulingPage recurrence editor', () => {
     ) as HTMLButtonElement;
     confirm.click();
     const request = http.expectOne('/api/v1/scheduling/occurrences/occurrence-1/confirm');
-    expect(request.request.body).toEqual({ version: 1 });
+    expect(request.request.body).toEqual({ version: 1, amount: '12.5000' });
     request.flush({ ...OCCURRENCE, status: 'confirmed', actual_operation_id: 'operation-1' });
     flushOccurrenceRequests([]);
+  });
+
+  it('allows correcting only the confirmed occurrence amount', () => {
+    flushInitial([OCCURRENCE]);
+    setValue('#confirm-amount-occurrence-1', '12345,75');
+    const amountInput = fixture.nativeElement.querySelector(
+      '#confirm-amount-occurrence-1',
+    ) as HTMLInputElement;
+    amountInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(amountInput.value).toBe('12 345.75');
+    clickButton('Подтвердить');
+    const request = http.expectOne('/api/v1/scheduling/occurrences/occurrence-1/confirm');
+    expect(request.request.body).toEqual({ version: 1, amount: '12345.75' });
+    request.flush({ ...OCCURRENCE, amount: '12345.7500', status: 'confirmed' });
+    flushOccurrenceRequests([]);
+  });
+
+  it('makes automatic fund allocation explicit at confirmation', () => {
+    flushInitial([
+      {
+        ...OCCURRENCE,
+        type: 'transfer',
+        category_id: null,
+        category_name: null,
+        destination_account_id: 'account-2',
+        destination_account_name: 'Накопительный',
+        allocate_to_funds: true,
+      },
+    ]);
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'После перевода сумма распределится по процентам активных фондов.',
+    );
+    const action = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (button: HTMLButtonElement) => button.textContent.trim() === 'Перевести и распределить',
+    );
+    expect(action).toBeDefined();
   });
 
   it('loads every calendar page and reports the limited upcoming total honestly', () => {
@@ -324,9 +403,10 @@ describe('SchedulingPage recurrence editor', () => {
       updated: 0,
       cancelled: 0,
     });
-    http
-      .expectOne('/api/v1/accounts')
-      .flush([{ id: 'account-1', name: 'Основной', archived: false }]);
+    http.expectOne('/api/v1/accounts').flush([
+      { id: 'account-1', name: 'Основной', archived: false },
+      { id: 'account-2', name: 'Накопительный', archived: false },
+    ]);
     http.expectOne('/api/v1/categories').flush([
       {
         id: 'category-1',

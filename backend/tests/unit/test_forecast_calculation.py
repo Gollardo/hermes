@@ -40,11 +40,30 @@ def event(
 
 
 def test_horizons_are_calendar_bounded() -> None:
-    assert horizon_end(TODAY, ForecastHorizon.WEEK) == date(2026, 8, 19)
+    assert horizon_end(TODAY, ForecastHorizon.TWO_WEEKS) == date(2026, 8, 26)
     assert horizon_end(date(2026, 1, 31), ForecastHorizon.MONTH) == date(2026, 2, 28)
     assert horizon_end(TODAY, ForecastHorizon.QUARTER) == date(2026, 11, 12)
     assert horizon_end(TODAY, ForecastHorizon.HALF_YEAR) == date(2027, 2, 12)
     assert horizon_end(TODAY, ForecastHorizon.YEAR) == date(2027, 8, 12)
+
+
+def test_two_week_forecast_includes_its_inclusive_end() -> None:
+    through_on = horizon_end(TODAY, ForecastHorizon.TWO_WEEKS)
+    result = calculate_forecast(
+        today=TODAY,
+        through_on=through_on,
+        balances={SOURCE: Decimal("100.0000")},
+        account_name_by_id={SOURCE: "Main"},
+        events=[
+            event(1, due_on=through_on, type=OperationType.EXPENSE, amount="10.0000"),
+        ],
+        account_id=SOURCE,
+        horizon=ForecastHorizon.TWO_WEEKS,
+    )
+
+    assert len(result.points) == 15
+    assert result.points[-1].on == through_on
+    assert result.ending_balance == "90.0000"
 
 
 def test_account_forecast_is_exact_deterministic_and_explained() -> None:
@@ -62,7 +81,7 @@ def test_account_forecast_is_exact_deterministic_and_explained() -> None:
             account_name_by_id={SOURCE: "Main"},
             events=items,
             account_id=SOURCE,
-            horizon=ForecastHorizon.WEEK,
+            horizon=ForecastHorizon.TWO_WEEKS,
         )
 
     first = calculate(events)
@@ -106,7 +125,7 @@ def test_transfer_is_neutral_for_all_accounts_and_directional_for_one() -> None:
             account_name_by_id={SOURCE: "Main", TARGET: "Savings"},
             events=[transfer],
             account_id=account_id,
-            horizon=ForecastHorizon.WEEK,
+            horizon=ForecastHorizon.TWO_WEEKS,
         )
 
     combined = calculate(None)
@@ -138,7 +157,7 @@ def test_account_forecast_omits_events_for_other_accounts() -> None:
         account_name_by_id={SOURCE: "Main", TARGET: "Other"},
         events=[other_account_event],
         account_id=SOURCE,
-        horizon=ForecastHorizon.WEEK,
+        horizon=ForecastHorizon.TWO_WEEKS,
     )
 
     assert result.ending_balance == "100.0000"
@@ -168,7 +187,7 @@ def test_non_actionable_events_are_defensively_excluded() -> None:
             ),
         ],
         account_id=SOURCE,
-        horizon=ForecastHorizon.WEEK,
+        horizon=ForecastHorizon.TWO_WEEKS,
     )
 
     assert result.starting_balance == result.ending_balance == "100.0000"
@@ -184,7 +203,7 @@ def test_invalid_account_scope_is_rejected() -> None:
             account_name_by_id={SOURCE: "Main"},
             events=[],
             account_id=TARGET,
-            horizon=ForecastHorizon.WEEK,
+            horizon=ForecastHorizon.TWO_WEEKS,
         )
 
 
@@ -243,7 +262,7 @@ def test_starting_deficit_keeps_the_current_balance_as_first_negative() -> None:
             event(1, due_on=TODAY, type=OperationType.INCOME, amount="20.0000"),
         ],
         account_id=SOURCE,
-        horizon=ForecastHorizon.WEEK,
+        horizon=ForecastHorizon.TWO_WEEKS,
     )
 
     assert result.first_negative_on == TODAY

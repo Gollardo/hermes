@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.modules.scheduling.models import RecurrenceFrequency
-from app.modules.scheduling.schemas import RecurringRuleCreateRequest
+from app.modules.scheduling.schemas import OccurrenceConfirmRequest, RecurringRuleCreateRequest
 from app.modules.scheduling.service import calendar_year_later, recurrence_dates
 
 ACCOUNT = "10000000-0000-0000-0000-000000000001"
@@ -142,6 +142,32 @@ def test_recurring_rule_shape_and_exact_money() -> None:
         destination_account_id=DESTINATION,
     )
     assert rule.amount == Decimal("1250.2300")
+
+
+def test_fund_allocation_is_transfer_only_and_confirmation_amount_is_positive() -> None:
+    transfer = RecurringRuleCreateRequest(
+        type="transfer",
+        frequency="monthly",
+        start_on="2026-08-15",
+        amount="10",
+        account_id=ACCOUNT,
+        destination_account_id=DESTINATION,
+        allocate_to_funds=True,
+    )
+    assert transfer.allocate_to_funds is True
+
+    with pytest.raises(ValidationError, match="only transfers"):
+        RecurringRuleCreateRequest(
+            type="income",
+            frequency="monthly",
+            start_on="2026-08-15",
+            amount="10",
+            account_id=ACCOUNT,
+            category_id=CATEGORY,
+            allocate_to_funds=True,
+        )
+    with pytest.raises(ValidationError, match="amount must be positive"):
+        OccurrenceConfirmRequest(version=1, amount="0")
 
 
 @pytest.mark.parametrize(

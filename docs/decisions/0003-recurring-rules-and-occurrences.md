@@ -31,13 +31,15 @@ Materialization covers `[today, today + 1 calendar year]` in the configured
 application timezone. Both boundaries are inclusive. A unique
 `(rule_id, scheduled_on)` identity and a row lock on the rule make repeated or
 concurrent materialization idempotent.
+The window is a storage bound, not an implicit rule end: a rule without an end
+date produces the next bounded window whenever materialization advances.
 
 An occurrence stores:
 
 - immutable `scheduled_on`, its identity in the source sequence;
 - mutable `due_on`, changed only by postponing that occurrence;
 - a complete operation snapshot: type, accounts, category, amount and
-  description;
+  description, plus the transfer-only fund-allocation choice;
 - status `pending`, `postponed`, `cancelled` or `confirmed`;
 - `manually_modified`, an explicit boundary protecting owner changes;
 - an optimistic version and, after confirmation, the actual operation link.
@@ -58,6 +60,12 @@ contract in the same database transaction. Posting and the `confirmed` link
 therefore commit or roll back together. Repeated confirmation returns the same
 link and cannot create a second financial operation. Postponing and cancelling
 never call Operations and cannot change actual balances.
+The owner may override the occurrence amount during confirmation. That amount
+is stored as a manual confirmed snapshot without changing its rule or siblings.
+When a transfer snapshot requests percentage allocation, application-level
+orchestration posts the physical transfer and the Funds-owned allocation before
+linking the occurrence. All three effects are atomic; unavailable allocation
+configuration fails rather than silently posting only the transfer.
 
 Rule replacement locks the rule and its occurrences before acquiring category
 and account reference locks. Confirmation starts with the occurrence and then

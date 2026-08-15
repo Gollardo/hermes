@@ -35,6 +35,10 @@ events merely because they are within the next 30 days.
 - Every calendar chip contains a visible status label; color and strike-through
   are supplementary signals only.
 - A failed confirmation keeps the occurrence and entered postpone date visible.
+- An actionable occurrence exposes its confirmation amount so an approximate
+  template amount can be corrected without editing the rule.
+- A fund-allocating transfer names that side effect beside the action and uses
+  the explicit action label “Перевести и распределить”.
 - Disabling a rule explains that untouched future occurrences are cancelled;
   manual and confirmed decisions are preserved.
 - Editing a rule on a narrow screen moves focus context to the existing form;
@@ -47,12 +51,17 @@ events merely because they are within the next 30 days.
 - Amount is an unsigned exact decimal with the base currency visible.
 - Income and expense require a matching category and one account.
 - Transfer requires two different accounts and no category.
+- A transfer may opt into immediate distribution across active funds by their
+  configured percentages; the option is visible only for transfers and states
+  that percentages are resolved when the occurrence is confirmed.
 - Start date is visible; end date is optional and inclusive.
 - Weekly rules expose weekday checkboxes and an every 1–3 weeks interval.
 - Monthly rules expose the anchor day through `start_on` and an every 1–3
   months interval. Yearly rules keep the month/day while the year advances.
 - Monthly rules explain the supported 1–28 day range before submission.
 - Description is optional and used as the human calendar title.
+- Omitting the end date means recurrence continues indefinitely; only the next
+  year is materialized at any given time.
 
 ## Deliberately deferred
 

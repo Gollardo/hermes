@@ -257,7 +257,22 @@ def valid_data() -> dict[str, Any]:
 
 
 def test_valid_backup_domain_shape() -> None:
-    validate_document(BackupData.model_validate(valid_data()))
+    data = BackupData.model_validate(valid_data())
+    assert data.recurring_rules[0].allocate_to_funds is False
+    assert data.expected_occurrences[0].allocate_to_funds is False
+    validate_document(data)
+
+
+def test_backup_rejects_fund_allocation_on_non_transfer_schedule() -> None:
+    invalid = valid_data()
+    invalid["recurring_rules"][0]["allocate_to_funds"] = True
+    with pytest.raises(ValidationError, match="only transfers"):
+        BackupData.model_validate(invalid)
+
+    invalid = valid_data()
+    invalid["expected_occurrences"][0]["allocate_to_funds"] = True
+    with pytest.raises(ValidationError, match="only transfers"):
+        BackupData.model_validate(invalid)
 
 
 def test_backup_rejects_invalid_target_and_duplicate_weekdays() -> None:

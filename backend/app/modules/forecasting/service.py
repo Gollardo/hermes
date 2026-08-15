@@ -43,8 +43,8 @@ class ForecastInputEvent:
 
 
 def horizon_end(today: date, horizon: ForecastHorizon) -> date:
-    if horizon == ForecastHorizon.WEEK:
-        return today + timedelta(days=7)
+    if horizon == ForecastHorizon.TWO_WEEKS:
+        return today + timedelta(days=14)
     if horizon == ForecastHorizon.MONTH:
         return _add_months(today, 1)
     if horizon == ForecastHorizon.QUARTER:

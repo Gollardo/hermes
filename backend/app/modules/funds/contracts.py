@@ -21,6 +21,7 @@ from app.modules.funds.schemas import (
     TransferAllocationResponse,
 )
 from app.modules.funds.service import (
+    FundAllocationUnavailableError,
     FundArchivedMutationError,
     FundBalanceError,
     FundCoverageError,
@@ -36,6 +37,7 @@ from app.modules.funds.service import (
     fund_names,
     get_fund_response,
     history_source_ids,
+    locked_percentage_allocation_preview_with_free_balance,
     operation_fund_movements,
     replace_operation_movements,
     reserved_balance,
@@ -70,6 +72,7 @@ def fund_response(session: Session, fund_id: UUID) -> FundResponse:
 __all__ = [
     "FundBalanceError",
     "FundArchivedMutationError",
+    "FundAllocationUnavailableError",
     "FundCoverageError",
     "FundNotFoundError",
     "AllocationCreateRequest",
@@ -97,6 +100,7 @@ __all__ = [
     "fund_names",
     "fund_response",
     "history_source_ids",
+    "locked_percentage_allocation_preview_with_free_balance",
     "replace_operation_movements",
     "reserved_balance",
     "reserved_balances",

@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
+from decimal import Decimal
 from threading import Barrier
 
 import pytest
@@ -11,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.config import Settings
 from app.main import create_app
+from app.modules.funds.models import FundMovement
 from app.modules.operations.models import AccountMovement, FinancialOperation
 from app.modules.scheduling import service as scheduling_service
 from app.modules.scheduling.models import ExpectedOccurrence, RecurrenceFrequency, RecurringRule
@@ -60,7 +62,7 @@ def _rule_payload(
     *,
     operation_type: str,
     start_on: date,
-    end_on: date,
+    end_on: date | None,
     amount: str,
     account_id: str,
     category_id: str | None = None,
@@ -70,7 +72,7 @@ def _rule_payload(
         "type": operation_type,
         "frequency": "daily",
         "start_on": start_on.isoformat(),
-        "end_on": end_on.isoformat(),
+        "end_on": end_on.isoformat() if end_on else None,
         "amount": amount,
         "description": f"Scheduled {operation_type}",
         "account_id": account_id,
@@ -374,6 +376,181 @@ def test_rule_edit_protects_manual_occurrences_and_materialization_is_idempotent
             )
         )
         assert count == unique_count
+
+
+def test_open_ended_rules_roll_forward_and_confirmation_can_override_amount(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        account = _account(client, headers, "Income", "0")
+        category = _category(client, headers, "Salary", "income")
+        today = _horizon_today(client, headers)
+        rule = client.post(
+            "/api/v1/scheduling/rules",
+            headers=headers,
+            json=_rule_payload(
+                operation_type="income",
+                start_on=today,
+                end_on=None,
+                amount="10",
+                account_id=account,
+                category_id=category,
+            ),
+        ).json()
+        occurrence = _occurrences(client, rule["id"])[0]
+        confirmed = client.post(
+            f"/api/v1/scheduling/occurrences/{occurrence['id']}/confirm",
+            headers=headers,
+            json={"version": occurrence["version"], "amount": "12.34"},
+        )
+        assert confirmed.status_code == 200
+        assert confirmed.json()["amount"] == "12.3400"
+        assert confirmed.json()["manually_modified"] is True
+        actual_operation_id = confirmed.json()["actual_operation_id"]
+
+        replacement = _rule_payload(
+            operation_type="income",
+            start_on=today,
+            end_on=None,
+            amount="20",
+            account_id=account,
+            category_id=category,
+        )
+        replacement.update({"active": True, "version": rule["version"]})
+        updated = client.put(
+            f"/api/v1/scheduling/rules/{rule['id']}", headers=headers, json=replacement
+        )
+        assert updated.status_code == 200
+        items = _occurrences(client, rule["id"])
+        assert next(item for item in items if item["id"] == occurrence["id"])["amount"] == "12.3400"
+        assert next(item for item in items if item["id"] != occurrence["id"])["amount"] == "20.0000"
+
+        actual = client.get(f"/api/v1/operations/{actual_operation_id}")
+        assert actual.status_code == 200
+        assert actual.json()["amount"] == "12.3400"
+
+    with app.state.session_factory.begin() as session:
+        original_last = session.scalar(
+            select(func.max(ExpectedOccurrence.scheduled_on)).where(
+                ExpectedOccurrence.rule_id == rule["id"]
+            )
+        )
+        assert original_last is not None
+        materialize_all(session, today=today + timedelta(days=370))
+        rolled_last = session.scalar(
+            select(func.max(ExpectedOccurrence.scheduled_on)).where(
+                ExpectedOccurrence.rule_id == rule["id"]
+            )
+        )
+        assert rolled_last is not None and rolled_last > original_last
+
+
+def test_scheduled_transfer_and_percentage_allocation_are_atomic(
+    postgres_database_settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        source = _account(client, headers, "Source", "100")
+        destination = _account(client, headers, "Destination", "0")
+        today = _horizon_today(client, headers)
+        payload = _rule_payload(
+            operation_type="transfer",
+            start_on=today,
+            end_on=today,
+            amount="20",
+            account_id=source,
+            destination_account_id=destination,
+        )
+        payload["allocate_to_funds"] = True
+        rule = client.post("/api/v1/scheduling/rules", headers=headers, json=payload)
+        assert rule.status_code == 201
+        assert rule.json()["allocate_to_funds"] is True
+        occurrence = _occurrences(client, rule.json()["id"])[0]
+        assert occurrence["allocate_to_funds"] is True
+
+        unavailable = client.post(
+            f"/api/v1/scheduling/occurrences/{occurrence['id']}/confirm",
+            headers=headers,
+            json={"version": occurrence["version"], "amount": "24"},
+        )
+        assert unavailable.status_code == 409
+        assert unavailable.json()["detail"]["code"] == "fund_allocation_unavailable"
+        unchanged_balances = {
+            item["id"]: item["balance"] for item in client.get("/api/v1/accounts").json()
+        }
+        assert unchanged_balances[source] == "100.0000"
+        assert Decimal(str(unchanged_balances[destination])) == 0
+
+        fund = client.post(
+            "/api/v1/funds",
+            headers=headers,
+            json={"name": "Reserve", "allocation_percentage": "25"},
+        )
+        assert fund.status_code == 201
+        confirmed = client.post(
+            f"/api/v1/scheduling/occurrences/{occurrence['id']}/confirm",
+            headers=headers,
+            json={"version": occurrence["version"], "amount": "24"},
+        )
+        assert confirmed.status_code == 200
+        balances = {item["id"]: item["balance"] for item in client.get("/api/v1/accounts").json()}
+        assert balances[source] == "76.0000"
+        assert balances[destination] == "24.0000"
+        exported = client.get("/api/v1/backup/export")
+        assert exported.status_code == 200
+        exported_rule = next(
+            item
+            for item in exported.json()["data"]["recurring_rules"]
+            if item["id"] == rule.json()["id"]
+        )
+        exported_occurrence = next(
+            item
+            for item in exported.json()["data"]["expected_occurrences"]
+            if item["id"] == occurrence["id"]
+        )
+        assert exported_rule["allocate_to_funds"] is True
+        assert exported_occurrence["allocate_to_funds"] is True
+
+        rollback_rule = client.post(
+            "/api/v1/scheduling/rules", headers=headers, json=payload
+        ).json()
+        rollback_occurrence = _occurrences(client, rollback_rule["id"])[0]
+
+        def fail_after_financial_effects(
+            expected: ExpectedOccurrence, operation_id: object
+        ) -> None:
+            assert expected.id is not None
+            assert operation_id is not None
+            raise RuntimeError("injected failure after transfer and allocation")
+
+        monkeypatch.setattr(
+            scheduling_service, "_link_confirmed_operation", fail_after_financial_effects
+        )
+        with pytest.raises(RuntimeError, match="after transfer and allocation"):
+            client.post(
+                f"/api/v1/scheduling/occurrences/{rollback_occurrence['id']}/confirm",
+                headers=headers,
+                json={"version": rollback_occurrence["version"]},
+            )
+
+        rolled_back_balances = {
+            item["id"]: item["balance"] for item in client.get("/api/v1/accounts").json()
+        }
+        assert rolled_back_balances == balances
+        persisted = _occurrences(client, rollback_rule["id"])[0]
+        assert persisted["status"] == "pending"
+        assert persisted["actual_operation_id"] is None
+
+    with app.state.session_factory() as session:
+        movements = session.scalars(select(FundMovement)).all()
+        assert len(movements) == 1
+        assert str(movements[0].account_id) == destination
+        assert movements[0].amount == 6
 
 
 def test_concurrent_confirmation_and_rule_edit_are_serial_and_idempotent(

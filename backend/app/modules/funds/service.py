@@ -47,6 +47,10 @@ class FundCoverageError(RuntimeError):
     pass
 
 
+class FundAllocationUnavailableError(RuntimeError):
+    pass
+
+
 class FundArchiveBalanceError(RuntimeError):
     pass
 
@@ -323,6 +327,14 @@ def allocation_preview_with_free_balance(
         free_before=format(free, "f"),
         free_after=format(free - allocated, "f"),
     )
+
+
+def locked_percentage_allocation_preview_with_free_balance(
+    session: Session, account_id: UUID, amount: Decimal, free: Decimal
+) -> AllocationPreviewResponse:
+    """Read one percentage snapshot protected from concurrent fund-definition changes."""
+    _lock_definitions(session)
+    return allocation_preview_with_free_balance(session, account_id, amount, free)
 
 
 def create_allocation_with_free_balance(

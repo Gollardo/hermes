@@ -1,4 +1,4 @@
-export type ForecastHorizon = 'week' | 'month' | 'quarter' | 'half_year' | 'year';
+export type ForecastHorizon = 'two_weeks' | 'month' | 'quarter' | 'half_year' | 'year';
 export type ForecastBalanceMode = 'free' | 'total';
 export type ForecastOperationType = 'income' | 'expense' | 'transfer';
 

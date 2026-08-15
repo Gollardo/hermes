@@ -109,7 +109,7 @@ export class ForecastPage implements OnInit {
 
   protected readonly accounts = signal<Account[]>([]);
   protected readonly horizons: readonly HorizonOption[] = [
-    { value: 'week', label: 'Неделя' },
+    { value: 'two_weeks', label: '2 недели' },
     { value: 'month', label: 'Месяц' },
     { value: 'quarter', label: 'Квартал' },
     { value: 'half_year', label: 'Полгода' },
@@ -331,7 +331,7 @@ export class ForecastPage implements OnInit {
   protected readonly dateTicks = computed<DateTick[]>(() => {
     const points = this.plot();
     if (!points.length) return [];
-    const count = Math.min(this.forecast()?.horizon === 'week' ? 5 : 7, points.length);
+    const count = Math.min(this.forecast()?.horizon === 'two_weeks' ? 5 : 7, points.length);
     return uniqueIndexes(count, points.length).map((index) => ({
       x: points[index].x,
       label: compactDate(points[index].on, this.forecast()?.granularity === 'month'),

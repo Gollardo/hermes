@@ -22,6 +22,7 @@ class RecurringRuleCreateRequest(BaseModel):
     account_id: UUID
     destination_account_id: UUID | None = None
     category_id: UUID | None = None
+    allocate_to_funds: bool = False
 
     @field_validator("description")
     @classmethod
@@ -56,6 +57,8 @@ class RecurringRuleCreateRequest(BaseModel):
         ):
             raise ValueError("daily and yearly rules use interval 1")
         if self.type in {OperationType.INCOME, OperationType.EXPENSE}:
+            if self.allocate_to_funds:
+                raise ValueError("only transfers can allocate to funds")
             if self.category_id is None or self.destination_account_id is not None:
                 raise ValueError("income and expense require category and one account")
         elif (
@@ -88,6 +91,7 @@ class RecurringRuleResponse(BaseModel):
     destination_account_name: str | None
     category_id: UUID | None
     category_name: str | None
+    allocate_to_funds: bool
     active: bool
     version: int
     created_at: datetime
@@ -111,6 +115,7 @@ class ExpectedOccurrenceResponse(BaseModel):
     destination_account_name: str | None
     category_id: UUID | None
     category_name: str | None
+    allocate_to_funds: bool
     actual_operation_id: UUID | None
     version: int
     created_at: datetime
@@ -136,9 +141,20 @@ class OccurrenceVersionRequest(BaseModel):
     version: int = Field(ge=1)
 
 
+class OccurrenceConfirmRequest(OccurrenceVersionRequest):
+    amount: Money | None = None
+
+    @field_validator("amount")
+    @classmethod
+    def positive_amount(cls, value: Decimal | None) -> Decimal | None:
+        if value is not None and value <= 0:
+            raise ValueError("amount must be positive")
+        return value
+
+
 class OccurrencePostponeRequest(OccurrenceVersionRequest):
     due_on: date
 
 
 def format_money(value: Decimal) -> str:
-    return format(value, "f")
+    return format(value, ".4f")

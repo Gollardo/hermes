@@ -14,7 +14,7 @@ class ForecastScope(StrEnum):
 
 
 class ForecastHorizon(StrEnum):
-    WEEK = "week"
+    TWO_WEEKS = "two_weeks"
     MONTH = "month"
     QUARTER = "quarter"
     HALF_YEAR = "half_year"

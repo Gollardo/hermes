@@ -31,6 +31,8 @@ a transactional cross-module use case. The flow appears in
   29 February. A nonexistent occurrence date is never silently shifted.
 - Materialization includes today through the same calendar date one year ahead,
   evaluated in the configured application timezone.
+- A rule without `end_on` has no implicit one-year end. Each materialization
+  advances the physical occurrence window to one year from its current date.
 - The first recurring rule locks the application timezone. There is no implicit
   reinterpretation of persisted calendar dates.
 - `(rule_id, scheduled_on)` is the deterministic identity. Repeated and
@@ -58,6 +60,12 @@ but never one cancelled manually.
 
 - Rules and expected occurrences never create account or fund movements.
 - Confirmation posts exactly one actual operation and links it atomically.
+- Confirmation may override the amount of that occurrence. The confirmed
+  snapshot records the actual amount and future siblings keep the rule amount.
+- A transfer snapshot may request percentage allocation on the destination
+  account. Its physical transfer, fund allocation and confirmation link commit
+  or roll back together. The percentages are read from one locked active-fund
+  snapshot at confirmation time; missing positive percentages fail explicitly.
 - A failed posting leaves the occurrence actionable and unlinked.
 - Confirming an already confirmed occurrence is idempotent.
 - Postponing one occurrence never changes its rule or siblings.

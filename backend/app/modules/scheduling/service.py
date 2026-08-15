@@ -14,11 +14,8 @@ from app.modules.categories.contracts import (
     category_name,
     validate_category_reference,
 )
-from app.modules.operations.contracts import (
-    OperationType,
-    ScheduledOperationDraft,
-    post_scheduled_operation,
-)
+from app.modules.operations.contracts import OperationType
+from app.modules.scheduling.contracts import OccurrenceConfirmationDraft, OccurrencePoster
 from app.modules.scheduling.models import (
     ExpectedOccurrence,
     OccurrenceStatus,
@@ -198,6 +195,7 @@ def _copy_snapshot(rule: RecurringRule, occurrence: ExpectedOccurrence) -> bool:
         "account_id": rule.account_id,
         "destination_account_id": rule.destination_account_id,
         "category_id": rule.category_id,
+        "allocate_to_funds": rule.allocate_to_funds,
     }
     for name, value in values.items():
         if getattr(occurrence, name) != value:
@@ -219,6 +217,7 @@ def _new_occurrence(rule: RecurringRule, scheduled_on: date, now: datetime) -> E
         account_id=rule.account_id,
         destination_account_id=rule.destination_account_id,
         category_id=rule.category_id,
+        allocate_to_funds=rule.allocate_to_funds,
         actual_operation_id=None,
         version=1,
         created_at=now,
@@ -386,6 +385,7 @@ def _rule_response(session: Session, rule: RecurringRule) -> RecurringRuleRespon
         ),
         category_id=rule.category_id,
         category_name=(category_name(session, rule.category_id) if rule.category_id else None),
+        allocate_to_funds=rule.allocate_to_funds,
         active=rule.active,
         version=rule.version,
         created_at=rule.created_at,
@@ -441,6 +441,7 @@ def _occurrence_response(
         category_name=(
             category_name(session, occurrence.category_id) if occurrence.category_id else None
         ),
+        allocate_to_funds=occurrence.allocate_to_funds,
         actual_operation_id=occurrence.actual_operation_id,
         version=occurrence.version,
         created_at=occurrence.created_at,
@@ -497,32 +498,39 @@ def list_occurrence_responses(
 
 
 def confirm_occurrence(
-    session: Session, occurrence_id: UUID, *, expected_version: int, today: date | None = None
+    session: Session,
+    occurrence_id: UUID,
+    *,
+    expected_version: int,
+    amount: Decimal | None = None,
+    poster: OccurrencePoster,
+    today: date | None = None,
 ) -> ExpectedOccurrenceResponse:
     occurrence = _get_occurrence(session, occurrence_id, lock=True)
-    resolved_today = today or _today(session)
     if occurrence.status == OccurrenceStatus.CONFIRMED:
-        return _occurrence_response(session, occurrence, today=resolved_today)
+        return _occurrence_response(session, occurrence, today=today or _today(session))
     if occurrence.version != expected_version:
         raise SchedulingConflictError
     if occurrence.status not in {OccurrenceStatus.PENDING, OccurrenceStatus.POSTPONED}:
         raise InvalidOccurrenceTransitionError
-    operation_id = post_scheduled_operation(
-        session,
-        ScheduledOperationDraft(
-            type=occurrence.type,
-            occurred_on=occurrence.due_on,
-            amount=Decimal(occurrence.amount),
-            description=occurrence.description,
-            account_id=occurrence.account_id,
-            destination_account_id=occurrence.destination_account_id,
-            category_id=occurrence.category_id,
-        ),
+    effective_amount = Decimal(amount if amount is not None else occurrence.amount)
+    draft = OccurrenceConfirmationDraft(
+        type=occurrence.type,
+        occurred_on=occurrence.due_on,
+        amount=effective_amount,
+        description=occurrence.description,
+        account_id=occurrence.account_id,
+        destination_account_id=occurrence.destination_account_id,
+        category_id=occurrence.category_id,
+        allocate_to_funds=occurrence.allocate_to_funds,
     )
-
+    operation_id = poster(draft)
+    if Decimal(occurrence.amount) != effective_amount:
+        occurrence.amount = effective_amount
+        occurrence.manually_modified = True
     _link_confirmed_operation(occurrence, operation_id)
     session.flush()
-    return _occurrence_response(session, occurrence, today=resolved_today)
+    return _occurrence_response(session, occurrence, today=today or _today(session))
 
 
 def _link_confirmed_operation(occurrence: ExpectedOccurrence, operation_id: UUID) -> None:

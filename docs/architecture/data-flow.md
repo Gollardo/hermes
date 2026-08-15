@@ -150,9 +150,10 @@ flowchart LR
     Pending -->|postpone| Postponed["postponed with new date"]
     Pending -->|cancel| Cancelled["cancelled"]
     Postponed -->|cancel| Cancelled
-    Pending -->|confirm| Tx["Operations transaction"]
-    Postponed -->|confirm| Tx
+    Pending -->|confirm, optional amount override| Tx["Application transaction"]
+    Postponed -->|confirm, optional amount override| Tx
     Tx --> Actual["Posted financial operation"]
+    Tx -->|transfer option| Allocation["Percentage fund allocation"]
     Actual --> Confirmed["confirmed and linked"]
 ```
 
@@ -166,6 +167,11 @@ Rule replacement locks the rule and all of its occurrences before validating
 the category and deterministically ordered accounts. Confirmation already owns
 the occurrence before taking those same reference locks, so concurrent rule
 editing and posting serialize without a reverse lock dependency.
+Rules without an end date keep advancing that bounded window on later runs.
+For a transfer marked for fund allocation, the application layer also invokes
+the Funds workflow before linking confirmation; every effect shares the request
+transaction. Funds protects the percentage snapshot from concurrent definition
+changes until that transaction finishes.
 
 ## Forecast calculation
 
@@ -182,7 +188,7 @@ flowchart LR
     Series --> Negative["First possible negative date"]
 ```
 
-Supported horizons are week, month, quarter, half-year and year. Forecasting is
+Supported horizons are two weeks, month, quarter, half-year and year. Forecasting is
 a read calculation and cannot silently post expected data. Beta.2 reads the
 Operations ledger and actionable Scheduling occurrences through their public
 contracts; liabilities and debts remain future sources until their domains

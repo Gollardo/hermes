@@ -10,7 +10,7 @@
 | `categories` | category tree | category reference validation |
 | `operations` | posted operations and physical money movements | atomic posting commands and ledger reads |
 | `funds` | fund definitions, percentages, virtual movements | fund posting contracts and application coordination with physical ledger reads |
-| `scheduling` | recurrence rules and expected occurrences | confirmation command into operations |
+| `scheduling` | recurrence rules and expected occurrences | application-coordinated confirmation through operations and optional funds contracts |
 | `forecasting` | future-balance calculations | read contracts from ledger, funds and plans |
 | `liabilities` | credits and installment plans | planned/payment integration contracts |
 | `debts` | `i_owe` and `owed_to_me` obligations | repayment posting contract |
@@ -79,8 +79,11 @@ Backup uses it, and the versioned validator enforces the same documented
 invariants before any rows are replaced.
 
 Scheduling validates account/category snapshots and the application timezone
-through those modules' public contracts. It posts confirmed occurrences only
-through the Operations contract and never writes the physical ledger directly.
+through those modules' public contracts. An application use case confirms an
+occurrence through Scheduling's locked command, posts through the Operations
+contract and, for an explicitly marked transfer, invokes the Funds allocation
+contract in the same transaction. Scheduling never writes either ledger
+directly.
 
 The application setup use case calls Auth, Categories and Backup only through
 their public contracts. Fresh setup commits credential, preferences, optional

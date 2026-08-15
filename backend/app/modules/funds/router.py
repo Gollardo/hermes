@@ -9,9 +9,9 @@ from app.application.funds import (
     fund_summary,
     preview_allocation,
     redistribute_fund,
-    transfer_and_allocate,
     transfer_between_funds,
 )
+from app.application.transfer_allocation import transfer_and_allocate
 from app.core.database import DatabaseSession
 from app.modules.accounts.contracts import AccountReferenceError
 from app.modules.funds.schemas import (
@@ -31,6 +31,7 @@ from app.modules.funds.schemas import (
     TransferAllocationResponse,
 )
 from app.modules.funds.service import (
+    FundAllocationUnavailableError,
     FundArchiveBalanceError,
     FundBalanceError,
     FundConflictError,
@@ -51,6 +52,12 @@ write_router = APIRouter(prefix="/funds", tags=["funds"])
 def _raise_domain_error(error: RuntimeError) -> None:
     mapping: list[tuple[type[RuntimeError], int, str, str]] = [
         (FundNotFoundError, 404, "fund_not_found", "Fund is unavailable"),
+        (
+            FundAllocationUnavailableError,
+            409,
+            "fund_allocation_unavailable",
+            "No active fund percentage is configured",
+        ),
         (FundConflictError, 409, "fund_conflict", "Fund was changed"),
         (FundPercentageLimitError, 409, "fund_percentage_limit", "Active percentages exceed 100"),
         (
@@ -205,6 +212,7 @@ def transfer_allocation(
     except (
         AccountReferenceError,
         FundNotFoundError,
+        FundAllocationUnavailableError,
         FundCoverageError,
         FundBalanceError,
         InsufficientBalanceError,

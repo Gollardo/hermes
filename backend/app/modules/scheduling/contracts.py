@@ -1,8 +1,10 @@
 """Public scheduling references used by cross-module read/application use cases."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import or_, select
@@ -10,6 +12,44 @@ from sqlalchemy.orm import Session
 
 from app.modules.operations.contracts import OperationType
 from app.modules.scheduling.models import ExpectedOccurrence, OccurrenceStatus, RecurringRule
+
+if TYPE_CHECKING:
+    from app.modules.scheduling.schemas import ExpectedOccurrenceResponse
+
+
+@dataclass(frozen=True, slots=True)
+class OccurrenceConfirmationDraft:
+    type: OperationType
+    occurred_on: date
+    amount: Decimal
+    description: str | None
+    account_id: UUID
+    destination_account_id: UUID | None
+    category_id: UUID | None
+    allocate_to_funds: bool
+
+
+OccurrencePoster = Callable[[OccurrenceConfirmationDraft], UUID]
+
+
+def confirm_occurrence(
+    session: Session,
+    occurrence_id: UUID,
+    *,
+    expected_version: int,
+    amount: Decimal | None,
+    poster: OccurrencePoster,
+) -> "ExpectedOccurrenceResponse":
+    """Confirm through Scheduling while the supplied poster owns financial orchestration."""
+    from app.modules.scheduling.service import confirm_occurrence as _confirm_occurrence
+
+    return _confirm_occurrence(
+        session,
+        occurrence_id,
+        expected_version=expected_version,
+        amount=amount,
+        poster=poster,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,10 +179,13 @@ def has_schedule_data(session: Session) -> bool:
 
 __all__ = [
     "ForecastScheduleSnapshot",
+    "OccurrenceConfirmationDraft",
+    "OccurrencePoster",
     "OccurrenceStatus",
     "PlannedOccurrence",
     "account_has_schedule_reference",
     "category_has_schedule_reference",
+    "confirm_occurrence",
     "forecast_schedule_snapshot",
     "has_schedule_data",
 ]

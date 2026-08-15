@@ -198,6 +198,10 @@
   padding: 0.45rem 0.65rem;
 }
 
+.allocation-choice {
+  grid-template-columns: 1fr;
+}
+
 .postpone-action {
   display: grid;
   grid-template-columns: minmax(8.5rem, 1fr) auto;

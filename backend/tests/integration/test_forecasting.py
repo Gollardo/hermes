@@ -106,7 +106,7 @@ def test_forecast_api_uses_actual_balances_and_only_actionable_future_occurrence
             == 200
         )
 
-        combined = client.get("/api/v1/forecast?horizon=week")
+        combined = client.get("/api/v1/forecast?horizon=two_weeks")
         assert combined.status_code == 200
         body = combined.json()
         assert body["starting_balance"] == "150.0000"
@@ -121,7 +121,9 @@ def test_forecast_api_uses_actual_balances_and_only_actionable_future_occurrence
             for event in point["events"]
         )
 
-        source_forecast = client.get(f"/api/v1/forecast?horizon=week&account_id={source}").json()
+        source_forecast = client.get(
+            f"/api/v1/forecast?horizon=two_weeks&account_id={source}"
+        ).json()
         assert source_forecast["starting_balance"] == "130.0000"
         assert source_forecast["ending_balance"] == "55.0000"
 
@@ -139,7 +141,7 @@ def test_forecast_api_uses_actual_balances_and_only_actionable_future_occurrence
             ).status_code
             == 200
         )
-        moved = client.get(f"/api/v1/forecast?horizon=week&account_id={source}").json()
+        moved = client.get(f"/api/v1/forecast?horizon=two_weeks&account_id={source}").json()
         food = next(
             event
             for point in moved["points"]
@@ -178,8 +180,8 @@ def test_forecast_defaults_to_free_money_and_can_include_reserves(
         )
         assert allocation.status_code == 201
 
-        free = client.get("/api/v1/forecast?horizon=week")
-        total = client.get("/api/v1/forecast?horizon=week&balance_mode=total")
+        free = client.get("/api/v1/forecast?horizon=two_weeks")
+        total = client.get("/api/v1/forecast?horizon=two_weeks&balance_mode=total")
 
         assert free.status_code == total.status_code == 200
         assert free.json()["balance_mode"] == "free"
@@ -261,7 +263,7 @@ def test_concurrent_confirmation_cannot_be_counted_as_actual_and_planned(
                 ).status_code
                 == 200
             )
-            response = concurrent_client.get("/api/v1/forecast?horizon=week")
+            response = concurrent_client.get("/api/v1/forecast?horizon=two_weeks")
             assert response.status_code == 200
             return cast(dict[str, object], response.json())
 
@@ -296,5 +298,5 @@ def test_concurrent_confirmation_cannot_be_counted_as_actual_and_planned(
             client.post("/api/v1/auth/login", json={"master_password": MASTER_PASSWORD}).status_code
             == 200
         )
-        after = client.get("/api/v1/forecast?horizon=week").json()
+        after = client.get("/api/v1/forecast?horizon=two_weeks").json()
         assert after["starting_balance"] == after["ending_balance"] == "130.0000"

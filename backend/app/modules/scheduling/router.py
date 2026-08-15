@@ -4,15 +4,21 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.application.scheduling import confirm_expected_occurrence
 from app.core.database import DatabaseSession
 from app.modules.accounts.contracts import AccountReferenceError
 from app.modules.categories.contracts import CategoryReferenceError
-from app.modules.funds.contracts import FundCoverageError
+from app.modules.funds.contracts import (
+    FundAllocationUnavailableError,
+    FundBalanceError,
+    FundCoverageError,
+)
 from app.modules.operations.contracts import InsufficientBalanceError, OperationType
 from app.modules.scheduling.models import OccurrenceStatus
 from app.modules.scheduling.schemas import (
     ExpectedOccurrenceResponse,
     MaterializationResponse,
+    OccurrenceConfirmRequest,
     OccurrencePageResponse,
     OccurrencePostponeRequest,
     OccurrenceVersionRequest,
@@ -26,7 +32,6 @@ from app.modules.scheduling.service import (
     RecurringRuleNotFoundError,
     SchedulingConflictError,
     cancel_occurrence,
-    confirm_occurrence,
     create_rule,
     get_rule_response,
     list_occurrence_responses,
@@ -81,6 +86,19 @@ def _raise_domain_error(error: RuntimeError) -> None:
         raise HTTPException(
             409,
             detail={"code": "insufficient_free_balance", "message": "Fund coverage is invalid"},
+        )
+    if isinstance(error, FundAllocationUnavailableError):
+        raise HTTPException(
+            409,
+            detail={
+                "code": "fund_allocation_unavailable",
+                "message": "No fund allocation is configured",
+            },
+        )
+    if isinstance(error, FundBalanceError):
+        raise HTTPException(
+            409,
+            detail={"code": "insufficient_fund_balance", "message": "Fund balance is invalid"},
         )
     raise error
 
@@ -153,15 +171,19 @@ def materialize(session: DatabaseSession) -> MaterializationResponse:
     "/occurrences/{occurrence_id}/confirm", response_model=ExpectedOccurrenceResponse
 )
 def confirm(
-    occurrence_id: UUID, payload: OccurrenceVersionRequest, session: DatabaseSession
+    occurrence_id: UUID, payload: OccurrenceConfirmRequest, session: DatabaseSession
 ) -> ExpectedOccurrenceResponse:
     try:
-        return confirm_occurrence(session, occurrence_id, expected_version=payload.version)
+        return confirm_expected_occurrence(
+            session, occurrence_id, expected_version=payload.version, amount=payload.amount
+        )
     except (
         AccountReferenceError,
         CategoryReferenceError,
         ExpectedOccurrenceNotFoundError,
         FundCoverageError,
+        FundAllocationUnavailableError,
+        FundBalanceError,
         InsufficientBalanceError,
         InvalidOccurrenceTransitionError,
         SchedulingConflictError,

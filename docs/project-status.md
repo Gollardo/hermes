@@ -249,21 +249,29 @@
   времени.
 - Weekly правила выбирают несколько дней недели и интервал 1–3 недели; monthly
   поддерживает интервал 1–3 месяца.
+- Правило без даты окончания продолжает скользящую материализацию на год вперёд,
+  а не завершается через год. Подтверждённая история защищена от rule edit.
+- При подтверждении можно скорректировать сумму одного экземпляра. Плановый
+  перевод может атомарно распределить поступление по активным фондам согласно
+  их заблокированному на время confirmation снимку процентов; ошибка
+  распределения откатывает перевод и confirmation link.
 - ADR 0003 фиксирует recurrence, materialization, synchronization и
   confirmation policies.
 
 ## Latest verification
 
-- Backend без PostgreSQL: 54 passed, 47 PostgreSQL-сценариев skipped без opt-in.
-- PostgreSQL integration: 48/48 passed.
-- Frontend: 82 passed в 18 test files.
-- `make lint`, `make typecheck`, docs-check и Alembic model/schema check входят
-  в итоговую проверку этого среза.
+- Backend без PostgreSQL: 57 passed, 49 PostgreSQL-сценариев skipped без opt-in.
+- PostgreSQL integration: 50/50 passed, включая миграцию `0009`, изменение
+  подтверждаемой суммы, скользящую материализацию и атомарный rollback перевода
+  с распределением по фондам.
+- Frontend: 87 passed в 18 test files.
+- Пройдены `make lint`, `make typecheck`, docs-check, production Angular build;
+  Alembic имеет единственную head-ревизию `0009_scheduled_fund_allocation`.
 
 ### Balance forecasting
 
 - Владелец может открыть общий прогноз или выбрать конкретный, в том числе
-  архивный, счёт и горизонт: неделя, месяц, квартал, полгода или год.
+  архивный, счёт и горизонт: две недели, месяц, квартал, полгода или год.
 - Стартовая точка полностью выводится из фактического ledger. В будущую линию
   входят только `pending` и `postponed` экземпляры с датой от сегодня до
   включительного конца горизонта; confirmed/cancelled исключаются.
@@ -411,11 +419,12 @@
   Area fill ослаблен, обычные markers скрыты до interaction, tooltip сокращён.
 - Для 0.1.2 пройдены Ruff, backend format, mypy, Angular lint, Prettier,
   TypeScript typecheck, docs-check, production Angular build,
-  54 non-PostgreSQL backend-теста, 84 frontend-теста и 48/48 PostgreSQL
+  57 non-PostgreSQL backend-тестов, 87 frontend-тестов и 50/50 PostgreSQL
   integration-сценариев. Интеграционный
   прогон отдельно подтвердил idle-timeout/heartbeat, upgrade существующих сессий
-  от `0001`, free/total forecast с реальным резервом и прежние транзакционные
-  сценарии финансовых модулей.
+  от `0001`, free/total forecast с реальным резервом, бессрочные шаблоны,
+  подтверждение с корректировкой суммы и атомарное распределение перевода по
+  фондам вместе с прежними транзакционными сценариями финансовых модулей.
 
 ## Release assumptions and technical debt
 

@@ -150,18 +150,48 @@
                 {{ accountDirection(occurrence) }} ·
                 {{ occurrence.category_name || 'Без категории' }}
               </p>
+              @if (occurrence.allocate_to_funds) {
+                <p>
+                  <strong>После перевода сумма распределится по процентам активных фондов.</strong>
+                </p>
+              }
             </div>
             <strong class="occurrence-amount"
               >{{ occurrence.amount | money }} {{ baseCurrency() }}</strong
             >
             @if (actionable(occurrence)) {
               <div class="quick-actions">
+                <div class="postpone-action">
+                  <label [for]="'confirm-amount-' + occurrence.id">
+                    Сумма подтверждения, {{ baseCurrency() }}
+                  </label>
+                  <input
+                    appDecimalInput
+                    [id]="'confirm-amount-' + occurrence.id"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    [value]="confirmationAmount(occurrence)"
+                    [attr.aria-invalid]="!validConfirmationAmount(occurrence)"
+                    [attr.aria-describedby]="
+                      !validConfirmationAmount(occurrence) ? 'confirm-error-' + occurrence.id : null
+                    "
+                    (input)="setConfirmationAmount(occurrence.id, $any($event.target).value)"
+                  />
+                </div>
+                @if (!validConfirmationAmount(occurrence)) {
+                  <span class="field-error" [id]="'confirm-error-' + occurrence.id">
+                    Введите положительную сумму, не более четырёх знаков дроби.
+                  </span>
+                }
                 <button
                   type="button"
                   (click)="confirm(occurrence)"
-                  [disabled]="busyOccurrenceId() === occurrence.id"
+                  [disabled]="
+                    busyOccurrenceId() === occurrence.id || !validConfirmationAmount(occurrence)
+                  "
                 >
-                  Подтвердить
+                  {{ occurrence.allocate_to_funds ? 'Перевести и распределить' : 'Подтвердить' }}
                 </button>
                 <div class="postpone-action">
                   <label [for]="'postpone-' + occurrence.id">Новая дата</label>
@@ -237,8 +267,13 @@
                     · с {{ rule.start_on | textDate }}
                     @if (rule.end_on) {
                       по {{ rule.end_on | textDate }}
+                    } @else {
+                      · без даты окончания
                     }
                   </p>
+                  @if (rule.allocate_to_funds) {
+                    <p>После перевода сумма распределяется по процентам активных фондов.</p>
+                  }
                 </div>
               </div>
               <div class="directory-item-side">
@@ -360,6 +395,10 @@
               <input type="date" formControlName="endOn" />
             </label>
           </div>
+          <p class="hint">
+            Без даты окончания правило продолжится бессрочно; события создаются скользящим окном на
+            год вперёд.
+          </p>
           @if (ruleForm.controls.frequency.value === 'monthly') {
             <p class="hint">Для ежемесячного правила доступны дни с 1 по 28.</p>
           }
@@ -397,6 +436,18 @@
                 placeholder="Введите название счёта"
               />
             </div>
+            <fieldset class="weekday-picker allocation-choice">
+              <legend>После перевода</legend>
+              <label>
+                <input type="checkbox" formControlName="allocateToFunds" />
+                Распределить сумму по активным фондам согласно их процентам
+              </label>
+            </fieldset>
+            @if (ruleForm.controls.allocateToFunds.value) {
+              <p class="hint">
+                Будут использованы проценты активных фондов на момент подтверждения операции.
+              </p>
+            }
           } @else {
             <div class="control-label">
               Категория

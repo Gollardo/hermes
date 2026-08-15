@@ -122,6 +122,7 @@ class RecurringRuleRecord(BackupModel):
     account_id: UUID
     destination_account_id: UUID | None
     category_id: UUID | None
+    allocate_to_funds: bool = False
     active: bool
     version: int = Field(ge=1)
     created_at: AwareDatetime
@@ -129,6 +130,8 @@ class RecurringRuleRecord(BackupModel):
 
     @model_validator(mode="after")
     def validate_recurrence(self) -> "RecurringRuleRecord":
+        if self.allocate_to_funds and self.type != OperationType.TRANSFER:
+            raise ValueError("only transfers can allocate to funds")
         if self.frequency == RecurrenceFrequency.WEEKLY and self.weekdays is None:
             self.weekdays = [self.start_on.isoweekday()]
         if self.frequency == RecurrenceFrequency.WEEKLY:
@@ -162,10 +165,17 @@ class ExpectedOccurrenceRecord(BackupModel):
     account_id: UUID
     destination_account_id: UUID | None
     category_id: UUID | None
+    allocate_to_funds: bool = False
     actual_operation_id: UUID | None
     version: int = Field(ge=1)
     created_at: AwareDatetime
     updated_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def validate_fund_allocation(self) -> "ExpectedOccurrenceRecord":
+        if self.allocate_to_funds and self.type != OperationType.TRANSFER:
+            raise ValueError("only transfers can allocate to funds")
+        return self
 
 
 class BackupData(BackupModel):

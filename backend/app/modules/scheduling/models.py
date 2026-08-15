@@ -91,6 +91,10 @@ class RecurringRule(Base):
             "AND destination_account_id <> account_id)",
             name="ck_recurring_rules_operation_shape",
         ),
+        CheckConstraint(
+            "NOT allocate_to_funds OR type = 'transfer'",
+            name="ck_recurring_rules_fund_allocation_transfer",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -117,6 +121,7 @@ class RecurringRule(Base):
     category_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True), ForeignKey("categories.id", ondelete="RESTRICT"), index=True
     )
+    allocate_to_funds: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     version: Mapped[int] = mapped_column(default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -135,6 +140,10 @@ class ExpectedOccurrence(Base):
             "AND destination_account_id IS NOT NULL "
             "AND destination_account_id <> account_id)",
             name="ck_expected_occurrences_operation_shape",
+        ),
+        CheckConstraint(
+            "NOT allocate_to_funds OR type = 'transfer'",
+            name="ck_expected_occurrences_fund_allocation_transfer",
         ),
         CheckConstraint(
             "(status = 'confirmed' AND actual_operation_id IS NOT NULL) OR "
@@ -186,6 +195,7 @@ class ExpectedOccurrence(Base):
     category_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True), ForeignKey("categories.id", ondelete="RESTRICT"), index=True
     )
+    allocate_to_funds: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     actual_operation_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey(

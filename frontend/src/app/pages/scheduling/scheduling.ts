@@ -56,6 +56,7 @@ interface RecurringRule {
   destination_account_name: string | null;
   category_id: string | null;
   category_name: string | null;
+  allocate_to_funds: boolean;
   active: boolean;
   version: number;
 }
@@ -77,6 +78,7 @@ interface ExpectedOccurrence {
   destination_account_name: string | null;
   category_id: string | null;
   category_name: string | null;
+  allocate_to_funds: boolean;
   actual_operation_id: string | null;
   version: number;
 }
@@ -133,6 +135,7 @@ export class SchedulingPage implements OnInit {
   protected readonly ruleFormOpen = signal(false);
   protected readonly busyOccurrenceId = signal<string | null>(null);
   protected readonly postponeDates = signal<Record<string, string>>({});
+  protected readonly confirmationAmounts = signal<Record<string, string>>({});
 
   protected readonly filters = this.builder.group({
     accountId: [''],
@@ -157,6 +160,7 @@ export class SchedulingPage implements OnInit {
     accountId: ['', Validators.required],
     destinationAccountId: [''],
     categoryId: [''],
+    allocateToFunds: [false],
   });
 
   protected readonly monthTitle = computed(() => {
@@ -324,6 +328,7 @@ export class SchedulingPage implements OnInit {
       accountId: rule.account_id,
       destinationAccountId: rule.destination_account_id ?? '',
       categoryId: rule.category_id ?? '',
+      allocateToFunds: rule.allocate_to_funds,
     });
     this.ruleFormOpen.set(true);
   }
@@ -353,6 +358,7 @@ export class SchedulingPage implements OnInit {
       accountId: '',
       destinationAccountId: '',
       categoryId: '',
+      allocateToFunds: false,
     });
     this.ruleFormOpen.set(false);
   }
@@ -380,6 +386,7 @@ export class SchedulingPage implements OnInit {
         account_id: rule.account_id,
         destination_account_id: rule.destination_account_id,
         category_id: rule.category_id,
+        allocate_to_funds: rule.allocate_to_funds,
         active: !rule.active,
         version: rule.version,
       })
@@ -467,12 +474,26 @@ export class SchedulingPage implements OnInit {
   }
 
   protected confirm(occurrence: ExpectedOccurrence): void {
+    const amount = this.confirmationAmount(occurrence);
+    if (!positiveDecimal(amount)) return;
     this.runOccurrenceAction(
       occurrence,
       'confirm',
-      { version: occurrence.version },
+      { version: occurrence.version, amount: decimalPayload(amount) },
       'Не удалось подтвердить ожидаемую операцию.',
     );
+  }
+
+  protected confirmationAmount(occurrence: ExpectedOccurrence): string {
+    return this.confirmationAmounts()[occurrence.id] ?? occurrence.amount;
+  }
+
+  protected setConfirmationAmount(occurrenceId: string, value: string): void {
+    this.confirmationAmounts.update((amounts) => ({ ...amounts, [occurrenceId]: value }));
+  }
+
+  protected validConfirmationAmount(occurrence: ExpectedOccurrence): boolean {
+    return positiveDecimal(this.confirmationAmount(occurrence));
   }
 
   protected postpone(occurrence: ExpectedOccurrence): void {
@@ -679,6 +700,9 @@ export class SchedulingPage implements OnInit {
   private resetDependentFields(): void {
     this.ruleForm.controls.categoryId.setValue('');
     this.ruleForm.controls.destinationAccountId.setValue('');
+    if (this.ruleForm.controls.type.value !== 'transfer') {
+      this.ruleForm.controls.allocateToFunds.setValue(false);
+    }
   }
 
   protected selectedWeekdays(): number[] {
@@ -694,7 +718,7 @@ export class SchedulingPage implements OnInit {
     ].flatMap((selected, index) => (selected ? [index + 1] : []));
   }
 
-  private ruleBody(): Record<string, string | number | number[] | null> {
+  private ruleBody(): Record<string, string | number | boolean | number[] | null> {
     const value = this.ruleForm.getRawValue();
     return {
       type: value.type,
@@ -708,6 +732,7 @@ export class SchedulingPage implements OnInit {
       account_id: value.accountId,
       destination_account_id: value.type === 'transfer' ? value.destinationAccountId || null : null,
       category_id: value.type === 'transfer' ? null : value.categoryId || null,
+      allocate_to_funds: value.type === 'transfer' && value.allocateToFunds,
     };
   }
 }
