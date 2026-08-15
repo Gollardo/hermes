@@ -381,8 +381,8 @@
 - Production Angular build и ранее проверенный production Docker image build проходят;
   `npm ci` внутри образа сообщает 0 vulnerabilities. Angular build предупреждает
   о превышении `anyComponentStyle` budget общим `directory.css` (5.34 KiB),
-  `app.css` (4.25 KiB), `forecast.css` (5.56 KiB) и `forecast-chart.css`
-  (5.56 KiB) при пороге 4 KiB; это не блокирует сборку, но требует последующей
+  `app.css` (4.25 KiB), `forecast.css` (5.57 KiB) и `forecast-chart.css`
+  (5.65 KiB) при пороге 4 KiB; это не блокирует сборку, но требует последующей
   декомпозиции общих стилей.
 - Production-like Compose e2e на отдельном clean volume: setup → authenticated
   shell → settings update → logout → login; browser console без ошибок.
@@ -403,9 +403,15 @@
   собственную прокрутку на mobile, а roving tabindex оставляет одну keyboard
   остановку на forecast-point series; browser console без ошибок. Финальное
   сравнение с референсом зафиксировано в `design-qa.md` со статусом `passed`.
+- Композиционная итерация forecast убрала левую KPI-колонку: четыре decision KPI
+  собраны над рабочей областью, desktop-график и sidebar используют пропорцию
+  около 80/20, а timeline остаётся под графиком. Chart viewport больше не имеет
+  собственной прокрутки; adaptive Y-domain исключает далёкий ноль для безопасной
+  положительной series и возвращает zero-line/tint при приближении к дефициту.
+  Area fill ослаблен, обычные markers скрыты до interaction, tooltip сокращён.
 - Для 0.1.2 пройдены Ruff, backend format, mypy, Angular lint, Prettier,
   TypeScript typecheck, docs-check, production Angular build,
-  54 non-PostgreSQL backend-теста, 82 frontend-теста и 48/48 PostgreSQL
+  54 non-PostgreSQL backend-теста, 84 frontend-теста и 48/48 PostgreSQL
   integration-сценариев. Интеграционный
   прогон отдельно подтвердил idle-timeout/heartbeat, upgrade существующих сессий
   от `0001`, free/total forecast с реальным резервом и прежние транзакционные

@@ -36,6 +36,8 @@ const PLOT_TOP = 12;
 const PLOT_BOTTOM = 78;
 const TOOLTIP_BELOW_THRESHOLD = 27;
 const TIMELINE_EVENT_LIMIT = 9;
+const Y_AXIS_PADDING_RATIO = 0.12;
+const ZERO_PROXIMITY_RATIO = 0.15;
 
 interface HorizonOption {
   value: ForecastHorizon;
@@ -66,6 +68,7 @@ interface PlotScale {
   low: number;
   high: number;
   step: number;
+  showZero: boolean;
 }
 
 interface AxisTick {
@@ -175,17 +178,24 @@ export class ForecastPage implements OnInit {
         values.push(Number(value.first_negative_balance));
       }
     }
-    values.push(0);
     const minimum = Math.min(...values);
     const maximum = Math.max(...values);
-    const range = maximum - minimum;
-    const step = niceStep(range === 0 ? Math.max(Math.abs(maximum), 1) / 5 : range / 5);
-    let low = Math.floor(minimum / step) * step;
-    let high = Math.ceil(maximum / step) * step;
+    const magnitude = Math.max(Math.abs(minimum), Math.abs(maximum), 1);
+    const showZero = minimum <= 0 || maximum < 0 || minimum <= magnitude * ZERO_PROXIMITY_RATIO;
+    if (showZero) values.push(0);
+    const domainMinimum = Math.min(...values);
+    const domainMaximum = Math.max(...values);
+    const range = domainMaximum - domainMinimum;
+    const padding = Math.max(range * Y_AXIS_PADDING_RATIO, magnitude * 0.02);
+    const step = niceStep(
+      (range === 0 ? Math.max(Math.abs(domainMaximum), 1) : range + padding * 2) / 5,
+    );
+    let low = Math.floor((domainMinimum - padding) / step) * step;
+    let high = Math.ceil((domainMaximum + padding) / step) * step;
     if (low === high) high = low + step;
-    if (low > 0) low = 0;
-    if (high < 0) high = 0;
-    return { low, high, step };
+    if (showZero && low > 0) low = 0;
+    if (showZero && high < 0) high = 0;
+    return { low, high, step, showZero };
   });
 
   protected readonly plot = computed<PlotPoint[]>(() => {
@@ -209,6 +219,10 @@ export class ForecastPage implements OnInit {
   });
 
   protected readonly zeroY = computed(() => plotY(0, this.chartScale()));
+  protected readonly showZeroBoundary = computed(() => this.chartScale().showZero);
+  protected readonly showNegativeZone = computed(
+    () => this.showZeroBoundary() && Number(this.forecast()?.minimum_balance ?? 0) < 0,
+  );
 
   protected readonly startingPlotPoint = computed<PlotCoordinate | null>(() => {
     const value = this.forecast();
@@ -229,7 +243,7 @@ export class ForecastPage implements OnInit {
   protected readonly areaPoints = computed(() => {
     const points = this.linePlot();
     if (!points.length) return '';
-    const baseline = this.zeroY();
+    const baseline = PLOT_BOTTOM;
     return [
       `${points[0].x},${baseline}`,
       ...points.map((point) => `${point.x},${point.y}`),
@@ -322,13 +336,6 @@ export class ForecastPage implements OnInit {
       x: points[index].x,
       label: compactDate(points[index].on, this.forecast()?.granularity === 'month'),
     }));
-  });
-
-  protected readonly chartMinWidth = computed(() => {
-    const value = this.forecast();
-    if (!value || value.granularity === 'month' || value.horizon === 'week') return 32;
-    const perPoint = value.horizon === 'half_year' ? 0.42 : value.horizon === 'quarter' ? 0.5 : 1;
-    return Math.max(32, value.points.length * perPoint);
   });
 
   ngOnInit(): void {
@@ -462,6 +469,15 @@ export class ForecastPage implements OnInit {
 
   protected signed(value: string): string {
     return signedDecimal(value);
+  }
+
+  protected operationsWord(count: number): string {
+    const lastTwo = count % 100;
+    const last = count % 10;
+    if (lastTwo >= 11 && lastTwo <= 14) return 'операций';
+    if (last === 1) return 'операция';
+    if (last >= 2 && last <= 4) return 'операции';
+    return 'операций';
   }
 
   protected isNegative(value: string): boolean {

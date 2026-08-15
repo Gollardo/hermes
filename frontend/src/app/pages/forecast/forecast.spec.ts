@@ -181,7 +181,7 @@ describe('ForecastPage', () => {
     const tooltip = fixture.nativeElement.querySelector('.chart-tooltip');
     expect(tooltip.textContent).toContain('20 августа 2026');
     expect(tooltip.textContent).toContain('-20.00 ₽');
-    expect(tooltip.textContent).toContain('Нажмите, чтобы показать операции');
+    expect(tooltip.textContent).toContain('Посмотреть операции →');
 
     const timelineEvent = fixture.nativeElement.querySelector(
       '.timeline-event',
@@ -224,6 +224,73 @@ describe('ForecastPage', () => {
     expect(
       fixture.nativeElement.querySelector('.y-axis-scale').textContent.replace(/\s/g, ' '),
     ).toContain('1 000');
+  });
+
+  it('uses an adaptive Y-axis and hides zero for a safely positive forecast', () => {
+    flushInitial();
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush({
+      ...noRiskForecast(),
+      starting_balance: '22000.0000',
+      ending_balance: '25000.0000',
+      minimum_balance: '18500.0000',
+      minimum_on: '2026-08-20',
+      points: [
+        {
+          ...FORECAST.points[0],
+          opening_balance: '22000.0000',
+          closing_balance: '22000.0000',
+        },
+        {
+          ...FORECAST.points[0],
+          period_from: '2026-08-20',
+          on: '2026-08-20',
+          opening_balance: '22000.0000',
+          change: '-3500.0000',
+          closing_balance: '18500.0000',
+        },
+        {
+          ...FORECAST.points[0],
+          period_from: '2026-09-12',
+          on: '2026-09-12',
+          opening_balance: '18500.0000',
+          change: '6500.0000',
+          closing_balance: '25000.0000',
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.zero-line')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.zero-caption')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.negative-zone')).toBeNull();
+    const axisText = fixture.nativeElement
+      .querySelector('.y-axis-scale')
+      .textContent.replace(/\s/g, ' ');
+    expect(axisText).toContain('16 000');
+    expect(axisText).toContain('26 000');
+  });
+
+  it('keeps zero visible when a positive forecast approaches the deficit boundary', () => {
+    flushInitial();
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush({
+      ...noRiskForecast(),
+      starting_balance: '1000.0000',
+      ending_balance: '100.0000',
+      minimum_balance: '100.0000',
+      points: [
+        {
+          ...FORECAST.points[0],
+          opening_balance: '1000.0000',
+          change: '-900.0000',
+          closing_balance: '100.0000',
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.zero-line')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.zero-caption').textContent).toContain('0 ₽');
+    expect(fixture.nativeElement.querySelector('.negative-zone')).toBeNull();
   });
 
   it('shows an exact cash-gap marker and day detail for a monthly interval', () => {

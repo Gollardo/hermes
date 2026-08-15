@@ -1,5 +1,5 @@
 .chart-panel {
-  overflow: hidden;
+  overflow: visible;
   padding: 1rem;
 }
 
@@ -71,13 +71,13 @@
 
 .chart-frame {
   display: grid;
-  grid-template-columns: 4.7rem minmax(0, 1fr);
+  grid-template-columns: 4.4rem minmax(0, 1fr);
   margin-top: 0.8rem;
   min-width: 0;
 }
 
 .y-axis-scale {
-  height: 29rem;
+  height: 30rem;
   position: relative;
 }
 
@@ -96,28 +96,30 @@
   font-size: inherit;
 }
 
-.chart-scroll {
+.chart-viewport {
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 0.85rem;
   min-width: 0;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .chart-canvas {
-  height: 29rem;
+  height: 30rem;
+  min-width: 0;
   position: relative;
+  width: 100%;
 }
 
 .forecast-chart {
   display: block;
-  height: 29rem;
+  height: 30rem;
   pointer-events: none;
   width: 100%;
 }
 
 .forecast-area {
-  fill: rgb(23 115 79 / 9%);
+  fill: url('#forecast-area-gradient');
   stroke: none;
 }
 
@@ -134,7 +136,7 @@
 .zero-line {
   stroke: var(--danger);
   stroke-dasharray: 4 3;
-  stroke-width: 0.85;
+  stroke-width: 0.7;
   vector-effect: non-scaling-stroke;
 }
 
@@ -151,15 +153,12 @@
 }
 
 .zero-caption {
-  background: rgb(250 236 233 / 88%);
-  border-radius: 0.35rem;
   color: var(--danger);
   font-size: 0.62rem;
   font-weight: 700;
   left: 12%;
-  padding: 0.12rem 0.35rem;
   position: absolute;
-  transform: translateY(-100%);
+  transform: translateY(calc(-100% - 0.15rem));
 }
 
 .actual-start-marker {
@@ -205,7 +204,7 @@
   box-shadow: none;
   height: 0.5rem;
   min-height: 0;
-  opacity: 0.18;
+  opacity: 0;
   padding: 0;
   position: absolute;
   transform: translate(-50%, -50%);
@@ -231,16 +230,22 @@
 
 .chart-point.event-point {
   background: var(--accent-soft);
-  height: 0.78rem;
-  width: 0.78rem;
+  height: 0.62rem;
+  opacity: 0.72;
+  width: 0.62rem;
 }
 
 .chart-point.selected-point {
+  height: 0.76rem;
+  opacity: 1;
+  width: 0.76rem;
   box-shadow: 0 0 0 0.24rem rgb(23 115 79 / 24%);
 }
 
 .chart-point.minimum-point {
   border-width: 2px;
+  height: 0.68rem;
+  width: 0.68rem;
 }
 
 .chart-point.risk-point {
@@ -300,9 +305,9 @@
   color: #fff;
   display: grid;
   gap: 0.18rem;
-  max-width: 15rem;
-  min-width: 12rem;
-  padding: 0.65rem 0.75rem;
+  max-width: 13rem;
+  min-width: 10.5rem;
+  padding: 0.52rem 0.65rem;
   pointer-events: none;
   position: absolute;
   transform: translate(-50%, calc(-100% - 0.7rem));
@@ -336,7 +341,7 @@
 }
 
 .chart-tooltip strong {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .chart-tooltip b {
@@ -374,7 +379,9 @@
     grid-template-columns: 3.9rem minmax(0, 1fr);
   }
 
-  .chart-canvas {
-    min-width: 32rem !important;
+  .chart-canvas,
+  .forecast-chart,
+  .y-axis-scale {
+    height: 24rem;
   }
 }

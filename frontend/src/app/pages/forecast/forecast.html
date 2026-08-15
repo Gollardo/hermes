@@ -82,60 +82,55 @@
       </section>
     }
 
-    <div class="forecast-layout">
-      <aside class="kpi-column" aria-label="Ключевые показатели прогноза">
-        <article class="kpi-card safe-spend-card">
-          <span class="kpi-label">Можно потратить сейчас</span>
-          <strong>{{ vm.metrics.safeToSpend | money }} {{ baseCurrency() }}</strong>
-          @if (vm.metrics.hasCashGap) {
-            <p>Сначала закройте прогнозируемый дефицит.</p>
-          } @else {
-            <p>С учётом всех известных операций до {{ vm.dataset.through_on | textDate }}.</p>
-          }
-        </article>
-
+    <section class="kpi-row" aria-label="Ключевые показатели прогноза">
+      <article class="kpi-card safe-spend-card">
+        <span class="kpi-label">Можно потратить сейчас</span>
+        <strong>{{ vm.metrics.safeToSpend | money }} {{ baseCurrency() }}</strong>
         @if (vm.metrics.hasCashGap) {
-          <button
-            type="button"
-            class="kpi-card risk-card interactive-card"
-            (click)="
-              selectRiskPoint(vm.firstNegativePointIndex, vm.metrics.firstNegativeBalanceDate)
-            "
-            aria-controls="forecast-day-detail"
-          >
-            <span class="state-label">Риск · кассовый разрыв</span>
-            <strong>{{ vm.metrics.firstNegativeBalanceDate | textDate }}</strong>
-            <b>{{ vm.metrics.firstNegativeBalance | money }} {{ baseCurrency() }}</b>
-            <small>Показать этот день</small>
-          </button>
+          <p>Сначала закройте прогнозируемый дефицит.</p>
         } @else {
-          <article class="kpi-card calm-card">
-            <span class="state-label">Статус прогноза</span>
-            <strong>Кассовых разрывов не ожидается</strong>
-          </article>
+          <p>Максимум без ухода прогноза ниже 0 {{ baseCurrency() }}.</p>
         }
+      </article>
 
-        <button
-          type="button"
-          class="kpi-card interactive-card"
-          [class.risk-card]="isNegative(vm.metrics.minimumBalance)"
-          (click)="selectRiskPoint(vm.minimumPointIndex, vm.metrics.minimumBalanceDate)"
-          aria-controls="forecast-day-detail"
+      <button
+        type="button"
+        class="kpi-card interactive-card"
+        [class.risk-card]="isNegative(vm.metrics.minimumBalance)"
+        (click)="selectRiskPoint(vm.minimumPointIndex, vm.metrics.minimumBalanceDate)"
+        aria-controls="forecast-day-detail"
+      >
+        <span class="kpi-label">Минимальный остаток</span>
+        <strong>{{ vm.metrics.minimumBalance | money }} {{ baseCurrency() }}</strong>
+        <small>{{ vm.metrics.minimumBalanceDate | textDate }}</small>
+      </button>
+
+      <article class="kpi-card">
+        <span class="kpi-label">Прогноз на конец периода</span>
+        <strong [class.negative]="isNegative(vm.metrics.forecastEndBalance)">
+          {{ vm.metrics.forecastEndBalance | money }} {{ baseCurrency() }}
+        </strong>
+        <small>{{ vm.dataset.through_on | textDate }}</small>
+      </article>
+
+      <article class="kpi-card flow-card">
+        <span class="kpi-label">Чистый поток</span>
+        <strong
+          [class.positive]="isPositive(vm.metrics.netPlannedFlow)"
+          [class.negative]="isNegative(vm.metrics.netPlannedFlow)"
         >
-          <span class="kpi-label">Минимальный остаток</span>
-          <strong>{{ vm.metrics.minimumBalance | money }} {{ baseCurrency() }}</strong>
-          <small>{{ vm.metrics.minimumBalanceDate | textDate }}</small>
-        </button>
+          {{ signed(vm.metrics.netPlannedFlow) | money }} {{ baseCurrency() }}
+        </strong>
+        <small>
+          +{{ vm.metrics.totalPlannedIncome | money }} / −{{
+            vm.metrics.totalPlannedExpense | money
+          }}
+          {{ baseCurrency() }}
+        </small>
+      </article>
+    </section>
 
-        <article class="kpi-card">
-          <span class="kpi-label">Прогноз на конец периода</span>
-          <strong [class.negative]="isNegative(vm.metrics.forecastEndBalance)">
-            {{ vm.metrics.forecastEndBalance | money }} {{ baseCurrency() }}
-          </strong>
-          <small>{{ vm.dataset.through_on | textDate }}</small>
-        </article>
-      </aside>
-
+    <div class="forecast-layout">
       <main class="forecast-main">
         <section class="panel chart-panel" aria-labelledby="chart-title">
           <div class="chart-heading">
@@ -181,8 +176,8 @@
                 </span>
               }
             </div>
-            <div class="chart-scroll">
-              <div class="chart-canvas" [style.min-width.rem]="chartMinWidth()">
+            <div class="chart-viewport">
+              <div class="chart-canvas">
                 <svg
                   class="forecast-chart"
                   viewBox="0 0 100 100"
@@ -190,18 +185,34 @@
                   role="img"
                   [attr.aria-label]="chartAriaLabel(vm)"
                 >
+                  <defs>
+                    <linearGradient id="forecast-area-gradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.12" />
+                      <stop offset="100%" stop-color="var(--accent)" stop-opacity="0" />
+                    </linearGradient>
+                  </defs>
                   <polygon class="forecast-area" [attr.points]="areaPoints()" />
-                  <rect
-                    class="negative-zone"
-                    x="11"
-                    [attr.y]="zeroY()"
-                    width="86"
-                    [attr.height]="78 - zeroY()"
-                  />
+                  @if (showNegativeZone()) {
+                    <rect
+                      class="negative-zone"
+                      x="11"
+                      [attr.y]="zeroY()"
+                      width="86"
+                      [attr.height]="78 - zeroY()"
+                    />
+                  }
                   @for (tick of yTicks(); track tick.y) {
                     <line class="grid-line" x1="11" [attr.y1]="tick.y" x2="97" [attr.y2]="tick.y" />
                   }
-                  <line class="zero-line" x1="11" [attr.y1]="zeroY()" x2="97" [attr.y2]="zeroY()" />
+                  @if (showZeroBoundary()) {
+                    <line
+                      class="zero-line"
+                      x1="11"
+                      [attr.y1]="zeroY()"
+                      x2="97"
+                      [attr.y2]="zeroY()"
+                    />
+                  }
                   @for (line of plotSegments(); track line.key) {
                     <line
                       class="forecast-segment"
@@ -226,9 +237,11 @@
                   </span>
                 }
 
-                <span class="zero-caption" [style.top.%]="zeroY()" aria-hidden="true">
-                  0 {{ baseCurrency() }} · граница дефицита
-                </span>
+                @if (showZeroBoundary()) {
+                  <span class="zero-caption" [style.top.%]="zeroY()" aria-hidden="true">
+                    0 {{ baseCurrency() }}
+                  </span>
+                }
 
                 @for (point of plot(); track point.on; let index = $index) {
                   <button
@@ -283,11 +296,11 @@
                     <span>{{ periodLabel(point) }}</span>
                     <strong>{{ point.closing_balance | money }} {{ baseCurrency() }}</strong>
                     <small>
-                      Изменение: {{ signed(point.change) | money }} {{ baseCurrency() }} · операций:
-                      {{ point.events.length }}
+                      {{ signed(point.change) | money }} {{ baseCurrency() }} ·
+                      {{ point.events.length }} {{ operationsWord(point.events.length) }}
                     </small>
                     @if (point.events.length) {
-                      <b>Нажмите, чтобы показать операции</b>
+                      <b>Посмотреть операции →</b>
                     }
                   </div>
                 }
