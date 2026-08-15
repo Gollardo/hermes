@@ -32,4 +32,17 @@ describe('DecimalInput', () => {
   it('normalizes comma payloads even when submit happens before blur', () => {
     expect(decimalPayload(' 100 000,25 ')).toBe('100000.25');
   });
+
+  it('groups a formatted value on blur and ungroups it for valid editing', () => {
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    input.value = '1000,5';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new FocusEvent('blur'));
+    expect(input.value).toBe('1 000.50');
+    expect(fixture.componentInstance.control.value).toBe('1000.50');
+
+    input.dispatchEvent(new FocusEvent('focus'));
+    expect(input.value).toBe('1000.50');
+    expect(fixture.componentInstance.control.valid).toBe(true);
+  });
 });

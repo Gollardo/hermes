@@ -92,7 +92,10 @@ def restore_setup(
 
 
 def setup_response(settings: Settings, issued: IssuedSession) -> Response:
-    body = SessionResponse(expires_at=issued.row.expires_at)
+    body = SessionResponse(
+        expires_at=issued.row.expires_at,
+        idle_timeout_seconds=settings.session_idle_minutes * 60,
+    )
     response = JSONResponse(
         status_code=status.HTTP_201_CREATED, content=body.model_dump(mode="json")
     )

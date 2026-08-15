@@ -5,7 +5,8 @@ import { ActivatedRoute } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
-import { formatMoney, MoneyPipe } from '../../shared/money.pipe';
+import { DateTextPipe } from '../../shared/date-text.pipe';
+import { currencySymbol, formatMoney, MoneyPipe } from '../../shared/money.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
 
@@ -92,7 +93,7 @@ interface ApplicationSettings {
 
 @Component({
   selector: 'app-operations-page',
-  imports: [ReactiveFormsModule, MoneyPipe, EntityCombobox, DecimalInput],
+  imports: [ReactiveFormsModule, MoneyPipe, DateTextPipe, EntityCombobox, DecimalInput],
   templateUrl: './operations.html',
   styleUrl: './operations.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -548,7 +549,7 @@ export class OperationsPage implements OnInit {
   private loadSettings(): void {
     this.http.get<ApplicationSettings>(`${environment.apiBaseUrl}/settings`).subscribe({
       next: (settings) => {
-        this.baseCurrency.set(settings.base_currency);
+        this.baseCurrency.set(currencySymbol(settings.base_currency));
         this.timezone.set(settings.timezone);
         this.settingsReady.set(true);
         if (!this.editingId() && this.form.controls.occurredOn.pristine) {

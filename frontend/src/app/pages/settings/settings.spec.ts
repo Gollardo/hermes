@@ -79,7 +79,7 @@ describe('SettingsPage', () => {
     const request = http.expectOne('/api/v1/backup/preview');
     expect(request.request.method).toBe('POST');
     request.flush({
-      app_version: '0.1.0-rc.1',
+      app_version: '0.1.2',
       exported_at: '2026-08-12T00:00:00Z',
       base_currency: 'RUB',
       timezone: 'Europe/Moscow',
@@ -99,6 +99,7 @@ describe('SettingsPage', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Целостность подтверждена');
+    expect(fixture.nativeElement.textContent).toContain('12 августа 2026');
     expect(fixture.nativeElement.textContent).toContain('2 операций');
     expect(fixture.nativeElement.textContent).toContain('ЗАМЕНИТЬ ВСЕ ДАННЫЕ');
   });

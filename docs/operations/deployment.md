@@ -16,6 +16,10 @@ security-hardening guarantee.
    loopback-only plain-HTTP check, explicitly set it to `false`; never combine
    that override with a LAN-facing bind address.
 
+`HERMES_SESSION_IDLE_MINUTES` defaults to `30` and is passed through both
+Compose configurations. Authentication responses publish the effective value
+to the Angular shell, keeping its visible deadline aligned with the backend.
+
 Validate and start:
 
 ```bash

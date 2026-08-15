@@ -22,7 +22,7 @@
           }}
         </h2>
         <p>
-          Фактическая операция от {{ operation.occurred_on }} ·
+          Фактическая операция от {{ operation.occurred_on | textDate }} ·
           {{ transferDirection(operation) }}
         </p>
       </div>
@@ -286,7 +286,7 @@
                   (click)="toggleDetails(operation)"
                   [attr.aria-expanded]="expandedId() === operation.id"
                 >
-                  <span class="operation-date">{{ operation.occurred_on }}</span>
+                  <span class="operation-date">{{ operation.occurred_on | textDate }}</span>
                   <span class="operation-copy"
                     ><strong>{{
                       operation.description ||

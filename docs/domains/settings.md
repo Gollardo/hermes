@@ -32,7 +32,8 @@ change the base currency only while it is unlocked.
 
 - A single base currency is sufficient until per-account currency and
   conversion-aware reporting are designed.
-- Currency symbols, currency-specific decimal scales and exchange rates are
-  outside this release.
+- The interface uses a familiar currency symbol where one is known and falls
+  back to the currency code. Currency-specific decimal scales and exchange
+  rates remain outside this release.
 - Browser timezone suggestions are convenience only; backend validation is
   authoritative.

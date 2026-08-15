@@ -147,6 +147,45 @@ def test_forecast_api_uses_actual_balances_and_only_actionable_future_occurrence
         assert food["due_on"] == new_due.isoformat()
 
 
+def test_forecast_defaults_to_free_money_and_can_include_reserves(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP).status_code == 201
+        headers = csrf(client)
+        account = client.post(
+            "/api/v1/accounts",
+            headers=headers,
+            json={"type": "debit", "name": "Main", "initial_balance": "100"},
+        ).json()["id"]
+        fund = client.post(
+            "/api/v1/funds",
+            headers=headers,
+            json={"name": "Reserve", "allocation_percentage": "20"},
+        ).json()
+        allocation = client.post(
+            "/api/v1/funds/allocations",
+            headers=headers,
+            json={
+                "account_id": account,
+                "amount": "30",
+                "occurred_on": "2026-08-15",
+                "allocations": [{"fund_id": fund["id"], "amount": "30"}],
+            },
+        )
+        assert allocation.status_code == 201
+
+        free = client.get("/api/v1/forecast?horizon=week")
+        total = client.get("/api/v1/forecast?horizon=week&balance_mode=total")
+
+        assert free.status_code == total.status_code == 200
+        assert free.json()["balance_mode"] == "free"
+        assert free.json()["starting_balance"] == "70.0000"
+        assert total.json()["balance_mode"] == "total"
+        assert total.json()["starting_balance"] == "100.0000"
+
+
 def test_concurrent_confirmation_cannot_be_counted_as_actual_and_planned(
     postgres_database_settings: Settings,
     monkeypatch: MonkeyPatch,

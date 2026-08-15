@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from decimal import Decimal
 from threading import Barrier
 from typing import cast
@@ -12,6 +13,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.core.database import create_database_engine
 from app.main import create_app
 from app.modules.funds import service as funds_service
 from app.modules.funds.models import FundMovement
@@ -651,27 +653,38 @@ def test_alpha3_database_upgrades_and_alpha4_schema_downgrades(
     postgres_database_settings: Settings,
 ) -> None:
     command.downgrade(Config("alembic.ini"), "0004_financial_operations")
-    app = create_app(postgres_database_settings)
-    with TestClient(app) as client:
-        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
-        headers = _headers(client)
-        account = _account(client, headers, "Legacy", "10")
-
-    command.upgrade(Config("alembic.ini"), "head")
-    with app.state.database_engine.connect() as connection:
-        assert connection.scalar(text("SELECT count(*) FROM funds")) == 0
-        assert connection.scalar(text("SELECT count(*) FROM fund_events")) == 0
-        assert connection.scalar(text("SELECT count(*) FROM fund_movements")) == 0
-
-    command.downgrade(Config("alembic.ini"), "0004_financial_operations")
-    with app.state.database_engine.connect() as connection:
-        assert (
-            connection.scalar(
-                text("SELECT count(*) FROM accounts WHERE id = :id"), {"id": UUID(account)}
+    account = UUID("10000000-0000-0000-0000-000000000001")
+    now = datetime.now(UTC)
+    engine = create_database_engine(postgres_database_settings)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO accounts "
+                    "(id, type, name, description, archived_at, created_at, updated_at) "
+                    "VALUES (:id, CAST('debit' AS account_type), "
+                    "'Legacy', NULL, NULL, :now, :now)"
+                ),
+                {"id": account, "now": now},
             )
-            == 1
-        )
-        assert connection.scalar(text("SELECT to_regclass('public.funds')")) is None
+
+        command.upgrade(Config("alembic.ini"), "head")
+        with engine.connect() as connection:
+            assert connection.scalar(text("SELECT count(*) FROM funds")) == 0
+            assert connection.scalar(text("SELECT count(*) FROM fund_events")) == 0
+            assert connection.scalar(text("SELECT count(*) FROM fund_movements")) == 0
+
+        command.downgrade(Config("alembic.ini"), "0004_financial_operations")
+        with engine.connect() as connection:
+            assert (
+                connection.scalar(
+                    text("SELECT count(*) FROM accounts WHERE id = :id"), {"id": account}
+                )
+                == 1
+            )
+            assert connection.scalar(text("SELECT to_regclass('public.funds')")) is None
+    finally:
+        engine.dispose()
 
 
 def test_concurrent_allocations_cannot_overreserve_account(

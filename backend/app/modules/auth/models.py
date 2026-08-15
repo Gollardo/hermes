@@ -20,6 +20,10 @@ class AuthSession(Base):
     __tablename__ = "auth_sessions"
     __table_args__ = (
         CheckConstraint("expires_at > created_at", name="ck_auth_session_positive_lifetime"),
+        CheckConstraint(
+            "last_activity_at >= created_at AND last_activity_at < expires_at",
+            name="ck_auth_session_activity_within_lifetime",
+        ),
     )
 
     token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -31,6 +35,7 @@ class AuthSession(Base):
     )
     csrf_token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_activity_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )

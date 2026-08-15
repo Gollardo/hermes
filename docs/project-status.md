@@ -6,13 +6,14 @@
 
 ## Last updated
 
-2026-08-14
+2026-08-15
 
 ## Current phase
 
-**0.1.0-rc.1 — JSON backup/restore реализован; стабилизация продолжается.**
+**0.1.2 — стабилизация ежедневного использования продолжается.**
 
-Следующий шаг: owner acceptance и период ежедневного использования перед `0.1.0`.
+Следующий шаг: owner acceptance и период ежедневного использования версии
+`0.1.2`.
 Политики ADR 0001, ADR 0002 и ADR 0003 требуют owner review после реального
 использования.
 
@@ -39,6 +40,9 @@
   расходы и доходы текущего месяца по корневым категориям и доли фондов в общей
   сумме отложенных средств. Категории свёрнуты по умолчанию, одновременно
   раскрывается один родитель каждого типа.
+- Owner feedback 2026-08-15 зафиксировал единый текстовый формат дат,
+  символы валют, группировку тысяч в отформатированных полях, 30-минутный
+  idle-timeout и свободные средства как стартовый режим графика прогноза.
 - Для доходов и расходов подтверждены обязательная категория, дата
   финансового факта без времени, серийный ручной ввод и отсутствие отдельного
   payee в MVP. Posting model отдельно проверена и описана в ADR 0001; её
@@ -74,6 +78,10 @@
   double-submit CSRF token.
 - Поддержаны текущая сессия, logout, logout всех сессий и семидневный абсолютный
   срок жизни по умолчанию.
+- Browser shell завершается после 30 минут без взаимодействия; клавиатура,
+  движение или нажатие указателя, touch и scroll продлевают локальный deadline
+  и вызывают редкий CSRF-защищённый heartbeat. Backend независимо отклоняет
+  idle-сессию.
 - Смена мастер-пароля требует текущий пароль и завершает остальные сессии.
 - Persistent login throttle по умолчанию блокирует вход на 15 минут после пяти
   ошибок в 15-минутном окне.
@@ -107,6 +115,9 @@
   локального HTTP.
 - Alembic выполняет исторические ревизии отдельными транзакциями: чистый upgrade
   commit-ит PostgreSQL enum additions до зависящих CHECK constraints.
+- Миграция `0008_session_idle_timeout` добавляет activity timestamp с database
+  checks и сохраняет существующие сессии при upgrade, инициализируя его временем
+  создания сессии.
 
 ### Backup and restore
 
@@ -238,9 +249,9 @@
 
 ## Latest verification
 
-- Backend без PostgreSQL: 52 passed, 45 skipped.
-- PostgreSQL integration: 46 passed.
-- Frontend: 63 passed в 15 test files.
+- Backend без PostgreSQL: 52 passed, 47 PostgreSQL-сценариев skipped без opt-in.
+- PostgreSQL integration: 48/48 passed.
+- Frontend: 71 passed в 17 test files.
 - `make lint`, `make typecheck`, docs-check и Alembic model/schema check входят
   в итоговую проверку этого среза.
 
@@ -251,6 +262,12 @@
 - Стартовая точка полностью выводится из фактического ledger. В будущую линию
   входят только `pending` и `postponed` экземпляры с датой от сегодня до
   включительного конца горизонта; confirmed/cancelled исключаются.
+- По умолчанию старт равен текущим свободным средствам: Funds одним batch-read
+  вычитает резервы по каждому счёту из physical ledger. Переключатель `total`
+  возвращает полный физический остаток, включая распределённые средства.
+- Scheduling пока не задаёт фонд будущей операции, поэтому free-режим применяет
+  будущие физические эффекты к текущей свободной стартовой точке без скрытого
+  предположения о будущем источнике резервов; экран явно сообщает эту границу.
 - События агрегируются в детерминированные daily closing points с точными
   Decimal-суммами. Ответ содержит конец периода, минимум и первую возможную
   отрицательную дату.
@@ -349,12 +366,12 @@
 - Production Angular rc.1 build и production Docker image build проходят;
   `npm ci` внутри образа сообщает 0 vulnerabilities. Angular build предупреждает
   о превышении `anyComponentStyle` budget общим `directory.css` (5.34 KiB),
-  `app.css` (4.25 KiB) и `forecast.css` (5.65 KiB) при пороге 4 KiB; это не
+  `app.css` (4.25 KiB) и `forecast.css` (5.96 KiB) при пороге 4 KiB; это не
   блокирует сборку, но требует последующей декомпозиции общих стилей.
 - Production-like Compose e2e на отдельном clean volume: setup → authenticated
   shell → settings update → logout → login; browser console без ошибок.
 - Settings/backup flow повторно проверен screenshot-аудитом на 1440 px и 390 px:
-  release label согласован с rc.1, horizontal overflow отсутствует, destructive
+  release label согласован с текущей версией, horizontal overflow отсутствует, destructive
   flow раскрывается только после валидного preview, статусы имеют текст и ARIA role.
 - UX-stabilization 2026-08-12 проверена в production-like Compose через браузер:
   setup action действительно заблокирован до совпадения валидных паролей; sidebar
@@ -371,6 +388,13 @@
   интервала, trend toggle добавляет отличимую пунктирную линию и подписанное
   среднее изменение. Верхняя зона графика имеет увеличенный запас, а tooltip
   автоматически меняет направление и не обрезается; browser console без ошибок.
+- Для 0.1.2 пройдены Ruff, backend format, mypy, Angular lint, Prettier,
+  TypeScript typecheck, docs-check, production Angular build,
+  52 non-PostgreSQL backend-теста, 71 frontend-тест и 48/48 PostgreSQL
+  integration-сценариев. Интеграционный
+  прогон отдельно подтвердил idle-timeout/heartbeat, upgrade существующих сессий
+  от `0001`, free/total forecast с реальным резервом и прежние транзакционные
+  сценарии финансовых модулей.
 
 ## Release assumptions and technical debt
 
@@ -378,8 +402,8 @@
   defaults, а не окончательно утверждённой долгосрочной политикой.
 - Password recovery отсутствует; потеря мастер-пароля не должна переоткрывать
   обычный setup.
-- Нет idle timeout, «remember me» и фонового cleanup истёкших сессий; cleanup
-  выполняется при успешном login.
+- Нет «remember me» и фонового cleanup истёкших сессий; absolute и idle cleanup
+  выполняется при следующем успешном login, а guard отклоняет их до удаления.
 - Throttle глобален для экземпляра, а не IP: это надёжно за неизвестным proxy,
   но позволяет локальный denial-of-service серией неверных попыток.
 - Currency validation проверяет форму ISO 4217-style кода, но не использует

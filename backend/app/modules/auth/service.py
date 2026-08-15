@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from math import ceil
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -61,6 +61,7 @@ def _issue_session(session: Session, settings: Settings) -> IssuedSession:
         owner_id=1,
         csrf_token_hash=hash_token(csrf_token),
         created_at=now,
+        last_activity_at=now,
         expires_at=now + timedelta(days=settings.session_lifetime_days),
     )
     session.add(row)
@@ -148,16 +149,34 @@ def login(session: Session, settings: Settings, *, master_password: str) -> Logi
     throttle.blocked_until = None
     if password_hash_needs_upgrade(owner.password_hash):
         owner.password_hash = hash_password(master_password)
-    session.execute(delete(AuthSession).where(AuthSession.expires_at <= now))
+    idle_cutoff = now - timedelta(minutes=settings.session_idle_minutes)
+    session.execute(
+        delete(AuthSession).where(
+            or_(AuthSession.expires_at <= now, AuthSession.last_activity_at <= idle_cutoff)
+        )
+    )
     return LoginResult(LoginStatus.SUCCESS, issued_session=_issue_session(session, settings))
 
 
-def find_authenticated_session(session: Session, token: str) -> AuthSession | None:
+def find_authenticated_session(
+    session: Session, settings: Settings, token: str
+) -> AuthSession | None:
     now = datetime.now(UTC)
-    return session.scalar(
+    auth_session = session.scalar(
         select(AuthSession).where(
             AuthSession.token_hash == hash_token(token), AuthSession.expires_at > now
         )
+    )
+    if auth_session is None:
+        return None
+    if now - auth_session.last_activity_at >= timedelta(minutes=settings.session_idle_minutes):
+        return None
+    return auth_session
+
+
+def touch_authenticated_session(auth_session: AuthSession) -> None:
+    auth_session.last_activity_at = min(
+        datetime.now(UTC), auth_session.expires_at - timedelta(microseconds=1)
     )
 
 

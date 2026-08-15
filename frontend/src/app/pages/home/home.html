@@ -32,7 +32,7 @@
       </article>
       @if (forecast(); as value) {
         <article>
-          <span>Через месяц · {{ value.through_on }}</span
+          <span>Свободно через месяц · {{ value.through_on | textDate }}</span
           ><strong>{{ value.ending_balance | money }} {{ baseCurrency() }}</strong
           ><a routerLink="/forecast">Открыть прогноз →</a>
         </article>
@@ -44,15 +44,15 @@
         <div>
           <p class="section-label">Ближайший месяц</p>
           @if (value.first_negative_on) {
-            <h2>Возможен дефицит {{ value.first_negative_on }}</h2>
+            <h2>Возможен дефицит {{ value.first_negative_on | textDate }}</h2>
           } @else {
             <h2>
               Минимум {{ value.minimum_balance | money }} {{ baseCurrency() }} ·
-              {{ value.minimum_on }}
+              {{ value.minimum_on | textDate }}
             </h2>
           }
           <p>
-            Прогноз начинается с фактического остатка {{ value.starting_balance | money }}
+            Прогноз начинается с текущего свободного остатка {{ value.starting_balance | money }}
             {{ baseCurrency() }} и учитывает известные ожидаемые события.
           </p>
         </div>
@@ -153,7 +153,8 @@
             @for (operation of recentOperations(); track operation.id) {
               <article>
                 <div>
-                  <span>{{ operation.occurred_on }} · {{ typeLabel(operation.type) }}</span
+                  <span
+                    >{{ operation.occurred_on | textDate }} · {{ typeLabel(operation.type) }}</span
                   ><strong>{{ operationTitle(operation) }}</strong>
                 </div>
                 <b>{{ signedOperation(operation) | money }} {{ baseCurrency() }}</b>

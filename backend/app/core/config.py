@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     session_cookie_name: str = "hermes_session"
     cookie_secure: bool | None = None
     session_lifetime_days: int = Field(default=7, ge=1, le=90)
+    session_idle_minutes: int = Field(default=30, ge=1, le=1440)
     login_failure_limit: int = Field(default=5, ge=1, le=100)
     login_failure_window_minutes: int = Field(default=15, ge=1, le=1440)
     login_block_minutes: int = Field(default=15, ge=1, le=1440)

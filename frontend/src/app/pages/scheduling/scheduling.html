@@ -136,7 +136,7 @@
         @for (occurrence of upcoming(); track occurrence.id) {
           <article class="upcoming-item" [class.overdue]="occurrence.overdue">
             <div class="occurrence-date">
-              <time [attr.datetime]="occurrence.due_on">{{ occurrence.due_on }}</time>
+              <time [attr.datetime]="occurrence.due_on">{{ occurrence.due_on | textDate }}</time>
               @if (occurrence.overdue) {
                 <strong>Просрочено</strong>
               } @else {
@@ -234,7 +234,10 @@
                     @if (rule.destination_account_name) {
                       → {{ rule.destination_account_name }}
                     }
-                    · с {{ rule.start_on }}{{ rule.end_on ? ' по ' + rule.end_on : '' }}
+                    · с {{ rule.start_on | textDate }}
+                    @if (rule.end_on) {
+                      по {{ rule.end_on | textDate }}
+                    }
                   </p>
                 </div>
               </div>

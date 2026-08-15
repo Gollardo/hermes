@@ -6,7 +6,7 @@
   align-items: end;
   display: grid;
   gap: 1rem;
-  grid-template-columns: minmax(14rem, 0.7fr) minmax(28rem, 1.3fr);
+  grid-template-columns: minmax(13rem, 0.7fr) minmax(25rem, 1.3fr) minmax(13rem, 0.7fr);
   padding: 1rem 1.25rem;
 }
 .forecast-controls label {
@@ -27,6 +27,9 @@
   display: grid;
   gap: 0.4rem;
   grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.balance-switcher {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .period-switcher button {
   min-height: 2.9rem;
@@ -323,6 +326,12 @@
   justify-self: end;
 }
 @media (max-width: 70rem) {
+  .forecast-controls {
+    grid-template-columns: minmax(13rem, 0.7fr) minmax(25rem, 1.3fr);
+  }
+  .balance-mode-control {
+    grid-column: 1 / -1;
+  }
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -331,8 +340,14 @@
   .forecast-controls {
     grid-template-columns: 1fr;
   }
+  .balance-mode-control {
+    grid-column: auto;
+  }
   .period-switcher {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .balance-switcher {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 38rem) {

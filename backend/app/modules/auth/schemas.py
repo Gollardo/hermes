@@ -71,3 +71,4 @@ class PasswordChangeRequest(BaseModel):
 class SessionResponse(BaseModel):
     authenticated: bool = True
     expires_at: datetime
+    idle_timeout_seconds: int

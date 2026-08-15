@@ -24,6 +24,9 @@ cookies, protected Docker volumes and tested backups.
   keep `HERMES_COOKIE_SECURE=true`.
 - End server-side sessions after suspected compromise and keep the host, images
   and dependencies patched.
+- Authenticated screens close after 30 minutes without keyboard, pointer, touch
+  or scroll activity. Active tabs send a throttled keepalive; the server still
+  enforces the idle limit independently on every protected request.
 
 The authentication design is documented in
 [the authentication domain](docs/domains/authentication.md). The alpha release

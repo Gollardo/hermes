@@ -8,10 +8,14 @@ import { AccessState, AuthService } from './core/auth.service';
 
 describe('App', () => {
   const accessState = signal<AccessState>('checking');
+  const idleTimeoutMs = signal(30 * 60 * 1000);
   const auth = {
     state: accessState,
+    idleTimeoutMs,
     initialize: vi.fn(),
     logout: vi.fn(() => of(undefined)),
+    keepAlive: vi.fn(),
+    expireDueToInactivity: vi.fn(),
   };
 
   beforeEach(async () => {

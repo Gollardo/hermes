@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.core.database import DatabaseSession
 from app.modules.accounts.contracts import AccountReferenceError
-from app.modules.forecasting.schemas import ForecastHorizon, ForecastResponse
+from app.modules.forecasting.schemas import ForecastBalanceMode, ForecastHorizon, ForecastResponse
 from app.modules.forecasting.service import build_forecast
 from app.modules.settings.contracts import application_timezone
 
@@ -18,10 +18,17 @@ def read_forecast(
     session: DatabaseSession,
     horizon: ForecastHorizon = ForecastHorizon.MONTH,
     account_id: UUID | None = None,
+    balance_mode: ForecastBalanceMode = ForecastBalanceMode.FREE,
 ) -> ForecastResponse:
     today = datetime.now(UTC).astimezone(ZoneInfo(application_timezone(session))).date()
     try:
-        return build_forecast(session, today=today, horizon=horizon, account_id=account_id)
+        return build_forecast(
+            session,
+            today=today,
+            horizon=horizon,
+            account_id=account_id,
+            balance_mode=balance_mode,
+        )
     except AccountReferenceError as error:
         raise HTTPException(
             status_code=404,

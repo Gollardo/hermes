@@ -140,7 +140,7 @@
         <div class="backup-summary" role="status">
           <strong>Целостность подтверждена</strong>
           <span>{{ formatTimestamp(preview.exported_at) }} · Hermes {{ preview.app_version }}</span>
-          <span>{{ preview.base_currency }} · {{ preview.timezone }}</span>
+          <span>{{ currencyLabel(preview.base_currency) }} · {{ preview.timezone }}</span>
           <span
             >{{ preview.counts['operations'] }} операций ·
             {{ preview.counts['account_movements'] }} физических движений</span

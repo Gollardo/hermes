@@ -20,6 +20,7 @@ from app.modules.auth.service import (
     login,
     logout_all,
     logout_current,
+    touch_authenticated_session,
 )
 
 public_router = APIRouter()
@@ -52,15 +53,30 @@ def login_route(payload: LoginRequest, request: Request, session: DatabaseSessio
             },
         )
     assert result.issued_session is not None
-    body = SessionResponse(expires_at=result.issued_session.row.expires_at)
+    body = SessionResponse(
+        expires_at=result.issued_session.row.expires_at,
+        idle_timeout_seconds=settings.session_idle_minutes * 60,
+    )
     success = JSONResponse(content=body.model_dump(mode="json"))
     set_auth_cookies(success, settings, result.issued_session)
     return success
 
 
 @protected_router.get("/auth/session", response_model=SessionResponse, tags=["authentication"])
-def current_session(auth_session: AuthenticatedSession) -> SessionResponse:
-    return SessionResponse(expires_at=auth_session.expires_at)
+def current_session(request: Request, auth_session: AuthenticatedSession) -> SessionResponse:
+    settings = get_runtime_settings(request)
+    return SessionResponse(
+        expires_at=auth_session.expires_at,
+        idle_timeout_seconds=settings.session_idle_minutes * 60,
+    )
+
+
+@protected_router.post(
+    "/auth/activity", status_code=status.HTTP_204_NO_CONTENT, tags=["authentication"]
+)
+def record_activity(auth_session: CsrfSession) -> Response:
+    touch_authenticated_session(auth_session)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @protected_router.post(

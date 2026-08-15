@@ -5,7 +5,8 @@ import { catchError, forkJoin, of, switchMap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
-import { MoneyPipe } from '../../shared/money.pipe';
+import { DateTextPipe } from '../../shared/date-text.pipe';
+import { currencySymbol, MoneyPipe } from '../../shared/money.pipe';
 
 interface Coverage {
   physical_balance: string;
@@ -84,7 +85,7 @@ interface Settings {
 
 @Component({
   selector: 'app-home-page',
-  imports: [RouterLink, MoneyPipe],
+  imports: [RouterLink, MoneyPipe, DateTextPipe],
   templateUrl: './home.html',
   styleUrl: './home.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -155,7 +156,7 @@ export class HomePage implements OnInit {
           this.recentOperations.set(operations.items);
           this.attention.set(attention.items);
           this.attentionTotal.set(attention.total);
-          this.baseCurrency.set(settings.base_currency);
+          this.baseCurrency.set(currencySymbol(settings.base_currency));
           this.categories.set(categories);
           this.loading.set(false);
         },

@@ -6,7 +6,8 @@ import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
-import { formatMoney, MoneyPipe } from '../../shared/money.pipe';
+import { DateTextPipe } from '../../shared/date-text.pipe';
+import { currencySymbol, formatMoney, MoneyPipe } from '../../shared/money.pipe';
 
 interface Fund {
   id: string;
@@ -93,7 +94,7 @@ interface AllocationTotals {
 
 @Component({
   selector: 'app-funds-page',
-  imports: [ReactiveFormsModule, MoneyPipe, EntityCombobox, DecimalInput],
+  imports: [ReactiveFormsModule, MoneyPipe, DateTextPipe, EntityCombobox, DecimalInput],
   templateUrl: './funds.html',
   styleUrls: ['../directory.css', './funds.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -743,7 +744,7 @@ export class FundsPage implements OnInit {
     this.http
       .get<{ timezone: string; base_currency: string }>(`${environment.apiBaseUrl}/settings`)
       .subscribe(({ timezone, base_currency: baseCurrency }) => {
-        this.baseCurrency.set(baseCurrency);
+        this.baseCurrency.set(currencySymbol(baseCurrency));
         const parts = new Intl.DateTimeFormat('en-CA', {
           timeZone: timezone,
           year: 'numeric',

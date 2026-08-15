@@ -6,6 +6,7 @@ import { provideRouter } from '@angular/router';
 import { ForecastPage } from './forecast';
 
 const FORECAST = {
+  balance_mode: 'free',
   scope: 'all',
   account_id: null,
   account_name: null,
@@ -87,9 +88,15 @@ describe('ForecastPage', () => {
       .flush(FORECAST);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Возможен недостаток средств 2026-08-20');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Возможен недостаток средств 20 августа 2026',
+    );
     expect(fixture.nativeElement.textContent).toContain('1 просроченных событий не включено');
     expect(fixture.nativeElement.textContent).toContain('Аренда');
+    expect(fixture.nativeElement.textContent).toContain('Свободные средства');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Стартовая точка исключает текущие резервы',
+    );
     expect(fixture.nativeElement.querySelector('.forecast-chart')).not.toBeNull();
     expect(
       fixture.nativeElement.querySelector('.period-switcher button').getAttribute('aria-pressed'),
@@ -109,7 +116,7 @@ describe('ForecastPage', () => {
 
   it('replaces stale data with loading and explains an event-free horizon', () => {
     flushInitial();
-    http.expectOne('/api/v1/forecast?horizon=month').flush({
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush({
       ...FORECAST,
       ending_balance: '100.0000',
       minimum_balance: '100.0000',
@@ -130,12 +137,14 @@ describe('ForecastPage', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Рассчитываем будущие остатки');
     expect(fixture.nativeElement.textContent).not.toContain('Прогноз на 2026-09-12');
-    http.expectOne('/api/v1/forecast?horizon=week').flush({ ...FORECAST, horizon: 'week' });
+    http
+      .expectOne('/api/v1/forecast?horizon=week&balance_mode=free')
+      .flush({ ...FORECAST, horizon: 'week' });
   });
 
   it('requests a selected account and horizon', () => {
     flushInitial();
-    http.expectOne('/api/v1/forecast?horizon=month').flush(FORECAST);
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(FORECAST);
     fixture.detectChanges();
 
     const account = fixture.nativeElement.querySelector('app-entity-combobox') as HTMLElement;
@@ -164,17 +173,33 @@ describe('ForecastPage', () => {
       .flush({ ...FORECAST, horizon: 'quarter' });
   });
 
+  it('defaults to free money and can include reserved money', () => {
+    flushInitial();
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(FORECAST);
+    fixture.detectChanges();
+
+    const allMoney = [...fixture.nativeElement.querySelectorAll('.balance-switcher button')].find(
+      (button: HTMLButtonElement) => button.textContent.trim() === 'Все средства',
+    ) as HTMLButtonElement;
+    allMoney.click();
+
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=total').flush({
+      ...FORECAST,
+      balance_mode: 'total',
+    });
+  });
+
   it('shows an exact point tooltip on hover and an optional trend line', () => {
     flushInitial();
-    http.expectOne('/api/v1/forecast?horizon=month').flush(FORECAST);
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(FORECAST);
     fixture.detectChanges();
 
     const points = fixture.nativeElement.querySelectorAll('.chart-point');
     points[1].dispatchEvent(new Event('mouseenter'));
     fixture.detectChanges();
     const tooltip = fixture.nativeElement.querySelector('.chart-tooltip');
-    expect(tooltip.textContent).toContain('2026-08-20');
-    expect(tooltip.textContent).toContain('-20.00 RUB');
+    expect(tooltip.textContent).toContain('20 августа 2026');
+    expect(tooltip.textContent).toContain('-20.00 ₽');
 
     const trend = fixture.nativeElement.querySelector('.trend-toggle') as HTMLButtonElement;
     expect(fixture.nativeElement.querySelector('.trend-line')).toBeNull();
@@ -186,7 +211,7 @@ describe('ForecastPage', () => {
 
   it('opens the tooltip below points near the top edge', () => {
     flushInitial();
-    http.expectOne('/api/v1/forecast?horizon=month').flush(FORECAST);
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(FORECAST);
     fixture.detectChanges();
 
     const highestPoint = fixture.nativeElement.querySelector('.chart-point') as HTMLButtonElement;

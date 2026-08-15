@@ -145,6 +145,21 @@ def reserved_balance(session: Session, account_id: UUID) -> Decimal:
     return Decimal(value or 0)
 
 
+def reserved_balances(session: Session, account_ids: set[UUID]) -> dict[UUID, Decimal]:
+    """Return exact per-account reserves in one Funds-owned aggregate read."""
+    balances = dict.fromkeys(account_ids, Decimal(0))
+    if not account_ids:
+        return balances
+    rows = session.execute(
+        select(FundMovement.account_id, func.coalesce(func.sum(FundMovement.amount), 0))
+        .where(FundMovement.account_id.in_(account_ids))
+        .group_by(FundMovement.account_id)
+    )
+    for account_id, value in rows:
+        balances[account_id] = Decimal(value or 0)
+    return balances
+
+
 def account_has_fund_history(session: Session, account_id: UUID) -> bool:
     return (
         session.scalar(

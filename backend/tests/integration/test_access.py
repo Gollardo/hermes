@@ -13,7 +13,7 @@ from app.core.config import Settings
 from app.core.database import create_database_engine, create_session_factory
 from app.main import create_app
 from app.modules.auth.models import AuthSession, OwnerCredential
-from app.modules.auth.security import hash_token
+from app.modules.auth.security import hash_password, hash_token
 from app.modules.auth.service import LoginStatus, login
 from app.modules.categories.models import Category, CategoryType
 from app.modules.settings.models import ApplicationSettings
@@ -39,7 +39,8 @@ def csrf_headers(client: TestClient) -> dict[str, str]:
 
 
 def test_first_run_protection_login_and_logout(postgres_database_settings: Settings) -> None:
-    with TestClient(create_app(postgres_database_settings)) as client:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
         assert client.get("/api/v1/health").status_code == 200
         assert client.get("/api/v1/setup/status").json() == {"initialized": False}
         assert client.get("/api/v1/settings").status_code == 401
@@ -52,6 +53,7 @@ def test_first_run_protection_login_and_logout(postgres_database_settings: Setti
         setup = client.post("/api/v1/setup", json=SETUP_PAYLOAD)
         assert setup.status_code == 201
         assert setup.json()["authenticated"] is True
+        assert setup.json()["idle_timeout_seconds"] == 1800
         assert "HttpOnly" in setup.headers.get_list("set-cookie")[0]
         assert client.get("/api/v1/setup/status").json() == {"initialized": True}
         assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 409
@@ -59,6 +61,18 @@ def test_first_run_protection_login_and_logout(postgres_database_settings: Setti
         settings = client.get("/api/v1/settings")
         assert settings.status_code == 200
         assert settings.json()["base_currency"] == "RUB"
+        raw_token = client.cookies.get(postgres_database_settings.session_cookie_name)
+        assert raw_token is not None
+        with app.state.session_factory() as session:
+            before_activity = session.get(AuthSession, hash_token(raw_token))
+            assert before_activity is not None
+            before_activity_at = before_activity.last_activity_at
+        assert client.post("/api/v1/auth/activity").status_code == 403
+        assert client.post("/api/v1/auth/activity", headers=csrf_headers(client)).status_code == 204
+        with app.state.session_factory() as session:
+            after_activity = session.get(AuthSession, hash_token(raw_token))
+            assert after_activity is not None
+            assert after_activity.last_activity_at >= before_activity_at
         assert client.post("/api/v1/auth/logout").status_code == 403
         assert client.post("/api/v1/auth/logout", headers=csrf_headers(client)).status_code == 204
         assert client.get("/api/v1/auth/session").status_code == 401
@@ -71,7 +85,9 @@ def test_first_run_protection_login_and_logout(postgres_database_settings: Setti
         )
         login = client.post("/api/v1/auth/login", json={"master_password": MASTER_PASSWORD})
         assert login.status_code == 200
-        assert client.get("/api/v1/auth/session").status_code == 200
+        current = client.get("/api/v1/auth/session")
+        assert current.status_code == 200
+        assert current.json()["idle_timeout_seconds"] == 1800
 
 
 def test_setup_creates_only_selected_expense_trees_and_default_income_categories(
@@ -331,9 +347,39 @@ def test_expired_session_is_rejected(postgres_database_settings: Settings) -> No
             stored = session.get(AuthSession, hash_token(raw_token))
             assert stored is not None
             stored.created_at = now - timedelta(days=2)
+            stored.last_activity_at = now - timedelta(days=1, hours=12)
             stored.expires_at = now - timedelta(days=1)
 
         assert client.get("/api/v1/auth/session").status_code == 401
+
+
+def test_idle_session_requires_login_and_is_pruned_on_login(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        raw_token = client.cookies.get(postgres_database_settings.session_cookie_name)
+        assert raw_token is not None
+
+        with app.state.session_factory.begin() as session:
+            stored = session.get(AuthSession, hash_token(raw_token))
+            assert stored is not None
+            now = datetime.now(UTC)
+            stored.created_at = now - timedelta(hours=1)
+            stored.last_activity_at = now - timedelta(minutes=31)
+
+        assert client.get("/api/v1/auth/session").status_code == 401
+        with app.state.session_factory() as session:
+            assert session.get(AuthSession, hash_token(raw_token)) is not None
+        assert (
+            client.post(
+                "/api/v1/auth/login", json={"master_password": SETUP_PAYLOAD["master_password"]}
+            ).status_code
+            == 200
+        )
+        with app.state.session_factory() as session:
+            assert session.get(AuthSession, hash_token(raw_token)) is None
 
 
 def test_initialized_database_upgrades_from_0001_to_head(
@@ -341,10 +387,43 @@ def test_initialized_database_upgrades_from_0001_to_head(
 ) -> None:
     command.downgrade(Config("alembic.ini"), "0001_first_run_access")
 
-    with TestClient(create_app(postgres_database_settings)) as client:
-        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
-        raw_token = client.cookies.get(postgres_database_settings.session_cookie_name)
-        assert raw_token is not None
+    raw_token = "legacy-session-token"
+    created_at = datetime.now(UTC) - timedelta(days=1)
+    engine = create_database_engine(postgres_database_settings)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO auth_owner_credentials "
+                    "(id, password_hash, created_at, password_changed_at) "
+                    "VALUES (1, :password_hash, :created_at, :created_at)"
+                ),
+                {"password_hash": hash_password(MASTER_PASSWORD), "created_at": created_at},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO application_settings "
+                    "(id, base_currency, timezone, base_currency_locked_at, "
+                    "created_at, updated_at) "
+                    "VALUES (1, 'RUB', 'Europe/Moscow', NULL, :created_at, :created_at)"
+                ),
+                {"created_at": created_at},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO auth_sessions "
+                    "(token_hash, owner_id, csrf_token_hash, created_at, expires_at) "
+                    "VALUES (:token_hash, 1, :csrf_hash, :created_at, :expires_at)"
+                ),
+                {
+                    "token_hash": hash_token(raw_token),
+                    "csrf_hash": hash_token("legacy-csrf-token"),
+                    "created_at": created_at,
+                    "expires_at": created_at + timedelta(days=7),
+                },
+            )
+    finally:
+        engine.dispose()
 
     command.upgrade(Config("alembic.ini"), "head")
 
@@ -362,5 +441,8 @@ def test_initialized_database_upgrades_from_0001_to_head(
             assert stored_tokens
             assert raw_token not in stored_tokens
             assert hash_token(raw_token) in stored_tokens
+            stored = session.get(AuthSession, hash_token(raw_token))
+            assert stored is not None
+            assert stored.last_activity_at == stored.created_at
     finally:
         engine.dispose()

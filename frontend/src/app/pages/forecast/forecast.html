@@ -3,7 +3,10 @@
     <div class="page-header-copy">
       <p class="eyebrow">Будущие остатки</p>
       <h1>Прогноз</h1>
-      <p>Фактический остаток и ожидаемые события показаны отдельно и объясняют каждое изменение.</p>
+      <p>
+        Свободные средства показаны по умолчанию. Можно включить распределённые в фонды деньги;
+        ожидаемые события объясняют каждое изменение.
+      </p>
     </div>
     <a class="button-link secondary" routerLink="/calendar">Открыть календарь</a>
   </header>
@@ -38,6 +41,29 @@
         }
       </div>
     </fieldset>
+    <fieldset class="balance-mode-control">
+      <legend>Средства</legend>
+      <div class="period-switcher balance-switcher">
+        <button
+          type="button"
+          class="secondary"
+          [class.active]="balanceMode() === 'free'"
+          [attr.aria-pressed]="balanceMode() === 'free'"
+          (click)="changeBalanceMode('free')"
+        >
+          Свободные
+        </button>
+        <button
+          type="button"
+          class="secondary"
+          [class.active]="balanceMode() === 'total'"
+          [attr.aria-pressed]="balanceMode() === 'total'"
+          (click)="changeBalanceMode('total')"
+        >
+          Все средства
+        </button>
+      </div>
+    </fieldset>
   </section>
 
   @if (error(); as message) {
@@ -47,9 +73,15 @@
   @if (loading() && !forecast()) {
     <section class="panel empty-state" aria-live="polite">Рассчитываем будущие остатки…</section>
   } @else if (forecast(); as value) {
+    @if (value.balance_mode === 'free') {
+      <p class="no-events-note" role="note">
+        Стартовая точка исключает текущие резервы фондов. Плановые правила пока не выбирают фонд,
+        поэтому будущие операции меняют свободный остаток без предположения об источнике резерва.
+      </p>
+    }
     @if (value.first_negative_on) {
       <section class="risk-banner" role="alert">
-        <strong>Возможен недостаток средств {{ value.first_negative_on }}</strong>
+        <strong>Возможен недостаток средств {{ value.first_negative_on | textDate }}</strong>
         <span>Минимальный остаток: {{ value.minimum_balance | money }} {{ baseCurrency() }}.</span>
       </section>
     }
@@ -63,17 +95,20 @@
 
     <div class="summary-grid">
       <article class="summary-card fact">
-        <span>Факт на {{ value.from_on }}</span>
+        <span
+          >{{ value.balance_mode === 'free' ? 'Свободно на' : 'Все средства на' }}
+          {{ value.from_on | textDate }}</span
+        >
         <strong>{{ value.starting_balance | money }} {{ baseCurrency() }}</strong>
       </article>
       <article class="summary-card">
-        <span>Прогноз на {{ value.through_on }}</span>
+        <span>Прогноз на {{ value.through_on | textDate }}</span>
         <strong [class.negative]="isNegative(value.ending_balance)"
           >{{ value.ending_balance | money }} {{ baseCurrency() }}</strong
         >
       </article>
       <article class="summary-card">
-        <span>Минимум · {{ value.minimum_on }}</span>
+        <span>Минимум · {{ value.minimum_on | textDate }}</span>
         <strong [class.negative]="isNegative(value.minimum_balance)"
           >{{ value.minimum_balance | money }} {{ baseCurrency() }}</strong
         >
@@ -103,6 +138,7 @@
           </p>
         </div>
         <div class="chart-options">
+          <span class="status-pill">{{ balanceModeLabel(value.balance_mode) }}</span>
           <span class="status-pill">{{ granularityLabel() }}</span>
           <button
             type="button"
@@ -129,7 +165,10 @@
         </p>
       }
       <div class="chart-frame">
-        <div class="y-axis-title">Сумма · {{ baseCurrency() }}</div>
+        <div class="y-axis-title">
+          {{ value.balance_mode === 'free' ? 'Свободно' : 'Все средства' }} ·
+          {{ baseCurrency() }}
+        </div>
         <div class="y-axis-scale" aria-hidden="true">
           @for (tick of yTicks(); track tick.y) {
             <span>{{ tick.value | money }}</span>
@@ -142,7 +181,9 @@
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
               role="img"
-              [attr.aria-label]="'Прогноз с ' + value.from_on + ' по ' + value.through_on"
+              [attr.aria-label]="
+                'Прогноз с ' + (value.from_on | textDate) + ' по ' + (value.through_on | textDate)
+              "
             >
               @for (tick of yTicks(); track tick.y) {
                 <line class="grid-line" x1="14" [attr.y1]="tick.y" x2="96" [attr.y2]="tick.y" />

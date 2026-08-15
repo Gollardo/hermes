@@ -26,6 +26,11 @@ class ForecastGranularity(StrEnum):
     MONTH = "month"
 
 
+class ForecastBalanceMode(StrEnum):
+    FREE = "free"
+    TOTAL = "total"
+
+
 class ForecastEventResponse(BaseModel):
     occurrence_id: UUID
     rule_id: UUID
@@ -51,6 +56,7 @@ class ForecastPointResponse(BaseModel):
 
 
 class ForecastResponse(BaseModel):
+    balance_mode: ForecastBalanceMode
     scope: ForecastScope
     account_id: UUID | None
     account_name: str | None

@@ -1,4 +1,4 @@
-import { formatMoney } from './money.pipe';
+import { currencySymbol, formatMoney } from './money.pipe';
 
 describe('formatMoney', () => {
   it('groups thousands and shows at least two exact decimal places', () => {
@@ -6,5 +6,14 @@ describe('formatMoney', () => {
     expect(formatMoney('1234.5678')).toBe('1 234.5678');
     expect(formatMoney('-12.5000')).toBe('-12.50');
     expect(formatMoney('0')).toBe('0.00');
+  });
+});
+
+describe('currencySymbol', () => {
+  it('uses familiar symbols and falls back to the exact currency code', () => {
+    expect(currencySymbol('RUB')).toBe('₽');
+    expect(currencySymbol('EUR')).toBe('€');
+    expect(currencySymbol('KZT')).toBe('₸');
+    expect(currencySymbol('CHF')).toBe('CHF');
   });
 });

@@ -84,7 +84,7 @@ describe('FundsPage', () => {
     target.dispatchEvent(new Event('input'));
     target.dispatchEvent(new FocusEvent('blur'));
     fixture.detectChanges();
-    expect(target.value).toBe('1000.50');
+    expect(target.value).toBe('1 000.50');
 
     fixture.nativeElement.querySelector('.modal-card form').dispatchEvent(new Event('submit'));
     const request = http.expectOne('/api/v1/funds');

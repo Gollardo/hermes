@@ -242,7 +242,7 @@ describe('OperationsPage', () => {
     const panel = fixture.nativeElement.querySelector('.focused-operation') as HTMLElement;
     expect(panel.textContent).toContain('Связь с календарём');
     expect(panel.textContent).toContain('Интернет');
-    expect(panel.textContent).toContain('-12.50 RUB');
+    expect(panel.textContent).toContain('-12.50 ₽');
   });
 
   it('posts an expense from the explicitly selected fund', () => {
@@ -301,7 +301,7 @@ describe('OperationsPage', () => {
     setValue('#operation-account', 'account-2');
     expect(
       (fixture.nativeElement.querySelector('#operation-fund') as HTMLSelectElement).textContent,
-    ).toContain('Reserve · доступно 30.00 RUB');
+    ).toContain('Reserve · доступно 30.00 ₽');
   });
 
   it('posts an exact adjustment delta from the expected balance', () => {
@@ -324,7 +324,7 @@ describe('OperationsPage', () => {
 
     const request = http.expectOne('/api/v1/operations');
     expect(request.request.body.amount).toBe('-20.2500');
-    expect(fixture.nativeElement.textContent).toContain('Изменение журнала: -20.25 RUB');
+    expect(fixture.nativeElement.textContent).toContain('Изменение журнала: -20.25 ₽');
     request.flush({});
     http.expectOne('/api/v1/accounts').flush([]);
     http.expectOne('/api/v1/categories').flush([]);
@@ -420,7 +420,7 @@ describe('OperationsPage', () => {
     expect(destinationInput.value).toBe('Old savings');
     destinationInput.dispatchEvent(new Event('focus'));
     fixture.detectChanges();
-    expect(destination.textContent).toContain('25.00 RUB · в архиве');
+    expect(destination.textContent).toContain('25.00 ₽ · в архиве');
   });
 
   it('uses application timezone for the default financial date', () => {
@@ -470,7 +470,7 @@ describe('OperationsPage', () => {
       });
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.filter-chips').textContent).toContain('Расход');
-    expect(fixture.nativeElement.textContent).toContain('Чистое изменение выборки: -260.00 RUB');
+    expect(fixture.nativeElement.textContent).toContain('Чистое изменение выборки: -260.00 ₽');
 
     const buttons = fixture.nativeElement.querySelectorAll('.pagination button');
     buttons[1].click();

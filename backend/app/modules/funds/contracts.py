@@ -39,6 +39,7 @@ from app.modules.funds.service import (
     operation_fund_movements,
     replace_operation_movements,
     reserved_balance,
+    reserved_balances,
     summary_with_physical_balances,
     validate_account_coverage,
 )
@@ -98,6 +99,7 @@ __all__ = [
     "history_source_ids",
     "replace_operation_movements",
     "reserved_balance",
+    "reserved_balances",
     "summary_with_physical_balances",
     "validate_account_coverage",
 ]

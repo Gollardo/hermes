@@ -28,9 +28,16 @@ user credential to authenticate until that one-time operation succeeds.
 
 The browser receives a random session identifier in an HttpOnly, SameSite=Lax
 cookie. PostgreSQL stores only its SHA-256 digest. Sessions have a seven-day
-absolute lifetime by default and are checked on every protected request. Login
+absolute lifetime and a 30-minute inactivity limit by default. Both are checked
+on every protected request. A narrow CSRF-protected heartbeat advances the
+activity timestamp; ordinary business reads remain read-only.
+The browser independently hides the protected shell at the same deadline and
+sends a throttled keepalive only while it observes owner interaction. Login
 rotates both session and CSRF tokens. Expired session rows are pruned during a
 successful login; no background cleanup system is introduced.
+
+Setup, login and current-session responses include the effective idle duration,
+so runtime tuning cannot leave the browser and backend deadlines inconsistent.
 
 State-changing authenticated requests use a double-submit CSRF token. Its
 non-HttpOnly cookie is readable by the same-origin Angular client and must match
@@ -53,6 +60,9 @@ password and revokes every other session while retaining the current one.
   database transaction commits.
 - A missing, unknown or expired session receives `401` before a protected use
   case runs.
+- Idle rows are rejected immediately and pruned with other expired rows during
+  the next successful login; parallel business reads never race to rewrite the
+  same session row.
 - A state-changing request with an absent or wrong CSRF token receives `403`.
 - Failed login state persists across process restarts. By default, five failures
   in a rolling 15-minute window block all login attempts for 15 minutes. A
@@ -63,7 +73,7 @@ password and revokes every other session while retaining the current one.
 
 - New master passwords contain 12–1024 Unicode characters. No additional
   composition rule is imposed.
-- Session expiry is absolute; idle expiry and “remember me” are deferred.
+- Idle expiry is 30 minutes. “Remember me” remains deferred.
 - Login throttling is instance-wide because there is one owner and client IP is
   not a reliable identity behind an unspecified reverse proxy.
 - Password recovery is intentionally absent. Losing the master password
@@ -77,6 +87,6 @@ and throttling durations with the documented `HERMES_*` environment variables.
 ## Remaining work
 
 - Design a safe local recovery procedure.
-- Decide whether idle expiry or long-lived remembered sessions are needed.
+- Decide whether long-lived remembered sessions are needed.
 - Add scheduled cleanup only if expired-session accumulation becomes material.
 - Document tested HTTPS reverse proxies and forwarded-header policy.

@@ -12,6 +12,7 @@ from app.modules.accounts.contracts import (
     list_account_identities,
 )
 from app.modules.forecasting.schemas import (
+    ForecastBalanceMode,
     ForecastEventResponse,
     ForecastGranularity,
     ForecastHorizon,
@@ -19,6 +20,7 @@ from app.modules.forecasting.schemas import (
     ForecastResponse,
     ForecastScope,
 )
+from app.modules.funds.contracts import reserved_balances
 from app.modules.operations.contracts import OperationType, account_balances
 from app.modules.scheduling.contracts import (
     OccurrenceStatus,
@@ -72,6 +74,7 @@ def calculate_forecast(
     account_id: UUID | None,
     horizon: ForecastHorizon,
     overdue_excluded_count: int = 0,
+    balance_mode: ForecastBalanceMode = ForecastBalanceMode.TOTAL,
 ) -> ForecastResponse:
     if through_on < today:
         raise ValueError("forecast end must not precede today")
@@ -141,6 +144,7 @@ def calculate_forecast(
             )
         )
     return ForecastResponse(
+        balance_mode=balance_mode,
         scope=ForecastScope.ACCOUNT if account_id is not None else ForecastScope.ALL,
         account_id=account_id,
         account_name=account_name_by_id.get(account_id) if account_id is not None else None,
@@ -184,6 +188,7 @@ def build_forecast(
     today: date,
     horizon: ForecastHorizon,
     account_id: UUID | None,
+    balance_mode: ForecastBalanceMode = ForecastBalanceMode.FREE,
 ) -> ForecastResponse:
     through_on = horizon_end(today, horizon)
     schedule = forecast_schedule_snapshot(
@@ -200,15 +205,23 @@ def build_forecast(
     if account_id is not None and account_id not in account_ids:
         raise AccountReferenceError
     names = account_names(session, account_ids)
+    balances = account_balances(session, account_ids)
+    if balance_mode == ForecastBalanceMode.FREE:
+        reserved_by_account = reserved_balances(session, account_ids)
+        balances = {
+            identity: balance - reserved_by_account[identity]
+            for identity, balance in balances.items()
+        }
     return calculate_forecast(
         today=today,
         through_on=through_on,
-        balances=account_balances(session, account_ids),
+        balances=balances,
         account_name_by_id=names,
         events=[_input_event(item) for item in schedule.occurrences],
         account_id=account_id,
         horizon=horizon,
         overdue_excluded_count=schedule.overdue_count,
+        balance_mode=balance_mode,
     )
 
 

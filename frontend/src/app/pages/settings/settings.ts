@@ -4,6 +4,8 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 
 import { environment } from '../../../environments/environment';
 import { AuthService, apiErrorMessage } from '../../core/auth.service';
+import { formatTextTimestamp } from '../../shared/date-text.pipe';
+import { currencySymbol } from '../../shared/money.pipe';
 
 interface ApplicationSettings {
   base_currency: string;
@@ -56,7 +58,8 @@ export class SettingsPage implements OnInit {
   protected readonly backupError = signal<string | null>(null);
   protected readonly backupSuccess = signal<string | null>(null);
   protected readonly restoreConfirmation = RESTORE_CONFIRMATION;
-  protected readonly formatTimestamp = formatTimestamp;
+  protected readonly formatTimestamp = formatTextTimestamp;
+  protected readonly currencyLabel = currencySymbol;
   private selectedBackupSequence = 0;
 
   protected readonly settingsForm = this.formBuilder.group({
@@ -159,7 +162,7 @@ export class SettingsPage implements OnInit {
         link.click();
         URL.revokeObjectURL(url);
         this.backupSuccess.set(
-          `Backup от ${formatTimestamp(document.exported_at)} сформирован и проверен. ` +
+          `Backup от ${formatTextTimestamp(document.exported_at)} сформирован и проверен. ` +
             'Сохраните файл в защищённом месте.',
         );
       },
@@ -286,11 +289,4 @@ function supportedTimezones(): string[] {
   const intl = Intl as typeof Intl & { supportedValuesOf?: (key: 'timeZone') => string[] };
   const values = intl.supportedValuesOf?.('timeZone') ?? ['UTC', detectedTimezone()];
   return [...new Set(['UTC', detectedTimezone(), ...values])].sort();
-}
-
-function formatTimestamp(value: string): string {
-  return new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
 }

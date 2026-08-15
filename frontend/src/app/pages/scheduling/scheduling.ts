@@ -13,7 +13,8 @@ import { EMPTY, Observable, expand, forkJoin, reduce } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
-import { MoneyPipe } from '../../shared/money.pipe';
+import { DateTextPipe } from '../../shared/date-text.pipe';
+import { currencySymbol, MoneyPipe } from '../../shared/money.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
 
@@ -105,7 +106,7 @@ interface CalendarDay {
 
 @Component({
   selector: 'app-scheduling-page',
-  imports: [ReactiveFormsModule, RouterLink, MoneyPipe, EntityCombobox, DecimalInput],
+  imports: [ReactiveFormsModule, RouterLink, MoneyPipe, DateTextPipe, EntityCombobox, DecimalInput],
   templateUrl: './scheduling.html',
   styleUrls: ['../directory.css', './scheduling.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -529,7 +530,7 @@ export class SchedulingPage implements OnInit {
       next: ({ accounts, categories, settings, rules }) => {
         this.accounts.set(accounts);
         this.categories.set(categories);
-        this.baseCurrency.set(settings.base_currency);
+        this.baseCurrency.set(currencySymbol(settings.base_currency));
         this.rules.set(rules);
         this.loadOccurrences();
       },

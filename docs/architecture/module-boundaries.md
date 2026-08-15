@@ -11,7 +11,7 @@
 | `operations` | posted operations and physical money movements | atomic posting commands and ledger reads |
 | `funds` | fund definitions, percentages, virtual movements | fund posting contracts and application coordination with physical ledger reads |
 | `scheduling` | recurrence rules and expected occurrences | confirmation command into operations |
-| `forecasting` | future-balance calculations | read contracts from ledger and plans |
+| `forecasting` | future-balance calculations | read contracts from ledger, funds and plans |
 | `liabilities` | credits and installment plans | planned/payment integration contracts |
 | `debts` | `i_owe` and `owed_to_me` obligations | repayment posting contract |
 | `reports` | reporting read models | public read contracts only |
@@ -58,6 +58,7 @@ flowchart TB
     Debts --> Operations
     Forecasting --> Accounts
     Forecasting --> Operations
+    Forecasting --> Funds
     Forecasting --> Scheduling
     Forecasting --> Liabilities
     Forecasting --> Debts

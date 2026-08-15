@@ -14,6 +14,18 @@ target one account or all accounts combined and includes:
 It reports the future balance series, minimum future balance, a possible first
 negative-balance date, and the operations influencing changes.
 
+The default series represents free money: current physical balances minus
+amounts reserved in virtual funds. The owner can explicitly switch to all money,
+including reserved amounts. This view choice does not change allocations.
+The reserve snapshot comes from the Funds public batch read after Forecasting
+has taken shared account locks, preserving the Accounts → Funds lock order used
+by coverage-dependent writes.
+
+Scheduling occurrences do not currently select a virtual fund. Free mode
+therefore starts from today's free balance and applies planned physical effects
+without guessing which future expense may consume a reserve or which income may
+later be allocated. The UI states this limitation next to the series.
+
 ## Boundary and flow
 
 Forecasting is a read-side calculation. It combines ledger-derived current

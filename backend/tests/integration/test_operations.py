@@ -391,49 +391,59 @@ def test_existing_alpha2_initial_adjustment_upgrades_to_journal(
     postgres_database_settings: Settings,
 ) -> None:
     command.downgrade(Config("alembic.ini"), "0003_accounts_categories")
-    app = create_app(postgres_database_settings)
-    with TestClient(app) as client:
-        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
-
     account_id = UUID("10000000-0000-0000-0000-000000000001")
     operation_id = UUID("20000000-0000-0000-0000-000000000001")
     movement_id = UUID("30000000-0000-0000-0000-000000000001")
     now = datetime(2026, 8, 1, 22, 30, tzinfo=UTC)
-    with app.state.session_factory.begin() as session:
-        session.execute(
-            text(
-                "INSERT INTO accounts "
-                "(id, type, name, description, archived_at, created_at, updated_at) "
-                "VALUES (:id, CAST('cash' AS account_type), "
-                "'Legacy wallet', NULL, NULL, :now, :now)"
-            ),
-            {"id": account_id, "now": now},
-        )
-        session.execute(
-            text(
-                "INSERT INTO financial_operations "
-                "(id, type, description, occurred_at, created_at) "
-                "VALUES (:id, CAST('balance_adjustment' AS financial_operation_type), "
-                "'Initial balance', :now, :now)"
-            ),
-            {"id": operation_id, "now": now},
-        )
-        session.execute(
-            text(
-                "INSERT INTO account_movements (id, operation_id, account_id, amount) "
-                "VALUES (:id, :operation_id, :account_id, 42.5000)"
-            ),
-            {"id": movement_id, "operation_id": operation_id, "account_id": account_id},
-        )
+    engine = create_database_engine(postgres_database_settings)
+    factory = create_session_factory(engine)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO application_settings "
+                    "(id, base_currency, timezone, base_currency_locked_at, "
+                    "created_at, updated_at) "
+                    "VALUES (1, 'RUB', 'Europe/Moscow', NULL, :now, :now)"
+                ),
+                {"now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO accounts "
+                    "(id, type, name, description, archived_at, created_at, updated_at) "
+                    "VALUES (:id, CAST('cash' AS account_type), "
+                    "'Legacy wallet', NULL, NULL, :now, :now)"
+                ),
+                {"id": account_id, "now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO financial_operations "
+                    "(id, type, description, occurred_at, created_at) "
+                    "VALUES (:id, CAST('balance_adjustment' AS financial_operation_type), "
+                    "'Initial balance', :now, :now)"
+                ),
+                {"id": operation_id, "now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO account_movements (id, operation_id, account_id, amount) "
+                    "VALUES (:id, :operation_id, :account_id, 42.5000)"
+                ),
+                {"id": movement_id, "operation_id": operation_id, "account_id": account_id},
+            )
 
-    command.upgrade(Config("alembic.ini"), "head")
-    with app.state.session_factory() as session:
-        operation = session.get(FinancialOperation, operation_id)
-        assert operation is not None
-        assert operation.occurred_on == date(2026, 8, 2)
-        assert operation.reason == "Initial balance"
-        assert operation.version == 1
-        assert session.scalar(select(func.sum(AccountMovement.amount))) == Decimal("42.5000")
+        command.upgrade(Config("alembic.ini"), "head")
+        with factory() as session:
+            operation = session.get(FinancialOperation, operation_id)
+            assert operation is not None
+            assert operation.occurred_on == date(2026, 8, 2)
+            assert operation.reason == "Initial balance"
+            assert operation.version == 1
+            assert session.scalar(select(func.sum(AccountMovement.amount))) == Decimal("42.5000")
+    finally:
+        engine.dispose()
 
 
 def test_alpha3_data_with_optional_description_can_downgrade(

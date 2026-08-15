@@ -14,6 +14,8 @@ import { forkJoin } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { MoneyPipe } from '../../shared/money.pipe';
+import { DateTextPipe, formatTextDate } from '../../shared/date-text.pipe';
+import { currencySymbol } from '../../shared/money.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 
 type Horizon = 'week' | 'month' | 'quarter' | 'half_year' | 'year';
@@ -55,6 +57,7 @@ interface ForecastPoint {
 }
 
 interface Forecast {
+  balance_mode: 'free' | 'total';
   scope: 'all' | 'account';
   account_id: string | null;
   account_name: string | null;
@@ -104,7 +107,7 @@ interface TrendLine {
 
 @Component({
   selector: 'app-forecast-page',
-  imports: [FormsModule, RouterLink, MoneyPipe, EntityCombobox],
+  imports: [FormsModule, RouterLink, MoneyPipe, DateTextPipe, EntityCombobox],
   templateUrl: './forecast.html',
   styleUrl: './forecast.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -125,6 +128,7 @@ export class ForecastPage implements OnInit {
   protected readonly forecast = signal<Forecast | null>(null);
   protected readonly selectedAccountId = signal('');
   protected readonly selectedHorizon = signal<Horizon>('month');
+  protected readonly balanceMode = signal<'free' | 'total'>('free');
   protected readonly selectedPointIndex = signal(0);
   protected readonly hoveredPointIndex = signal<number | null>(null);
   protected readonly trendEnabled = signal(false);
@@ -202,19 +206,16 @@ export class ForecastPage implements OnInit {
   protected readonly dateTicks = computed<DateTick[]>(() => {
     const points = this.plot();
     if (!points.length) return [];
-    const count = Math.min(
-      this.forecast()?.granularity === 'month' ? points.length : 7,
-      points.length,
-    );
+    const count = Math.min(7, points.length);
     return uniqueIndexes(count, points.length).map((index) => ({
       x: points[index].x,
-      label: shortDate(points[index].on, this.forecast()?.granularity ?? 'day'),
+      label: formatTextDate(points[index].on),
     }));
   });
 
   protected readonly chartMinWidth = computed(() => {
     const count = this.forecast()?.points.length ?? 0;
-    return this.forecast()?.granularity === 'day' ? Math.max(42, count * 0.65) : 42;
+    return this.forecast()?.granularity === 'day' ? Math.max(64, count * 0.65) : 64;
   });
 
   protected readonly trendLine = computed<TrendLine | null>(() => {
@@ -249,7 +250,7 @@ export class ForecastPage implements OnInit {
     }).subscribe({
       next: ({ accounts, settings }) => {
         this.accounts.set(accounts);
-        this.baseCurrency.set(settings.base_currency);
+        this.baseCurrency.set(currencySymbol(settings.base_currency));
         this.loadForecast();
       },
       error: (error: unknown) => {
@@ -285,10 +286,15 @@ export class ForecastPage implements OnInit {
     this.trendEnabled.update((enabled) => !enabled);
   }
 
+  protected changeBalanceMode(mode: 'free' | 'total'): void {
+    this.balanceMode.set(mode);
+    this.loadForecast();
+  }
+
   protected periodLabel(point: ForecastPoint): string {
     return this.forecast()?.granularity === 'month' && point.period_from !== point.on
-      ? `${point.period_from} — ${point.on}`
-      : point.on;
+      ? `${formatTextDate(point.period_from)} — ${formatTextDate(point.on)}`
+      : formatTextDate(point.on);
   }
 
   protected granularityLabel(): string {
@@ -297,6 +303,10 @@ export class ForecastPage implements OnInit {
 
   protected trendPeriodLabel(): string {
     return this.forecast()?.granularity === 'month' ? 'месяц' : 'день';
+  }
+
+  protected balanceModeLabel(mode: Forecast['balance_mode']): string {
+    return mode === 'free' ? 'Свободные средства' : 'Все средства';
   }
 
   protected tooltipBelow(point: PlotPoint): boolean {
@@ -343,6 +353,7 @@ export class ForecastPage implements OnInit {
     this.selectedPointIndex.set(0);
     this.hoveredPointIndex.set(null);
     let params = new HttpParams().set('horizon', this.selectedHorizon());
+    params = params.set('balance_mode', this.balanceMode());
     if (this.selectedAccountId()) params = params.set('account_id', this.selectedAccountId());
     this.http.get<Forecast>(`${environment.apiBaseUrl}/forecast`, { params }).subscribe({
       next: (value) => {
@@ -383,9 +394,4 @@ function uniqueIndexes(count: number, total: number): number[] {
       ),
     ),
   ];
-}
-
-function shortDate(value: string, granularity: 'day' | 'month'): string {
-  const [year, month, day] = value.split('-');
-  return granularity === 'month' ? `${month}.${year.slice(2)}` : `${day}.${month}`;
 }

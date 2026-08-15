@@ -16,7 +16,7 @@ def get_runtime_settings(request: Request) -> Settings:
 def require_authenticated_session(request: Request, session: DatabaseSession) -> AuthSession:
     settings = get_runtime_settings(request)
     token = request.cookies.get(settings.session_cookie_name)
-    auth_session = find_authenticated_session(session, token) if token else None
+    auth_session = find_authenticated_session(session, settings, token) if token else None
     if auth_session is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -16,7 +16,8 @@ flowchart LR
     Tx --> Session["Hashed server session and CSRF tokens"]
     Session --> Cookie["HttpOnly session cookie"]
     Cookie --> Guard["Protected API guard"]
-    Guard --> CSRF["CSRF check for writes"]
+    Guard --> Idle["Absolute and 30-minute idle checks"]
+    Idle --> CSRF["CSRF check for writes"]
     CSRF --> UseCase["Authenticated use case"]
 ```
 
@@ -31,6 +32,11 @@ locked and updated in the same database transaction as password verification
 and session issuance, preventing parallel attempts from bypassing the counter.
 Database request dependencies close at FastAPI function scope, so a successful
 HTTP response and authentication cookies are sent only after transaction commit.
+The Angular shell also tracks keyboard, pointer, touch and scroll activity. It
+ends the visible session at 30 minutes and sends a throttled authenticated
+heartbeat while the owner remains active, so a long form edit does not expire
+merely because it has not yet produced a business request. Activity is shared
+between tabs of the same origin; the backend remains authoritative.
 
 ## Posting an ordinary operation
 
@@ -165,7 +171,9 @@ editing and posting serialize without a reverse lock dependency.
 
 ```mermaid
 flowchart LR
-    Ledger["Current ledger-derived balance"] --> Timeline["Ordered future timeline"]
+    Ledger["Current ledger-derived physical balance"] --> BalanceMode["Free or total mode"]
+    Funds["Current Funds-owned reserves"] --> BalanceMode
+    BalanceMode --> Timeline["Ordered future timeline"]
     Expected["Pending expected income, expense and transfers"] --> Timeline
     Timeline --> Scope["Filter: one account or all accounts"]
     Scope --> Projection["Apply movements through selected horizon"]
@@ -180,4 +188,6 @@ Operations ledger and actionable Scheduling occurrences through their public
 contracts; liabilities and debts remain future sources until their domains
 exist. Events are grouped into deterministic daily closing points. Overdue
 occurrences are excluded explicitly and reported, while an internal transfer is
-neutral only in the combined scope.
+neutral only in the combined scope. Free mode subtracts the current Funds-owned
+per-account reserves from the starting physical balances through a batch public
+read contract; total mode leaves physical balances unchanged.

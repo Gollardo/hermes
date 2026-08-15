@@ -13,6 +13,25 @@ export function formatMoney(value: string | null | undefined): string {
   return `${match[1]}${grouped}.${exactFraction}`;
 }
 
+export function currencySymbol(code: string): string {
+  return (
+    (
+      {
+        RUB: '₽',
+        USD: '$',
+        EUR: '€',
+        GBP: '£',
+        JPY: '¥',
+        CNY: '¥',
+        KRW: '₩',
+        INR: '₹',
+        KZT: '₸',
+        TRY: '₺',
+      } as Record<string, string>
+    )[code] ?? code
+  );
+}
+
 @Pipe({ name: 'money', standalone: true })
 export class MoneyPipe implements PipeTransform {
   transform(value: string | null | undefined): string {

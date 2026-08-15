@@ -28,6 +28,7 @@ interface SetupStatusResponse {
 interface SessionResponse {
   authenticated: true;
   expires_at: string;
+  idle_timeout_seconds: number;
 }
 
 export interface PasswordChangePayload {
@@ -42,6 +43,7 @@ export class AuthService {
 
   readonly state = this.access.state.asReadonly();
   readonly expiresAt = this.access.expiresAt.asReadonly();
+  readonly idleTimeoutMs = this.access.idleTimeoutMs.asReadonly();
 
   initialize(): void {
     this.access.checking();
@@ -89,13 +91,29 @@ export class AuthService {
       .pipe(tap(() => this.clearSession()));
   }
 
+  keepAlive(): void {
+    this.http.post<void>(`${environment.apiBaseUrl}/auth/activity`, {}).subscribe({
+      error: () => undefined,
+    });
+  }
+
+  expireDueToInactivity(): void {
+    this.clearSession();
+    this.http.post<void>(`${environment.apiBaseUrl}/auth/logout`, {}).subscribe({
+      error: () => undefined,
+    });
+  }
+
   changePassword(payload: PasswordChangePayload): Observable<void> {
     return this.http.post<void>(`${environment.apiBaseUrl}/auth/password`, payload);
   }
 
   private restoreSession(): void {
     this.http.get<SessionResponse>(`${environment.apiBaseUrl}/auth/session`).subscribe({
-      next: (session) => this.acceptSession(session),
+      next: (session) => {
+        this.acceptSession(session);
+        this.keepAlive();
+      },
       error: (error: HttpErrorResponse) => {
         if (error.status === 401) {
           this.access.unauthenticated();
@@ -107,7 +125,7 @@ export class AuthService {
   }
 
   private acceptSession(session: SessionResponse): void {
-    this.access.authenticated(session.expires_at);
+    this.access.authenticated(session.expires_at, session.idle_timeout_seconds);
   }
 
   private clearSession(): void {

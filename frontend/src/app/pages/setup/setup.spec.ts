@@ -7,8 +7,12 @@ import { SetupPage } from './setup';
 describe('SetupPage', () => {
   let fixture: ComponentFixture<SetupPage>;
   const auth = {
-    setup: vi.fn(() => of({ authenticated: true, expires_at: '2026-08-09T00:00:00Z' })),
-    restoreSetup: vi.fn(() => of({ authenticated: true, expires_at: '2026-08-09T00:00:00Z' })),
+    setup: vi.fn(() =>
+      of({ authenticated: true, expires_at: '2026-08-09T00:00:00Z', idle_timeout_seconds: 1800 }),
+    ),
+    restoreSetup: vi.fn(() =>
+      of({ authenticated: true, expires_at: '2026-08-09T00:00:00Z', idle_timeout_seconds: 1800 }),
+    ),
   };
 
   beforeEach(async () => {

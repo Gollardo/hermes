@@ -185,7 +185,7 @@
               <div>
                 <div class="history-meta">
                   <span class="badge">{{ eventLabel(event) }}</span>
-                  <strong>{{ event.occurred_on }}</strong>
+                  <strong>{{ event.occurred_on | textDate }}</strong>
                 </div>
                 <p>{{ event.description || 'Без описания' }}</p>
               </div>

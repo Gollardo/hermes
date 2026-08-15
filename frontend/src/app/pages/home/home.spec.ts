@@ -90,7 +90,7 @@ describe('HomePage', () => {
     flushOverview({ analyticsFailure: true });
 
     expect(fixture.nativeElement.querySelector('.overview-balances').textContent).toContain(
-      '100.00 RUB',
+      '100.00 ₽',
     );
     expect(fixture.nativeElement.querySelector('.analytics-error').textContent).toContain(
       'Не удалось загрузить распределение по категориям',

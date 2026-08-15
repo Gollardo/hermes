@@ -11,6 +11,15 @@ export function decimalPayload(value: string): string {
 export class DecimalInput {
   private readonly ngControl = inject(NgControl);
 
+  @HostListener('focus', ['$event'])
+  ungroupForEditing(event: FocusEvent): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.value.includes(' ')) return;
+    const editable = decimalPayload(input.value);
+    this.ngControl.control?.setValue(editable);
+    input.value = editable;
+  }
+
   @HostListener('blur', ['$event'])
   normalize(event: FocusEvent): void {
     const input = event.target as HTMLInputElement;
@@ -36,9 +45,11 @@ export class DecimalInput {
     input.setCustomValidity('');
     const [integer, fraction = ''] = decimalPayload(raw).split('.');
     const normalizedFraction = fraction.replace(/0+$/, '').padEnd(2, '0');
-    const normalized = `${BigInt(integer)}.${normalizedFraction}`;
+    const normalizedInteger = BigInt(integer).toString();
+    const normalized = `${normalizedInteger}.${normalizedFraction}`;
     this.ngControl.control?.setValue(normalized);
     this.ngControl.control?.markAsTouched();
     this.ngControl.control?.updateValueAndValidity();
+    input.value = `${normalizedInteger.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}.${normalizedFraction}`;
   }
 }

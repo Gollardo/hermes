@@ -7,8 +7,13 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-15
+
 ### Added
 
+- 30-minute server-enforced inactivity expiry for authenticated sessions.
+- Free-money default and explicit all-money switch for the forecast chart.
+- Project favicon aligned with the Hermes visual direction.
 - Versioned full JSON backup schema 1 with canonical SHA-256 integrity,
   exact-decimal settings, ledger, fund and scheduling state.
 - Settings restore flow with preview, explicit replacement confirmation,
@@ -44,6 +49,8 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Read-only dates use the Russian textual format, known currencies use symbols,
+  and normalized decimal inputs retain spaced thousands grouping.
 - JSON restore now validates complete operation shapes, category trees,
   scheduling links, physical coverage and per-fund positions before replacement;
   re-authentication uses the shared throttle and successful restore revokes
