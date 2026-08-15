@@ -69,6 +69,7 @@ class ForecastResponse(BaseModel):
     minimum_balance: str
     minimum_on: date
     first_negative_on: date | None
+    first_negative_balance: str | None
     expected_income: str
     expected_expense: str
     overdue_excluded_count: int

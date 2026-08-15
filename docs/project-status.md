@@ -36,6 +36,11 @@
   суммы имеют единый формат с группировкой тысяч, категории разделены на
   доходы/расходы, а обзор показывает фактическую краткую сводку вместо
   onboarding/release-карточек.
+- Forecast redesign 2026-08-15 превращает прежний график в decision-making
+  экран: единый forecast view-model синхронизирует safe-to-spend, минимум,
+  cash-gap, конец периода, график, события, риски и итоговый поток. Desktop и
+  mobile состояния сверены с концептуальным референсом; рекомендации без
+  доменной модели не добавлялись.
 - Owner feedback 2026-08-14 добавил на обзор три компактные круговые диаграммы:
   расходы и доходы текущего месяца по корневым категориям и доли фондов в общей
   сумме отложенных средств. Категории свёрнуты по умолчанию, одновременно
@@ -249,9 +254,9 @@
 
 ## Latest verification
 
-- Backend без PostgreSQL: 52 passed, 47 PostgreSQL-сценариев skipped без opt-in.
+- Backend без PostgreSQL: 54 passed, 47 PostgreSQL-сценариев skipped без opt-in.
 - PostgreSQL integration: 48/48 passed.
-- Frontend: 71 passed в 17 test files.
+- Frontend: 82 passed в 18 test files.
 - `make lint`, `make typecheck`, docs-check и Alembic model/schema check входят
   в итоговую проверку этого среза.
 
@@ -269,21 +274,31 @@
   будущие физические эффекты к текущей свободной стартовой точке без скрытого
   предположения о будущем источнике резервов; экран явно сообщает эту границу.
 - События агрегируются в детерминированные daily closing points с точными
-  Decimal-суммами. Ответ содержит конец периода, минимум и первую возможную
-  отрицательную дату.
+  Decimal-суммами. Ответ содержит конец периода, минимум, первую возможную
+  отрицательную дату и точный closing balance этого дня; годовая визуальная
+  агрегация поэтому не теряет сумму первого daily cash-gap.
 - В общем scope внутренний перевод имеет нулевой net effect, но остаётся в
   explanation. Для одного счёта тот же перевод является исходящим или входящим.
 - Просроченные события не сдвигаются молча: их scoped count показан отдельно с
   переходом в календарь.
-- Экран отличает фактическую стартовую точку от плана, не сглаживает линию между
-  событиями и раскрывает opening, change, closing и исходные события каждой даты.
-- Оси графика подписаны суммой/валютой и датой; крайние значения и даты видимы,
-  а перегружающая длинный горизонт лента сумм удалена.
+- Один frontend view-model выводит safe-to-spend как `max(0, minimumBalance)`,
+  конец, минимум/дату, первый cash-gap/дату, доходы, расходы и net flow. KPI,
+  график, timeline, risk panel и period summary не пересчитывают эти значения
+  независимо.
+- Экран выделяет нулевую границу, отрицательную зону и risk-отрезок не только
+  цветом; Y-axis использует округлённые денежные деления, а tooltip сохраняет
+  точную сумму, изменение и число операций.
+- Фактический starting balance включён в шкалу и отмечен отдельной точкой
+  «Сейчас». Годовой monthly-график добавляет точный risk-marker, если дневной
+  cash-gap успел восстановиться к закрытию месяца; marker раскрывает операции
+  именно этого дня.
+- Single-account summary отдельно показывает ненулевой net effect переводов,
+  поэтому его общий поток объясним через доходы, расходы и transfer flow.
 - До полугода API и экран дают ежедневные closing points; год агрегируется по
   месячным интервалам без потери исходных событий и точности daily risk checks.
   Каждая точка имеет hover/focus tooltip с точным балансом, клик раскрывает её
-  события, а отдельно включаемая пунктирная regression-линия показывает тренд
-  и среднее изменение за период, не выдавая его за расчётный прогноз.
+  события; timeline и risk items синхронно выбирают ту же дату. Неутверждённые
+  regression/recommendation слои в интерфейс не входят.
 - Forecasting — read-only модуль без таблиц и фоновой materialization; новая
   миграция для beta.2 не добавлялась.
 - Forecast snapshot берёт shared locks на ожидаемые экземпляры и account
@@ -363,11 +378,12 @@
 - Ruff, Ruff format, strict mypy, ESLint, Prettier, strict TypeScript и docs check.
 - `alembic check` не обнаруживает drift между model metadata и схемой head;
   migration env явно загружает Operations, Funds и Scheduling indexes/constraints.
-- Production Angular rc.1 build и production Docker image build проходят;
+- Production Angular build и ранее проверенный production Docker image build проходят;
   `npm ci` внутри образа сообщает 0 vulnerabilities. Angular build предупреждает
   о превышении `anyComponentStyle` budget общим `directory.css` (5.34 KiB),
-  `app.css` (4.25 KiB) и `forecast.css` (5.96 KiB) при пороге 4 KiB; это не
-  блокирует сборку, но требует последующей декомпозиции общих стилей.
+  `app.css` (4.25 KiB), `forecast.css` (5.56 KiB) и `forecast-chart.css`
+  (5.56 KiB) при пороге 4 KiB; это не блокирует сборку, но требует последующей
+  декомпозиции общих стилей.
 - Production-like Compose e2e на отдельном clean volume: setup → authenticated
   shell → settings update → logout → login; browser console без ошибок.
 - Settings/backup flow повторно проверен screenshot-аудитом на 1440 px и 390 px:
@@ -381,16 +397,15 @@
   фактические итоги. Сценарий `4 000.00` между счетами при доле фонда 25% атомарно
   дал `1 000.00` нового назначения. Годовой forecast сохранил layout, показывает
   оси «Сумма · RUB»/«Дата» и не содержит прежней нижней ленты сумм.
-- Детализированный forecast повторно проверен в production-like Compose:
-  календарный месяц дал 32 daily points, полугодие — 185 daily points с
-  горизонтальной прокруткой, год — 13 monthly intervals. Hover/focus tooltip
-  показывает точный баланс/изменение/число событий, клик раскрывает состав
-  интервала, trend toggle добавляет отличимую пунктирную линию и подписанное
-  среднее изменение. Верхняя зона графика имеет увеличенный запас, а tooltip
-  автоматически меняет направление и не обрезается; browser console без ошибок.
+- Redesign forecast проверен в браузере на 1440 × 1000 и 390 × 844: free/all
+  переключает series и safe-to-spend, клик по риску или событию выбирает точную
+  дату, body-level horizontal overflow отсутствует, график и timeline получают
+  собственную прокрутку на mobile, а roving tabindex оставляет одну keyboard
+  остановку на forecast-point series; browser console без ошибок. Финальное
+  сравнение с референсом зафиксировано в `design-qa.md` со статусом `passed`.
 - Для 0.1.2 пройдены Ruff, backend format, mypy, Angular lint, Prettier,
   TypeScript typecheck, docs-check, production Angular build,
-  52 non-PostgreSQL backend-теста, 71 frontend-тест и 48/48 PostgreSQL
+  54 non-PostgreSQL backend-теста, 82 frontend-теста и 48/48 PostgreSQL
   integration-сценариев. Интеграционный
   прогон отдельно подтвердил idle-timeout/heartbeat, upgrade существующих сессий
   от `0001`, free/total forecast с реальным резервом и прежние транзакционные

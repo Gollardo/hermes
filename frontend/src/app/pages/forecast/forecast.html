@@ -1,14 +1,11 @@
 <section class="forecast-page">
-  <header class="page-header">
-    <div class="page-header-copy">
-      <p class="eyebrow">Будущие остатки</p>
-      <h1>Прогноз</h1>
-      <p>
-        Свободные средства показаны по умолчанию. Можно включить распределённые в фонды деньги;
-        ожидаемые события объясняют каждое изменение.
-      </p>
+  <header class="forecast-header">
+    <div>
+      <p class="eyebrow">Планирование баланса</p>
+      <h1>Прогноз средств</h1>
+      <p>Проверьте запас до ближайших расходов и заранее увидьте риск дефицита.</p>
     </div>
-    <a class="button-link secondary" routerLink="/calendar">Открыть календарь</a>
+    <a class="button-link secondary calendar-link" routerLink="/calendar">Открыть календарь</a>
   </header>
 
   <section class="panel forecast-controls" aria-label="Параметры прогноза">
@@ -27,7 +24,7 @@
     </div>
     <fieldset>
       <legend>Период</legend>
-      <div class="period-switcher">
+      <div class="segmented-control period-switcher">
         @for (item of horizons; track item.value) {
           <button
             type="button"
@@ -42,8 +39,8 @@
       </div>
     </fieldset>
     <fieldset class="balance-mode-control">
-      <legend>Средства</legend>
-      <div class="period-switcher balance-switcher">
+      <legend>Показывать</legend>
+      <div class="segmented-control balance-switcher">
         <button
           type="button"
           class="secondary"
@@ -51,7 +48,7 @@
           [attr.aria-pressed]="balanceMode() === 'free'"
           (click)="changeBalanceMode('free')"
         >
-          Свободные
+          Свободные средства
         </button>
         <button
           type="button"
@@ -71,228 +68,454 @@
   }
 
   @if (loading() && !forecast()) {
-    <section class="panel empty-state" aria-live="polite">Рассчитываем будущие остатки…</section>
-  } @else if (forecast(); as value) {
-    @if (value.balance_mode === 'free') {
-      <p class="no-events-note" role="note">
-        Стартовая точка исключает текущие резервы фондов. Плановые правила пока не выбирают фонд,
-        поэтому будущие операции меняют свободный остаток без предположения об источнике резерва.
-      </p>
-    }
-    @if (value.first_negative_on) {
-      <section class="risk-banner" role="alert">
-        <strong>Возможен недостаток средств {{ value.first_negative_on | textDate }}</strong>
-        <span>Минимальный остаток: {{ value.minimum_balance | money }} {{ baseCurrency() }}.</span>
-      </section>
-    }
-    @if (value.overdue_excluded_count) {
+    <section class="panel empty-state forecast-loading" aria-live="polite">
+      Рассчитываем будущие остатки…
+    </section>
+  } @else if (viewModel(); as vm) {
+    @if (vm.dataset.overdue_excluded_count) {
       <section class="overdue-note" role="status">
-        <strong>{{ value.overdue_excluded_count }} просроченных событий не включено.</strong>
-        <span>Подтвердите, перенесите или отмените их в календаре.</span>
+        <div>
+          <strong>Просроченные события не включены: {{ vm.dataset.overdue_excluded_count }}</strong>
+          <span>Их нужно подтвердить, перенести или отменить.</span>
+        </div>
         <a routerLink="/calendar">Перейти к событиям</a>
       </section>
     }
 
-    <div class="summary-grid">
-      <article class="summary-card fact">
-        <span
-          >{{ value.balance_mode === 'free' ? 'Свободно на' : 'Все средства на' }}
-          {{ value.from_on | textDate }}</span
-        >
-        <strong>{{ value.starting_balance | money }} {{ baseCurrency() }}</strong>
-      </article>
-      <article class="summary-card">
-        <span>Прогноз на {{ value.through_on | textDate }}</span>
-        <strong [class.negative]="isNegative(value.ending_balance)"
-          >{{ value.ending_balance | money }} {{ baseCurrency() }}</strong
-        >
-      </article>
-      <article class="summary-card">
-        <span>Минимум · {{ value.minimum_on | textDate }}</span>
-        <strong [class.negative]="isNegative(value.minimum_balance)"
-          >{{ value.minimum_balance | money }} {{ baseCurrency() }}</strong
-        >
-      </article>
-      <article class="summary-card flows">
-        <span>Ожидаемые доходы / расходы</span>
-        <strong
-          >+{{ value.expected_income | money }} / −{{ value.expected_expense | money }}
-          {{ baseCurrency() }}</strong
-        >
-      </article>
-    </div>
+    <div class="forecast-layout">
+      <aside class="kpi-column" aria-label="Ключевые показатели прогноза">
+        <article class="kpi-card safe-spend-card">
+          <span class="kpi-label">Можно потратить сейчас</span>
+          <strong>{{ vm.metrics.safeToSpend | money }} {{ baseCurrency() }}</strong>
+          @if (vm.metrics.hasCashGap) {
+            <p>Сначала закройте прогнозируемый дефицит.</p>
+          } @else {
+            <p>С учётом всех известных операций до {{ vm.dataset.through_on | textDate }}.</p>
+          }
+        </article>
 
-    <section class="panel chart-panel" aria-labelledby="chart-title">
-      <div class="panel-heading">
-        <div>
-          <p class="section-label">
-            {{ value.granularity === 'month' ? 'Закрытие месяца' : 'Закрытие дня' }}
-          </p>
-          <h2 id="chart-title">{{ value.account_name || 'Все счета' }}</h2>
-          <p>
-            {{
-              value.granularity === 'month'
-                ? 'Каждая точка объединяет события месяца и показывает баланс на конец интервала.'
-                : 'Каждая календарная дата показана отдельной точкой с балансом на конец дня.'
-            }}
-          </p>
-        </div>
-        <div class="chart-options">
-          <span class="status-pill">{{ balanceModeLabel(value.balance_mode) }}</span>
-          <span class="status-pill">{{ granularityLabel() }}</span>
+        @if (vm.metrics.hasCashGap) {
           <button
             type="button"
-            class="secondary trend-toggle"
-            [class.active]="trendEnabled()"
-            [attr.aria-pressed]="trendEnabled()"
-            (click)="toggleTrend()"
+            class="kpi-card risk-card interactive-card"
+            (click)="
+              selectRiskPoint(vm.firstNegativePointIndex, vm.metrics.firstNegativeBalanceDate)
+            "
+            aria-controls="forecast-day-detail"
           >
-            {{ trendEnabled() ? 'Скрыть тренд' : 'Показать тренд' }}
+            <span class="state-label">Риск · кассовый разрыв</span>
+            <strong>{{ vm.metrics.firstNegativeBalanceDate | textDate }}</strong>
+            <b>{{ vm.metrics.firstNegativeBalance | money }} {{ baseCurrency() }}</b>
+            <small>Показать этот день</small>
           </button>
-        </div>
-      </div>
-      @if (trendEnabled() && trendLine(); as trend) {
-        <p class="trend-summary" role="status">
-          Тренд закрывающего баланса:
-          <strong>{{ signed(trend.changePerPeriod) | money }} {{ baseCurrency() }}</strong> за
-          {{ trendPeriodLabel() }}. Это линия общей тенденции, а не отдельный прогноз.
-        </p>
-      }
-      @if (!hasFutureEvents()) {
-        <p class="no-events-note" role="status">
-          Нет известных ожидаемых событий в выбранном периоде. Горизонтальная линия означает только
-          неизменность известных данных, а не гарантию будущего остатка.
-        </p>
-      }
-      <div class="chart-frame">
-        <div class="y-axis-title">
-          {{ value.balance_mode === 'free' ? 'Свободно' : 'Все средства' }} ·
-          {{ baseCurrency() }}
-        </div>
-        <div class="y-axis-scale" aria-hidden="true">
-          @for (tick of yTicks(); track tick.y) {
-            <span>{{ tick.value | money }}</span>
-          }
-        </div>
-        <div class="chart-scroll">
-          <div class="chart-canvas" [style.min-width.rem]="chartMinWidth()">
-            <svg
-              class="forecast-chart"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              role="img"
-              [attr.aria-label]="
-                'Прогноз с ' + (value.from_on | textDate) + ' по ' + (value.through_on | textDate)
-              "
-            >
-              @for (tick of yTicks(); track tick.y) {
-                <line class="grid-line" x1="14" [attr.y1]="tick.y" x2="96" [attr.y2]="tick.y" />
-              }
-              @if (zeroY() !== null) {
-                <line class="zero-line" x1="14" [attr.y1]="zeroY()" x2="96" [attr.y2]="zeroY()" />
-              }
-              @if (trendEnabled() && trendLine(); as trend) {
-                <polyline class="trend-line" [attr.points]="trend.points" />
-              }
-              <polyline class="forecast-line" [attr.points]="plotLine()" />
-            </svg>
-            @for (point of plot(); track point.on; let index = $index; let first = $first) {
-              <button
-                type="button"
-                class="chart-point"
-                [class.start-point]="first"
-                [class.event-point]="point.events.length > 0"
-                [class.selected-point]="selectedPointIndex() === index"
-                [class.risk-point]="isNegative(point.closing_balance)"
-                [style.left.%]="point.x"
-                [style.top.%]="point.y"
-                [attr.aria-label]="
-                  periodLabel(point) + ': баланс ' + point.closing_balance + ' ' + baseCurrency()
-                "
-                (mouseenter)="showPoint(index)"
-                (mouseleave)="hidePoint(index)"
-                (focus)="showPoint(index)"
-                (blur)="hidePoint(index)"
-                (click)="selectPoint(index)"
-              ></button>
-            }
-            @if (hoveredPoint(); as point) {
-              <div
-                class="chart-tooltip"
-                [class.below]="tooltipBelow(point)"
-                role="status"
-                [style.left.%]="point.x"
-                [style.top.%]="point.y"
-              >
-                <span>{{ periodLabel(point) }}</span>
-                <strong>{{ point.closing_balance | money }} {{ baseCurrency() }}</strong>
-                <small>
-                  {{ signed(point.change) | money }} за
-                  {{ value.granularity === 'month' ? 'интервал' : 'день' }} · событий:
-                  {{ point.events.length }}
-                </small>
-              </div>
-            }
-            <div class="chart-date-ticks" aria-hidden="true">
-              @for (tick of dateTicks(); track tick.x) {
-                <span [style.left.%]="tick.x">{{ tick.label }}</span>
-              }
+        } @else {
+          <article class="kpi-card calm-card">
+            <span class="state-label">Статус прогноза</span>
+            <strong>Кассовых разрывов не ожидается</strong>
+          </article>
+        }
+
+        <button
+          type="button"
+          class="kpi-card interactive-card"
+          [class.risk-card]="isNegative(vm.metrics.minimumBalance)"
+          (click)="selectRiskPoint(vm.minimumPointIndex, vm.metrics.minimumBalanceDate)"
+          aria-controls="forecast-day-detail"
+        >
+          <span class="kpi-label">Минимальный остаток</span>
+          <strong>{{ vm.metrics.minimumBalance | money }} {{ baseCurrency() }}</strong>
+          <small>{{ vm.metrics.minimumBalanceDate | textDate }}</small>
+        </button>
+
+        <article class="kpi-card">
+          <span class="kpi-label">Прогноз на конец периода</span>
+          <strong [class.negative]="isNegative(vm.metrics.forecastEndBalance)">
+            {{ vm.metrics.forecastEndBalance | money }} {{ baseCurrency() }}
+          </strong>
+          <small>{{ vm.dataset.through_on | textDate }}</small>
+        </article>
+      </aside>
+
+      <main class="forecast-main">
+        <section class="panel chart-panel" aria-labelledby="chart-title">
+          <div class="chart-heading">
+            <div>
+              <p class="section-label">{{ granularityLabel(vm.dataset) }}</p>
+              <h2 id="chart-title">{{ chartTitle(vm.dataset.balance_mode) }}</h2>
+              <p>
+                {{ vm.dataset.account_name || 'Все счета' }} · {{ vm.dataset.from_on | textDate }} —
+                {{ vm.dataset.through_on | textDate }}
+              </p>
+            </div>
+            <div class="chart-context" aria-label="Контекст графика">
+              <span class="status-pill">{{ balanceModeLabel(vm.dataset.balance_mode) }}</span>
+              <span class="starting-balance">
+                Сейчас <b>{{ vm.metrics.currentBalance | money }} {{ baseCurrency() }}</b>
+              </span>
             </div>
           </div>
-        </div>
-      </div>
-      <div class="x-axis" aria-label="Ось даты">
-        <strong>Дата</strong>
-      </div>
-    </section>
 
-    @if (selectedPoint(); as point) {
-      <section class="panel explanation-panel" aria-labelledby="explanation-title">
-        <div class="panel-heading">
-          <div>
-            <p class="section-label">Почему изменился прогноз</p>
-            <h2 id="explanation-title">{{ periodLabel(point) }}</h2>
-            <p>
-              {{ point.opening_balance | money }} → {{ point.closing_balance | money }}
-              {{ baseCurrency() }}
+          @if (vm.dataset.balance_mode === 'free') {
+            <details class="model-note">
+              <summary>Как учитываются фонды</summary>
+              <p>
+                Старт исключает текущие резервы. Будущие правила пока не выбирают фонд, поэтому их
+                физический эффект применяется к свободному остатку без предположения об источнике
+                резерва.
+              </p>
+            </details>
+          }
+
+          @if (!hasFutureEvents()) {
+            <p class="no-events-note" role="status">
+              Нет известных ожидаемых событий. Линия показывает неизменность известных данных, а не
+              гарантию будущего остатка.
             </p>
-          </div>
-          <strong class="daily-change" [class.negative]="isNegative(point.change)"
-            >{{ signed(point.change) | money }} {{ baseCurrency() }}</strong
-          >
-        </div>
-        @if (!point.events.length) {
-          <p class="empty-state">В этой точке ожидаемых операций нет.</p>
-        } @else {
-          <div class="event-list">
-            @for (event of point.events; track event.occurrence_id) {
-              <article class="event-row">
-                <span class="event-type">{{ typeLabel(event.type) }}</span>
-                <div>
-                  <h3>{{ eventTitle(event) }}</h3>
-                  <p>
-                    {{ eventDirection(event) }} ·
-                    {{ event.status === 'postponed' ? 'перенесено' : 'ожидается' }}
-                  </p>
-                </div>
-                <div class="event-amount">
-                  <strong [class.negative]="isNegative(event.effect)"
-                    >{{ signed(event.effect) | money }} {{ baseCurrency() }}</strong
+          }
+
+          <div class="chart-frame">
+            <div class="y-axis-scale" aria-hidden="true">
+              @for (tick of yTicks(); track tick.y) {
+                <span [style.top.%]="tick.y">
+                  {{ tick.label }} <small>{{ baseCurrency() }}</small>
+                </span>
+              }
+            </div>
+            <div class="chart-scroll">
+              <div class="chart-canvas" [style.min-width.rem]="chartMinWidth()">
+                <svg
+                  class="forecast-chart"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  role="img"
+                  [attr.aria-label]="chartAriaLabel(vm)"
+                >
+                  <polygon class="forecast-area" [attr.points]="areaPoints()" />
+                  <rect
+                    class="negative-zone"
+                    x="11"
+                    [attr.y]="zeroY()"
+                    width="86"
+                    [attr.height]="78 - zeroY()"
+                  />
+                  @for (tick of yTicks(); track tick.y) {
+                    <line class="grid-line" x1="11" [attr.y1]="tick.y" x2="97" [attr.y2]="tick.y" />
+                  }
+                  <line class="zero-line" x1="11" [attr.y1]="zeroY()" x2="97" [attr.y2]="zeroY()" />
+                  @for (line of plotSegments(); track line.key) {
+                    <line
+                      class="forecast-segment"
+                      [class.risk-segment]="line.risk"
+                      [attr.x1]="line.x1"
+                      [attr.y1]="line.y1"
+                      [attr.x2]="line.x2"
+                      [attr.y2]="line.y2"
+                    />
+                  }
+                </svg>
+
+                @if (startingPlotPoint(); as startingPoint) {
+                  <span
+                    class="actual-start-marker"
+                    [class.risk]="startingPoint.numericBalance < 0"
+                    [style.left.%]="startingPoint.x"
+                    [style.top.%]="startingPoint.y"
+                    aria-hidden="true"
                   >
-                  @if (event.type === 'transfer' && value.scope === 'all') {
-                    <small>0 для общего остатка</small>
-                  } @else {
-                    <small>операция: {{ event.amount | money }}</small>
+                    <span>Сейчас</span>
+                  </span>
+                }
+
+                <span class="zero-caption" [style.top.%]="zeroY()" aria-hidden="true">
+                  0 {{ baseCurrency() }} · граница дефицита
+                </span>
+
+                @for (point of plot(); track point.on; let index = $index) {
+                  <button
+                    type="button"
+                    class="chart-point"
+                    [class.event-point]="point.events.length > 0"
+                    [class.selected-point]="selectedPointIndex() === index"
+                    [class.minimum-point]="vm.minimumPointIndex === index"
+                    [class.risk-point]="point.numericBalance < 0"
+                    [style.left.%]="point.x"
+                    [style.top.%]="point.y"
+                    [attr.aria-label]="point.ariaLabel"
+                    [attr.aria-pressed]="selectedPointIndex() === index"
+                    [attr.tabindex]="selectedPointIndex() === index ? 0 : -1"
+                    aria-controls="forecast-day-detail"
+                    (mouseenter)="showPoint(index)"
+                    (mouseleave)="hidePoint(index)"
+                    (focus)="showPoint(index)"
+                    (blur)="hidePoint(index)"
+                    (click)="selectPoint(index)"
+                    (keydown)="movePointFocus($event, index)"
+                  ></button>
+                }
+
+                @if (cashGapMarker(); as marker) {
+                  <button
+                    type="button"
+                    class="cash-gap-marker"
+                    [class.edge-right]="marker.x > 84"
+                    [style.left.%]="marker.x"
+                    [style.top.%]="marker.y"
+                    attr.aria-label="Кассовый разрыв {{ marker.on | textDate }}: {{
+                      marker.balance | money
+                    }} {{ baseCurrency() }}"
+                    aria-controls="forecast-day-detail"
+                    (click)="selectRiskPoint(marker.pointIndex, marker.on)"
+                  >
+                    <span>Разрыв</span>
+                  </button>
+                }
+
+                @if (hoveredPoint(); as point) {
+                  <div
+                    class="chart-tooltip"
+                    [class.below]="tooltipBelow(point)"
+                    [class.edge-left]="point.x < 24"
+                    [class.edge-right]="point.x > 84"
+                    role="status"
+                    [style.left.%]="point.x"
+                    [style.top.%]="point.y"
+                  >
+                    <span>{{ periodLabel(point) }}</span>
+                    <strong>{{ point.closing_balance | money }} {{ baseCurrency() }}</strong>
+                    <small>
+                      Изменение: {{ signed(point.change) | money }} {{ baseCurrency() }} · операций:
+                      {{ point.events.length }}
+                    </small>
+                    @if (point.events.length) {
+                      <b>Нажмите, чтобы показать операции</b>
+                    }
+                  </div>
+                }
+
+                <div class="chart-date-ticks" aria-hidden="true">
+                  @for (tick of dateTicks(); track tick.x) {
+                    <span [style.left.%]="tick.x">{{ tick.label }}</span>
                   }
                 </div>
-                <a class="event-link" routerLink="/calendar" [queryParams]="calendarQuery(event)"
-                  >Открыть в календаре</a
-                >
-              </article>
-            }
+              </div>
+            </div>
           </div>
-        }
-      </section>
-    }
+
+          <section class="timeline-block" aria-labelledby="timeline-title">
+            <div class="timeline-heading">
+              <div>
+                <h3 id="timeline-title">Ближайшие события</h3>
+                <p>Выберите событие, чтобы синхронизировать детали с графиком.</p>
+              </div>
+              @if (vm.timelineEvents.length > timelineEventLimit) {
+                <button type="button" class="secondary timeline-toggle" (click)="toggleTimeline()">
+                  {{ timelineExpanded() ? 'Показать ближайшие' : 'Показать все' }}
+                </button>
+              }
+            </div>
+            @if (visibleTimelineEvents().length) {
+              <div class="timeline-scroll">
+                @for (event of visibleTimelineEvents(); track event.occurrence_id) {
+                  <button
+                    type="button"
+                    class="timeline-event"
+                    [class.active]="selectedTimelineDate() === event.due_on"
+                    [attr.aria-pressed]="selectedTimelineDate() === event.due_on"
+                    (click)="selectTimelineEvent(event)"
+                  >
+                    <span>{{ event.due_on | textDate }}</span>
+                    <strong
+                      [class.negative]="isNegative(event.effect)"
+                      [class.positive]="isPositive(event.effect)"
+                    >
+                      {{ signed(event.effect) | money }} {{ baseCurrency() }}
+                    </strong>
+                    <small>{{ eventTitle(event) }}</small>
+                  </button>
+                }
+              </div>
+            } @else {
+              <p class="timeline-empty">Событий в выбранном периоде нет.</p>
+            }
+          </section>
+
+          @if (selectedPoint(); as point) {
+            <section
+              class="day-detail"
+              id="forecast-day-detail"
+              aria-labelledby="day-detail-title"
+              aria-live="polite"
+            >
+              <div class="day-detail-heading">
+                <div>
+                  <p class="section-label">{{ detailContextLabel(point) }}</p>
+                  <h3 id="day-detail-title">{{ periodLabel(point) }}</h3>
+                  <p>
+                    {{ point.opening_balance | money }} → {{ point.closing_balance | money }}
+                    {{ baseCurrency() }}
+                  </p>
+                </div>
+                <strong class="daily-change" [class.negative]="isNegative(point.change)">
+                  {{ signed(point.change) | money }} {{ baseCurrency() }}
+                </strong>
+              </div>
+              @if (!point.events.length) {
+                <p class="day-empty">В этот день ожидаемых операций нет.</p>
+              } @else {
+                <div class="event-list">
+                  @for (event of point.events; track event.occurrence_id) {
+                    <article class="event-row">
+                      <span class="event-type">{{ typeLabel(event.type) }}</span>
+                      <div>
+                        <h4>{{ eventTitle(event) }}</h4>
+                        <p>
+                          {{ eventDirection(event) }} ·
+                          {{ event.status === 'postponed' ? 'перенесено' : 'ожидается' }}
+                        </p>
+                      </div>
+                      <div class="event-amount">
+                        <strong [class.negative]="isNegative(event.effect)">
+                          {{ signed(event.effect) | money }} {{ baseCurrency() }}
+                        </strong>
+                        @if (event.type === 'transfer' && vm.dataset.scope === 'all') {
+                          <small>Нейтрально для общего остатка</small>
+                        } @else {
+                          <small>
+                            Сумма операции: {{ event.amount | money }} {{ baseCurrency() }}
+                          </small>
+                        }
+                      </div>
+                      <a
+                        class="event-link"
+                        routerLink="/calendar"
+                        [queryParams]="calendarQuery(event)"
+                      >
+                        Открыть в календаре
+                      </a>
+                    </article>
+                  }
+                </div>
+              }
+            </section>
+          }
+        </section>
+      </main>
+
+      <aside class="insights-column" aria-label="Риски и итоги периода">
+        <section class="panel risks-panel" aria-labelledby="risks-title">
+          <div class="aside-heading">
+            <p class="section-label">Контроль</p>
+            <h2 id="risks-title">Финансовые риски</h2>
+          </div>
+
+          @if (vm.metrics.hasCashGap) {
+            <button
+              type="button"
+              class="risk-item danger-risk"
+              (click)="
+                selectRiskPoint(vm.firstNegativePointIndex, vm.metrics.firstNegativeBalanceDate)
+              "
+              aria-controls="forecast-day-detail"
+            >
+              <span>Кассовый разрыв</span>
+              <small>{{ vm.metrics.firstNegativeBalanceDate | textDate }}</small>
+              <strong>{{ vm.metrics.firstNegativeBalance | money }} {{ baseCurrency() }}</strong>
+            </button>
+          } @else {
+            <div class="risk-clear">Кассовых разрывов не ожидается.</div>
+          }
+
+          @if (!vm.metrics.hasCashGap) {
+            <button
+              type="button"
+              class="risk-item"
+              (click)="selectRiskPoint(vm.minimumPointIndex, vm.metrics.minimumBalanceDate)"
+              aria-controls="forecast-day-detail"
+            >
+              <span>Минимальный остаток</span>
+              <small>{{ vm.metrics.minimumBalanceDate | textDate }}</small>
+              <strong>{{ vm.metrics.minimumBalance | money }} {{ baseCurrency() }}</strong>
+            </button>
+          }
+
+          @if (vm.largestExpense; as expense) {
+            <button
+              type="button"
+              class="risk-item warning-risk"
+              (click)="selectTimelineEvent(expense)"
+              aria-controls="forecast-day-detail"
+            >
+              <span>Крупнейший плановый расход</span>
+              <small>{{ expense.due_on | textDate }} · {{ eventTitle(expense) }}</small>
+              <strong>{{ signed(expense.effect) | money }} {{ baseCurrency() }}</strong>
+            </button>
+          }
+
+          @if (vm.dataset.overdue_excluded_count) {
+            <a class="risk-item overdue-risk" routerLink="/calendar">
+              <span>Просроченные события</span>
+              <small>Не включены в прогноз</small>
+              <strong>{{ vm.dataset.overdue_excluded_count }}</strong>
+            </a>
+          }
+        </section>
+
+        <section class="panel period-summary" aria-labelledby="summary-title">
+          <div class="aside-heading">
+            <p class="section-label">
+              {{ vm.dataset.from_on | textDate }} — {{ vm.dataset.through_on | textDate }}
+            </p>
+            <h2 id="summary-title">Итоги периода</h2>
+          </div>
+          <dl>
+            <div>
+              <dt>Доходы</dt>
+              <dd class="positive">
+                +{{ vm.metrics.totalPlannedIncome | money }} {{ baseCurrency() }}
+              </dd>
+            </div>
+            <div>
+              <dt>Расходы</dt>
+              <dd class="negative">
+                −{{ vm.metrics.totalPlannedExpense | money }} {{ baseCurrency() }}
+              </dd>
+            </div>
+            @if (
+              isPositive(vm.metrics.netPlannedTransferFlow) ||
+              isNegative(vm.metrics.netPlannedTransferFlow)
+            ) {
+              <div>
+                <dt>Переводы</dt>
+                <dd
+                  [class.positive]="isPositive(vm.metrics.netPlannedTransferFlow)"
+                  [class.negative]="isNegative(vm.metrics.netPlannedTransferFlow)"
+                >
+                  {{ signed(vm.metrics.netPlannedTransferFlow) | money }} {{ baseCurrency() }}
+                </dd>
+              </div>
+            }
+            <div>
+              <dt>Чистый поток</dt>
+              <dd
+                [class.positive]="isPositive(vm.metrics.netPlannedFlow)"
+                [class.negative]="isNegative(vm.metrics.netPlannedFlow)"
+              >
+                {{ signed(vm.metrics.netPlannedFlow) | money }} {{ baseCurrency() }}
+              </dd>
+            </div>
+            <div class="summary-divider">
+              <dt>Прогноз на конец</dt>
+              <dd>{{ vm.metrics.forecastEndBalance | money }} {{ baseCurrency() }}</dd>
+            </div>
+            <div>
+              <dt>Минимум</dt>
+              <dd [class.negative]="isNegative(vm.metrics.minimumBalance)">
+                {{ vm.metrics.minimumBalance | money }} {{ baseCurrency() }}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </aside>
+    </div>
   }
 </section>

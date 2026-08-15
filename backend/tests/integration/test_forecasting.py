@@ -113,6 +113,8 @@ def test_forecast_api_uses_actual_balances_and_only_actionable_future_occurrence
         assert body["ending_balance"] == "100.0000"
         assert body["expected_income"] == "0"
         assert body["expected_expense"] == "50.0000"
+        assert body["first_negative_on"] is None
+        assert body["first_negative_balance"] is None
         assert any(
             event["type"] == "transfer" and event["effect"] == "0"
             for point in body["points"]

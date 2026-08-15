@@ -12,7 +12,9 @@ target one account or all accounts combined and includes:
 - debt repayments.
 
 It reports the future balance series, minimum future balance, a possible first
-negative-balance date, and the operations influencing changes.
+negative-balance date and its exact balance, and the operations influencing
+changes. If the starting snapshot is already negative, that current balance is
+the first negative value even when today's planned closing later recovers.
 
 The default series represents free money: current physical balances minus
 amounts reserved in virtual funds. The owner can explicitly switch to all money,
@@ -47,10 +49,12 @@ post expected operations. See the [forecast diagram](../architecture/data-flow.m
   every calendar date in the inclusive horizon, including dates without
   events. A year response uses monthly intervals: the first and last may be
   partial months, while intermediate points close on calendar month-end.
-- Monthly display aggregation does not reduce risk accuracy: minimum balance
-  and first negative date are still calculated from ordered daily event
-  closings before the response is grouped into month points. Every source event
-  remains attached to its monthly interval for explanation.
+- Monthly display aggregation does not reduce risk accuracy: minimum balance,
+  first negative date and `first_negative_balance` are still calculated from
+  ordered daily event closings before the response is grouped into month
+  points. Every source event remains attached to its monthly interval for
+  explanation. This lets the year view show the exact first cash-gap value even
+  when its plotted point closes later in the month.
 - A single-account transfer is outgoing on its source and incoming on its
   destination. An internal transfer has zero effect on the all-accounts balance,
   but remains in the explanation for that date.

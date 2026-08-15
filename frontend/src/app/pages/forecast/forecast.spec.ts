@@ -19,6 +19,7 @@ const FORECAST = {
   minimum_balance: '-20.0000',
   minimum_on: '2026-08-20',
   first_negative_on: '2026-08-20',
+  first_negative_balance: '-20.0000',
   expected_income: '30.0000',
   expected_expense: '150.0000',
   overdue_excluded_count: 1,
@@ -78,57 +79,37 @@ describe('ForecastPage', () => {
 
   afterEach(() => http.verify());
 
-  it('shows an explicit risk and the events explaining a forecast point', () => {
+  it('prioritizes safe-to-spend, cash-gap and synchronized day details', () => {
     flushInitial();
-    http
-      .expectOne(
-        (request) =>
-          request.url === '/api/v1/forecast' && request.params.get('horizon') === 'month',
-      )
-      .flush(FORECAST);
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(FORECAST);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain(
-      'Возможен недостаток средств 20 августа 2026',
-    );
-    expect(fixture.nativeElement.textContent).toContain('1 просроченных событий не включено');
-    expect(fixture.nativeElement.textContent).toContain('Аренда');
-    expect(fixture.nativeElement.textContent).toContain('Свободные средства');
-    expect(fixture.nativeElement.textContent).toContain(
-      'Стартовая точка исключает текущие резервы',
-    );
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Можно потратить сейчас');
+    expect(text).toContain('Сначала закройте прогнозируемый дефицит');
+    expect(text).toContain('Кассовый разрыв');
+    expect(text).toContain('-20.00 ₽');
+    expect(text).toContain('Аренда');
+    expect(text).toContain('Просроченные события не включены: 1');
     expect(fixture.nativeElement.querySelector('.forecast-chart')).not.toBeNull();
-    expect(
-      fixture.nativeElement.querySelector('.period-switcher button').getAttribute('aria-pressed'),
-    ).toBe('false');
+    expect(fixture.nativeElement.querySelector('.negative-zone')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.risk-segment')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.zero-caption').textContent).toContain('0 ₽');
+    expect(fixture.nativeElement.querySelector('.safe-spend-card strong').textContent.trim()).toBe(
+      '0.00 ₽',
+    );
+
     const calendarLink = fixture.nativeElement.querySelector('.event-link') as HTMLAnchorElement;
     expect(calendarLink.getAttribute('href')).toContain('month=2026-08');
     expect(calendarLink.getAttribute('href')).toContain('focus=occurrence-1');
-    const xCoordinates = (
-      fixture.nativeElement.querySelector('.forecast-line') as SVGPolylineElement
-    )
-      .getAttribute('points')!
-      .split(' ')
-      .map((point) => Number(point.split(',')[0]));
-    expect(xCoordinates[1]).toBeLessThan(40);
-    expect(xCoordinates[2]).toBe(96);
   });
 
   it('replaces stale data with loading and explains an event-free horizon', () => {
     flushInitial();
-    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush({
-      ...FORECAST,
-      ending_balance: '100.0000',
-      minimum_balance: '100.0000',
-      minimum_on: '2026-08-12',
-      first_negative_on: null,
-      expected_income: '0',
-      expected_expense: '0',
-      overdue_excluded_count: 0,
-      points: [FORECAST.points[0], { ...FORECAST.points[0], on: '2026-09-12' }],
-    });
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(noRiskForecast());
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Нет известных ожидаемых событий');
+    expect(fixture.nativeElement.textContent).toContain('Кассовых разрывов не ожидается');
 
     const week = [...fixture.nativeElement.querySelectorAll('.period-switcher button')].find(
       (button: HTMLButtonElement) => button.textContent.trim() === 'Неделя',
@@ -136,10 +117,10 @@ describe('ForecastPage', () => {
     week.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Рассчитываем будущие остатки');
-    expect(fixture.nativeElement.textContent).not.toContain('Прогноз на 2026-09-12');
+    expect(fixture.nativeElement.textContent).not.toContain('Прогноз на конец периода');
     http
       .expectOne('/api/v1/forecast?horizon=week&balance_mode=free')
-      .flush({ ...FORECAST, horizon: 'week' });
+      .flush({ ...noRiskForecast(), horizon: 'week' });
   });
 
   it('requests a selected account and horizon', () => {
@@ -189,7 +170,7 @@ describe('ForecastPage', () => {
     });
   });
 
-  it('shows an exact point tooltip on hover and an optional trend line', () => {
+  it('shows exact tooltip data and selects a timeline event', () => {
     flushInitial();
     http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(FORECAST);
     fixture.detectChanges();
@@ -200,25 +181,111 @@ describe('ForecastPage', () => {
     const tooltip = fixture.nativeElement.querySelector('.chart-tooltip');
     expect(tooltip.textContent).toContain('20 августа 2026');
     expect(tooltip.textContent).toContain('-20.00 ₽');
+    expect(tooltip.textContent).toContain('Нажмите, чтобы показать операции');
 
-    const trend = fixture.nativeElement.querySelector('.trend-toggle') as HTMLButtonElement;
-    expect(fixture.nativeElement.querySelector('.trend-line')).toBeNull();
-    trend.click();
+    const timelineEvent = fixture.nativeElement.querySelector(
+      '.timeline-event',
+    ) as HTMLButtonElement;
+    timelineEvent.click();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.trend-line')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('линия общей тенденции');
+    expect(timelineEvent.getAttribute('aria-pressed')).toBe('true');
+    expect(fixture.nativeElement.querySelector('#day-detail-title').textContent).toContain(
+      '20 августа 2026',
+    );
   });
 
-  it('opens the tooltip below points near the top edge', () => {
+  it('includes the actual current balance in the chart scale and marker', () => {
+    flushInitial();
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush({
+      ...noRiskForecast(),
+      starting_balance: '1000.0000',
+      ending_balance: '100.0000',
+      minimum_balance: '100.0000',
+      expected_expense: '900.0000',
+      points: [
+        {
+          ...FORECAST.points[0],
+          opening_balance: '1000.0000',
+          change: '-900.0000',
+          closing_balance: '100.0000',
+        },
+        {
+          ...FORECAST.points[0],
+          period_from: '2026-09-12',
+          on: '2026-09-12',
+          opening_balance: '100.0000',
+          closing_balance: '100.0000',
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.actual-start-marker')).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('.y-axis-scale').textContent.replace(/\s/g, ' '),
+    ).toContain('1 000');
+  });
+
+  it('shows an exact cash-gap marker and day detail for a monthly interval', () => {
+    flushInitial();
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush({
+      ...FORECAST,
+      horizon: 'year',
+      granularity: 'month',
+      through_on: '2026-08-31',
+      ending_balance: '100.0000',
+      points: [
+        {
+          period_from: '2026-08-12',
+          on: '2026-08-31',
+          opening_balance: '100.0000',
+          change: '0.0000',
+          closing_balance: '100.0000',
+          events: [
+            FORECAST.points[1].events[0],
+            {
+              ...FORECAST.points[1].events[0],
+              occurrence_id: 'occurrence-2',
+              due_on: '2026-08-25',
+              type: 'income',
+              description: 'Возврат',
+              amount: '120.0000',
+              effect: '120.0000',
+            },
+          ],
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.cash-gap-marker')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('#day-detail-title').textContent).toContain(
+      '20 августа 2026',
+    );
+    expect(fixture.nativeElement.querySelector('.day-detail').textContent).toContain('Аренда');
+    expect(fixture.nativeElement.querySelector('.day-detail').textContent).not.toContain('Возврат');
+    const timelineEvents = [
+      ...fixture.nativeElement.querySelectorAll('.timeline-event'),
+    ] as HTMLButtonElement[];
+    expect(timelineEvents[0].getAttribute('aria-pressed')).toBe('true');
+    expect(timelineEvents[1].getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('uses one tab stop and arrow-key navigation for chart points', async () => {
     flushInitial();
     http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(FORECAST);
     fixture.detectChanges();
 
-    const highestPoint = fixture.nativeElement.querySelector('.chart-point') as HTMLButtonElement;
-    highestPoint.dispatchEvent(new Event('mouseenter'));
+    const points = [
+      ...fixture.nativeElement.querySelectorAll('.chart-point'),
+    ] as HTMLButtonElement[];
+    expect(points.filter((point) => point.tabIndex === 0)).toHaveLength(1);
+    points[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.chart-tooltip.below')).not.toBeNull();
+    expect(points[2].getAttribute('aria-pressed')).toBe('true');
+    expect(points[2].tabIndex).toBe(0);
   });
 
   function flushInitial(): void {
@@ -236,3 +303,25 @@ describe('ForecastPage', () => {
     http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
   }
 });
+
+function noRiskForecast() {
+  return {
+    ...FORECAST,
+    ending_balance: '100.0000',
+    minimum_balance: '100.0000',
+    minimum_on: '2026-08-12',
+    first_negative_on: null,
+    first_negative_balance: null,
+    expected_income: '0',
+    expected_expense: '0',
+    overdue_excluded_count: 0,
+    points: [
+      FORECAST.points[0],
+      {
+        ...FORECAST.points[0],
+        period_from: '2026-09-12',
+        on: '2026-09-12',
+      },
+    ],
+  };
+}

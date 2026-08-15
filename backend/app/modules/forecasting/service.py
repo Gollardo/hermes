@@ -109,6 +109,7 @@ def calculate_forecast(
     minimum = starting
     minimum_on = today
     first_negative: date | None = today if starting < 0 else None
+    first_negative_balance: Decimal | None = starting if starting < 0 else None
     risk_balance = starting
     for on in sorted(grouped):
         risk_balance += sum((effect for _, effect in grouped[on]), Decimal(0))
@@ -117,6 +118,7 @@ def calculate_forecast(
             minimum_on = on
         if first_negative is None and risk_balance < 0:
             first_negative = on
+            first_negative_balance = risk_balance
 
     current = starting
     points: list[ForecastPointResponse] = []
@@ -157,6 +159,9 @@ def calculate_forecast(
         minimum_balance=_money(minimum),
         minimum_on=minimum_on,
         first_negative_on=first_negative,
+        first_negative_balance=(
+            _money(first_negative_balance) if first_negative_balance is not None else None
+        ),
         expected_income=_money(income),
         expected_expense=_money(expense),
         overdue_excluded_count=overdue_excluded_count,

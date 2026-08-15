@@ -74,6 +74,7 @@ def test_account_forecast_is_exact_deterministic_and_explained() -> None:
     assert first.minimum_balance == "-10.0000"
     assert first.minimum_on == date(2026, 8, 14)
     assert first.first_negative_on == date(2026, 8, 14)
+    assert first.first_negative_balance == "-10.0000"
     assert first.expected_income == "10.0000"
     assert first.expected_expense == "120.0000"
     assert first.granularity == "day"
@@ -115,6 +116,8 @@ def test_transfer_is_neutral_for_all_accounts_and_directional_for_one() -> None:
     assert combined.starting_balance == combined.ending_balance == "120.0000"
     assert combined.points[1].events[0].effect == "0"
     assert combined.expected_income == combined.expected_expense == "0"
+    assert combined.first_negative_on is None
+    assert combined.first_negative_balance is None
     assert source.ending_balance == "75.0000"
     assert target.ending_balance == "45.0000"
 
@@ -209,3 +212,40 @@ def test_year_forecast_uses_monthly_periods_and_keeps_event_details() -> None:
     assert result.points[1].period_from == date(2026, 9, 1)
     assert result.points[1].on == date(2026, 9, 30)
     assert result.points[-1].on == date(2027, 8, 12)
+
+
+def test_first_negative_balance_keeps_daily_precision_for_year_view() -> None:
+    result = calculate_forecast(
+        today=TODAY,
+        through_on=date(2027, 8, 12),
+        balances={SOURCE: Decimal("20.0000")},
+        account_name_by_id={SOURCE: "Main"},
+        events=[
+            event(1, due_on=date(2026, 8, 13), type=OperationType.EXPENSE, amount="22.0000"),
+            event(2, due_on=date(2026, 8, 20), type=OperationType.INCOME, amount="10.0000"),
+        ],
+        account_id=SOURCE,
+        horizon=ForecastHorizon.YEAR,
+    )
+
+    assert result.first_negative_on == date(2026, 8, 13)
+    assert result.first_negative_balance == "-2.0000"
+    assert result.points[0].closing_balance == "8.0000"
+
+
+def test_starting_deficit_keeps_the_current_balance_as_first_negative() -> None:
+    result = calculate_forecast(
+        today=TODAY,
+        through_on=date(2026, 8, 19),
+        balances={SOURCE: Decimal("-7.5000")},
+        account_name_by_id={SOURCE: "Main"},
+        events=[
+            event(1, due_on=TODAY, type=OperationType.INCOME, amount="20.0000"),
+        ],
+        account_id=SOURCE,
+        horizon=ForecastHorizon.WEEK,
+    )
+
+    assert result.first_negative_on == TODAY
+    assert result.first_negative_balance == "-7.5000"
+    assert result.points[0].closing_balance == "12.5000"
