@@ -6,9 +6,6 @@
       <p>Фонд отмечает, для чего предназначена часть денег на реальном счёте.</p>
     </div>
     <div class="page-actions">
-      @if (summary(); as data) {
-        <span class="status-pill">Активные проценты: {{ data.active_percentage | money }}%</span>
-      }
       <button type="button" (click)="openFund()">Создать фонд</button>
     </div>
   </header>
@@ -21,21 +18,23 @@
     <p class="empty-state" aria-live="polite">Восстанавливаем остатки фондов из журнала…</p>
   } @else if (summary(); as data) {
     <section class="fund-summary" aria-label="Сводка фондов">
-      <article>
+      <article class="fund-summary-primary">
         <span>В фондах</span><strong>{{ data.total_reserved | money }} {{ baseCurrency() }}</strong>
       </article>
-      <article>
+      <article class="fund-summary-primary">
         <span>Свободно</span><strong>{{ data.total_free | money }} {{ baseCurrency() }}</strong>
       </article>
-      <article>
-        <span>Нераспределённая доля</span><strong>{{ remainingPercentage() | money }}%</strong>
-      </article>
-      <article>
-        <span>Общий прогресс целей</span
-        ><strong>{{
-          overallTargetProgress() === null ? 'Цели не заданы' : overallTargetProgress() + '%'
-        }}</strong>
-      </article>
+      <div class="fund-summary-secondary">
+        <div>
+          <span>Нераспределённая доля</span><strong>{{ remainingPercentage() | money }}%</strong>
+        </div>
+        <div>
+          <span>Общий прогресс целей</span
+          ><strong>{{
+            overallTargetProgress() === null ? 'Цели не заданы' : overallTargetProgress() + '%'
+          }}</strong>
+        </div>
+      </div>
     </section>
 
     <section class="fund-primary-actions panel" aria-labelledby="fund-actions-title">
@@ -46,17 +45,22 @@
           Можно назначить уже свободные деньги на счёте или сначала перевести их с другого счёта.
         </p>
       </div>
-      <div class="page-actions">
+      <div class="fund-primary-action-controls">
         <button type="button" (click)="openAllocation()">Выделить со счёта</button>
         <button type="button" class="secondary" (click)="openTransferAllocation()">
           Перевести и распределить
         </button>
-        <button type="button" class="secondary" (click)="openRedistribution()">
-          Перенести назначение между счетами
-        </button>
-        <button type="button" class="secondary" (click)="openFundTransfer()">
-          Перевести между фондами
-        </button>
+        <details class="fund-more-actions">
+          <summary>Другие операции</summary>
+          <div>
+            <button type="button" class="secondary" (click)="openRedistribution()">
+              Перенести назначение между счетами
+            </button>
+            <button type="button" class="secondary" (click)="openFundTransfer()">
+              Перевести между фондами
+            </button>
+          </div>
+        </details>
       </div>
     </section>
 
@@ -66,7 +70,7 @@
           <h2>Назначения денег</h2>
           <p>Итог фонда и счета, на которых он зарезервирован.</p>
         </div>
-        <span class="count-pill">{{ data.funds.length }}</span>
+        <span class="count-pill">Фондов: {{ data.funds.length }}</span>
       </div>
       @if (data.funds.length === 0) {
         <div class="empty-state">
@@ -78,30 +82,13 @@
           @for (fund of data.funds; track fund.id) {
             <article class="directory-item" [class.archived]="fund.archived">
               <div class="directory-item-main">
-                <span class="item-symbol" aria-hidden="true">{{ fund.name.slice(0, 1) }}</span>
                 <div class="item-copy">
-                  <span class="badge"
+                  <h3>{{ fund.name }}</h3>
+                  <span class="fund-allocation"
                     >{{ fund.allocation_percentage | money }}% при распределении</span
                   >
-                  <h3>{{ fund.name }}</h3>
-                  <p>
-                    {{
-                      fund.description ||
-                        (fund.archived ? 'Фонд находится в архиве' : 'Без описания')
-                    }}
-                  </p>
-                  @if (fund.target_amount) {
-                    <div class="fund-progress">
-                      <div>
-                        <span>Цель {{ fund.target_amount | money }} {{ baseCurrency() }}</span>
-                        <strong>{{ fund.progress_percentage }}%</strong>
-                      </div>
-                      <progress
-                        [value]="Math.min(100, +(fund.progress_percentage || 0))"
-                        max="100"
-                        [attr.aria-label]="'Прогресс фонда ' + fund.name"
-                      ></progress>
-                    </div>
+                  @if (fund.description || fund.archived) {
+                    <p>{{ fund.description || 'Фонд находится в архиве' }}</p>
                   }
                   @for (position of positionsFor(fund.id); track position.account_id) {
                     <small
@@ -111,26 +98,46 @@
                   }
                 </div>
               </div>
+              <div class="fund-target-cell">
+                @if (fund.target_amount) {
+                  <div class="fund-progress">
+                    <div>
+                      <span>Цель {{ fund.target_amount | money }} {{ baseCurrency() }}</span>
+                      <strong>{{ fund.progress_percentage }}%</strong>
+                    </div>
+                    <progress
+                      [value]="Math.min(100, +(fund.progress_percentage || 0))"
+                      max="100"
+                      [attr.aria-label]="'Прогресс фонда ' + fund.name"
+                    ></progress>
+                  </div>
+                }
+              </div>
+              <div class="balance-block">
+                <span>Общий остаток</span>
+                <strong class="balance"
+                  >{{ fund.total_balance | money }} {{ baseCurrency() }}</strong
+                >
+              </div>
               <div class="directory-item-side">
-                <div class="balance-block">
-                  <span>Общий остаток</span>
-                  <strong class="balance"
-                    >{{ fund.total_balance | money }} {{ baseCurrency() }}</strong
-                  >
-                </div>
                 <div class="item-actions">
                   <button type="button" class="secondary" (click)="edit(fund)">Изменить</button>
-                  <button
-                    type="button"
-                    class="secondary"
-                    (click)="toggleArchive(fund)"
-                    [disabled]="!fund.archived && !fundIsEmpty(fund)"
-                    [attr.title]="
-                      !fund.archived && !fundIsEmpty(fund) ? 'Сначала обнулите остаток фонда' : null
-                    "
-                  >
-                    {{ fund.archived ? 'Восстановить' : 'Архивировать' }}
-                  </button>
+                  <details class="item-more-actions">
+                    <summary>Ещё</summary>
+                    <div>
+                      <button
+                        type="button"
+                        class="secondary"
+                        (click)="toggleArchive(fund)"
+                        [disabled]="!fund.archived && !fundIsEmpty(fund)"
+                      >
+                        {{ fund.archived ? 'Восстановить' : 'Архивировать' }}
+                      </button>
+                      @if (!fund.archived && !fundIsEmpty(fund)) {
+                        <small>Доступно после обнуления остатка.</small>
+                      }
+                    </div>
+                  </details>
                 </div>
               </div>
             </article>

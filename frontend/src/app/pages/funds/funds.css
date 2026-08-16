@@ -14,7 +14,7 @@
 .fund-primary-actions {
   align-items: center;
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
   justify-content: space-between;
 }
 .fund-primary-actions h2,
@@ -32,13 +32,100 @@
   padding: 0.75rem;
 }
 .fund-summary {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(17rem, 0.8fr);
+}
+.fund-summary-secondary {
+  align-content: center;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+.fund-summary-secondary > div {
+  align-items: baseline;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.fund-summary-secondary > div + div {
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}
+.fund-summary-secondary strong {
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fund-primary-action-controls {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.6rem;
+  justify-content: flex-end;
+}
+.fund-primary-action-controls > button,
+.fund-primary-action-controls > details > summary {
+  white-space: nowrap;
+}
+.fund-more-actions,
+.item-more-actions {
+  position: relative;
+}
+.fund-more-actions summary,
+.item-more-actions summary {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 0.75rem;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 680;
+  justify-content: center;
+  list-style: none;
+  min-height: 2.65rem;
+  padding: 0.55rem 0.85rem;
+}
+.fund-more-actions summary::-webkit-details-marker,
+.item-more-actions summary::-webkit-details-marker {
+  display: none;
+}
+.fund-more-actions summary::after,
+.item-more-actions summary::after {
+  content: '›';
+  margin-left: 0.45rem;
+  transform: rotate(90deg);
+}
+.fund-more-actions[open] summary::after,
+.item-more-actions[open] summary::after {
+  transform: rotate(-90deg);
+}
+.fund-more-actions > div,
+.item-more-actions > div {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  box-shadow: var(--shadow-card);
+  display: grid;
+  gap: 0.45rem;
+  min-width: max-content;
+  padding: 0.5rem;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  z-index: 4;
+}
+.fund-more-actions > div button,
+.item-more-actions > div button {
+  margin: 0;
+  width: 100%;
 }
 .fund-progress {
   display: grid;
   gap: 0.3rem;
-  margin-top: 0.65rem;
-  max-width: 24rem;
+  min-width: 13rem;
 }
 .fund-progress div {
   display: flex;
@@ -49,7 +136,7 @@
   accent-color: var(--accent);
   width: 100%;
 }
-.fund-summary article,
+.fund-summary-primary,
 .coverage-grid article,
 .preview-box {
   padding: 1rem;
@@ -64,7 +151,7 @@ dt {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.fund-summary strong {
+.fund-summary-primary > strong {
   display: block;
   margin-top: 0.35rem;
   font-size: 1.45rem;
@@ -89,6 +176,69 @@ dt {
   font-size: 1.25rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+.funds-page .directory-list-panel {
+  overflow: visible;
+}
+.funds-page .item-list {
+  gap: 0;
+}
+.funds-page .directory-item {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  gap: 1.25rem;
+  grid-template-columns: minmax(15rem, 1.35fr) minmax(13rem, 0.75fr) auto auto;
+  padding: 1rem 0.25rem;
+}
+.funds-page .directory-item + .directory-item {
+  border-top: 1px solid var(--line);
+}
+.funds-page .directory-item:hover {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  box-shadow: none;
+}
+.funds-page .directory-item-main {
+  align-items: start;
+}
+.funds-page .item-copy h3 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+.fund-allocation {
+  color: var(--ink-soft);
+  display: block;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+.funds-page .item-copy > p {
+  margin-top: 0.35rem;
+}
+.fund-target-cell {
+  align-self: center;
+}
+.funds-page .directory-item-side {
+  align-items: flex-end;
+  align-self: center;
+}
+.funds-page .item-actions {
+  flex-wrap: nowrap;
+}
+.item-more-actions summary {
+  border-radius: 0.65rem;
+  font-size: 0.73rem;
+  min-height: 2rem;
+  padding: 0.32rem 0.58rem;
+}
+.item-more-actions small {
+  color: var(--muted);
+  display: block;
+  font-size: 0.72rem;
+  max-width: 14rem;
+  padding: 0.15rem 0.35rem;
+  white-space: normal;
 }
 .coverage-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -167,6 +317,76 @@ dt {
     flex-direction: column;
   }
   .fund-primary-actions .page-actions {
+    justify-content: flex-start;
+  }
+  .fund-primary-action-controls {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .funds-page .directory-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .fund-target-cell {
+    grid-column: 1;
+  }
+  .funds-page .balance-block {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .funds-page .directory-item-side {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+@media (max-width: 38rem) {
+  .fund-summary {
+    grid-template-columns: 1fr;
+  }
+  .fund-summary-secondary > div {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .fund-primary-action-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .fund-primary-action-controls > button,
+  .fund-primary-action-controls > details,
+  .fund-primary-action-controls summary {
+    width: 100%;
+  }
+  .fund-primary-action-controls > button,
+  .fund-primary-action-controls > details > summary {
+    white-space: normal;
+  }
+  .fund-more-actions > div {
+    left: 0;
+    min-width: 100%;
+    right: auto;
+  }
+  .item-more-actions > div {
+    left: 0;
+    right: auto;
+  }
+  .funds-page .directory-item {
+    grid-template-columns: 1fr;
+  }
+  .fund-target-cell,
+  .funds-page .balance-block,
+  .funds-page .directory-item-side {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .funds-page .balance-block {
+    text-align: left;
+  }
+  .funds-page .directory-item-side {
+    align-items: stretch;
+    border-top: 0;
+    padding-top: 0;
+  }
+  .funds-page .item-actions {
     justify-content: flex-start;
   }
 }

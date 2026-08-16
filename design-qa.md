@@ -1,89 +1,51 @@
-# Forecast redesign visual QA
+# Funds visual refinement — design QA
 
 ## Evidence
 
-- Source reference: `/Users/zuko/Desktop/Снимок экрана — 2026-08-15 в 15.44.04.png`
-- Source dimensions: 3060 × 1858 px. It is a conceptual desktop mock, not a
-  production viewport or a source of business values.
-- Implementation route: `http://127.0.0.1:4300/forecast`
-- Desktop capture: `design-qa/implementation-desktop-viewport.png`
-- Desktop viewport: 1440 × 1000 CSS px, default browser zoom, desktop shell
-  sidebar hidden to match the reference's content-first state.
-- Mobile capture: `design-qa/implementation-mobile.png`
-- Mobile viewport and capture: 390 × 844 CSS px. Layout overflow was checked
-  separately against the complete 3025 px document height.
-- Full comparison: `design-qa/reference-comparison.png`
-- Focused chart comparison: `design-qa/chart-comparison.png`
-- Verified state: all accounts, month, free-money mode, with a forecast cash gap
-  and realistic planned events supplied by the local QA fixture.
+- Source visual truth: `/private/tmp/hermes-funds-current-desktop.png`
+- Implementation desktop: `/private/tmp/hermes-funds-final-desktop.png`
+- Implementation mobile/menu: `/private/tmp/hermes-funds-final-mobile.png`
+- Desktop viewport and pixels: `1600 × 1000`, device scale factor `1`, no density normalization required.
+- Mobile viewport and pixels: `390 × 844`, device scale factor `1`, no density normalization required.
+- State: authenticated `/funds`, populated summary, six active funds, closed desktop menus; mobile capture includes the first fund's `Ещё` menu.
 
-The source and implementation were normalized into equal comparison panels.
-The focused comparison uses the shared chart/KPI/risk region rather than
-stretching the source screenshot to the implementation's different aspect
-ratio. No density-based CSS scaling was required.
+## Full-view comparison
 
-## Comparison history
+The source and final desktop captures were opened together at the same viewport. The final implementation preserves the page shell, content, values and primary actions while establishing a clearer reading order: two primary monetary totals, compact secondary percentages, one row of allocation actions and a single aligned fund list instead of nested cards.
 
-### Pass 1
+## Focused-region comparison
 
-The first browser capture matched the intended hierarchy but exposed two P2
-visual issues: the Y scale chose an unnecessarily coarse negative lower bound,
-and the cash-gap date wrapped inside the narrow risk card. KPI and risk cards
-also did not consistently fill their grid tracks.
+The fund list and mobile action menu were inspected separately because exact amounts, progress labels and the disabled archive explanation are too small to judge reliably in the full-page comparison. Comparable values retain tabular alignment and significant decimal places. The mobile menu remains within the viewport and exposes the archive condition as visible text.
 
-Fixes applied:
+## Required fidelity surfaces
 
-- increased the target tick density while keeping rounded monetary ticks;
-- kept risk dates on one line and tuned the supporting type size;
-- stretched KPI and risk cards consistently within their tracks;
-- constrained the mobile chart to a readable, horizontally scrollable width;
-- added left/right tooltip positioning for points near chart edges.
+- Fonts and typography: existing application family and weights preserved; names and balances are primary, allocation percentages are secondary and no longer uppercase badges.
+- Spacing and layout rhythm: nested fund cards and letter tiles removed; rows share aligned target, balance and action columns with separators. Mobile rows stack in the same semantic order.
+- Colors and tokens: only existing surface, line, ink, muted and accent tokens are used.
+- Image quality and assets: the screen contains no product imagery or new assets; existing shell icons and logo are unchanged.
+- Copy and content: financial values and domain labels are unchanged. Empty optional fund descriptions are omitted, count is labeled, and disabled archive state has visible explanatory copy.
 
-### Pass 2
+## Findings and comparison history
 
-The final desktop and focused comparisons show the same information hierarchy
-as the reference: one control row, decision KPI column, dominant forecast chart,
-secondary risks/summary column, and a synchronized event lane. The final mobile
-capture has no body-level horizontal overflow and preserves a readable chart
-through its own scroll container.
+### Iteration 1
 
-### Pass 3 — code-review corrections
+- P2: desktop allocation actions wrapped into an uneven second row. Fixed by keeping the three action groups on one line above the existing responsive breakpoint.
+- P2: the mobile fund menu extended beyond the left viewport edge. Fixed by anchoring its dropdown to the left of the trigger on narrow screens.
 
-Semantic review found issues that the first visual comparison did not expose:
-the plotted scale omitted a distinct actual starting balance, a cash gap inside
-a recovered monthly interval had no chart marker, and every forecast point was
-a separate `Tab` stop. The final capture and comparisons were regenerated after
-adding the labelled «Сейчас» marker, exact monthly cash-gap marker and roving
-keyboard navigation. Single-account transfer effects were also added to the
-period reconciliation without changing the all-accounts layout.
+### Final comparison
 
-## Final findings
+No actionable P0, P1 or P2 findings remain. The compact list, summary hierarchy and progressive disclosure match the approved refinement intent without changing the existing financial workflow.
 
-- P0: none.
-- P1: none.
-- P2: none after the second pass.
-- The difference in exact values, dates and event names is intentional: every
-  surface uses the application's forecast dataset instead of copied mock values.
-- The reference's recommendations and independent chart-granularity controls
-  were intentionally omitted because they are not supported domain concepts.
-- The primary KPI correctly becomes `0 ₽` when the selected forecast contains a
-  negative day; it is not copied from the concept's contradictory sample values.
-- Project color, type, radius, border and spacing tokens are reused. No parallel
-  design-system layer or new chart dependency was introduced.
-- Existing code-native icons and the SVG forecast renderer are reused; the
-  reference does not require an additional raster asset.
-- Free/all-money switching, risk selection, event selection, selected-day
-  details and responsive horizontal chart/timeline scrolling were exercised.
-- The actual starting balance participates in the Y scale and is visually
-  separated from forecast closings. `Tab` enters the forecast-point series
-  once; arrow-key navigation updates the selected point. The exact monthly
-  risk-marker remains a separate action when present.
-- A recovered cash gap in a monthly aggregate remains visible as a labelled
-  exact-date marker and opens only that day's operations.
-- Browser console errors in the verified states: none.
-- Accessibility inspection covered visible focus styles, keyboard-focusable
-  chart points, textual risk labels and signed monetary values.
+## Primary interactions checked
 
-## Result
+- `Создать фонд` opens the existing fund dialog.
+- `Выделить со счёта` opens the existing allocation dialog.
+- `Другие операции` exposes both existing transfer actions.
+- `Ещё` exposes archive/restore, and a non-empty fund explains why archive is disabled.
+- Browser console: no errors during the checked interactions.
 
-passed
+## Follow-up polish
+
+- P3: the existing expanded narrow-screen navigation consumes substantial vertical space before page content. It is a shared shell decision and was intentionally left outside this funds-only change.
+
+final result: passed
