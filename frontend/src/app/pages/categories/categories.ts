@@ -15,6 +15,9 @@ import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 
 type CategoryType = 'income' | 'expense';
 
+const LEADING_CATEGORY_SYMBOL =
+  /^(\p{Extended_Pictographic}(?:\uFE0E|\uFE0F)?(?:\u200D\p{Extended_Pictographic}(?:\uFE0E|\uFE0F)?)*)\s*/u;
+
 interface Category {
   id: string;
   type: CategoryType;
@@ -88,8 +91,13 @@ export class CategoriesPage implements OnInit {
     state.set(state() === category.id ? null : category.id);
   }
 
-  protected categoryTypeLabel(type: CategoryType): string {
-    return type === 'income' ? 'Доход' : 'Расход';
+  protected categorySymbol(name: string): string {
+    return name.match(LEADING_CATEGORY_SYMBOL)?.[1] ?? '';
+  }
+
+  protected categoryDisplayName(name: string): string {
+    const match = name.match(LEADING_CATEGORY_SYMBOL);
+    return match ? name.slice(match[0].length) || name : name;
   }
 
   protected submit(): void {

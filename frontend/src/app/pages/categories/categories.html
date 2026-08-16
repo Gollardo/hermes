@@ -6,19 +6,18 @@
       <p>Понятная классификация доходов и расходов в два уровня — категория и подкатегория.</p>
     </div>
     <div class="page-actions">
-      <span class="status-pill">Два независимых дерева</span>
       <button type="button" (click)="openCreate()">Добавить категорию</button>
     </div>
   </header>
 
   <div class="directory-grid single-column">
-    <section class="panel directory-list-panel" aria-labelledby="categories-list-title">
+    <section class="directory-list-panel" aria-labelledby="categories-list-title">
       <div class="panel-heading">
         <div>
           <h2 id="categories-list-title">Дерево категорий</h2>
           <p>Архивирование сохраняет названия для будущей истории операций.</p>
         </div>
-        <span class="count-pill">{{ categories().length }}</span>
+        <span class="count-pill">Категорий: {{ categories().length }}</span>
       </div>
 
       @if (loading()) {
@@ -30,7 +29,7 @@
         </div>
       } @else {
         <div class="category-groups">
-          <section class="category-group" aria-labelledby="expense-categories-title">
+          <section class="panel category-group" aria-labelledby="expense-categories-title">
             <div class="category-group-heading">
               <div>
                 <p class="section-label">Расходы</p>
@@ -45,35 +44,53 @@
                 <article class="directory-item category-item" [class.archived]="category.archived">
                   <div class="category-header">
                     <div class="directory-item-main">
-                      <span class="item-symbol neutral" aria-hidden="true">{{
-                        category.name.slice(0, 1)
-                      }}</span>
                       <div class="item-copy">
-                        <span class="badge">{{ categoryTypeLabel(category.type) }}</span>
-                        <h3>{{ category.name }}</h3>
+                        <div class="category-title-row">
+                          <span class="category-name">
+                            <span class="category-symbol" aria-hidden="true">{{
+                              categorySymbol(category.name)
+                            }}</span>
+                            <h3>{{ categoryDisplayName(category.name) }}</h3>
+                          </span>
+                          @if (children(category.id).length) {
+                            <button
+                              type="button"
+                              class="category-disclosure"
+                              (click)="toggleExpanded(category)"
+                              [attr.aria-expanded]="expanded(category)"
+                              [attr.aria-controls]="'category-children-' + category.id"
+                            >
+                              {{
+                                expanded(category)
+                                  ? 'Свернуть'
+                                  : 'Подкатегории · ' + children(category.id).length
+                              }}
+                            </button>
+                          }
+                        </div>
                         @if (category.description) {
                           <p>{{ category.description }}</p>
                         }
                       </div>
                     </div>
                     <div class="item-actions">
-                      @if (children(category.id).length) {
-                        <button
-                          type="button"
-                          class="secondary"
-                          (click)="toggleExpanded(category)"
-                          [attr.aria-expanded]="expanded(category)"
-                          [attr.aria-controls]="'category-children-' + category.id"
-                        >
-                          {{ expanded(category) ? 'Свернуть' : 'Показать подкатегории' }}
-                        </button>
-                      }
                       <button type="button" class="secondary" (click)="edit(category)">
                         Изменить
                       </button>
-                      <button type="button" class="secondary" (click)="toggleArchive(category)">
-                        {{ category.archived ? 'Восстановить' : 'Архивировать' }}
-                      </button>
+                      <details class="item-more-actions">
+                        <summary
+                          [attr.aria-label]="
+                            'Дополнительные действия для категории ' + category.name
+                          "
+                        >
+                          Ещё
+                        </summary>
+                        <div class="item-actions-popover">
+                          <button type="button" class="secondary" (click)="toggleArchive(category)">
+                            {{ category.archived ? 'Восстановить' : 'Архивировать' }}
+                          </button>
+                        </div>
+                      </details>
                     </div>
                   </div>
 
@@ -86,9 +103,24 @@
                             <button type="button" class="secondary" (click)="edit(child)">
                               Изменить
                             </button>
-                            <button type="button" class="secondary" (click)="toggleArchive(child)">
-                              {{ child.archived ? 'Восстановить' : 'Архивировать' }}
-                            </button>
+                            <details class="item-more-actions">
+                              <summary
+                                [attr.aria-label]="
+                                  'Дополнительные действия для подкатегории ' + child.name
+                                "
+                              >
+                                Ещё
+                              </summary>
+                              <div class="item-actions-popover">
+                                <button
+                                  type="button"
+                                  class="secondary"
+                                  (click)="toggleArchive(child)"
+                                >
+                                  {{ child.archived ? 'Восстановить' : 'Архивировать' }}
+                                </button>
+                              </div>
+                            </details>
                           </div>
                         </div>
                       }
@@ -98,7 +130,7 @@
               }
             </div>
           </section>
-          <section class="category-group" aria-labelledby="income-categories-title">
+          <section class="panel category-group" aria-labelledby="income-categories-title">
             <div class="category-group-heading">
               <div>
                 <p class="section-label">Доходы</p>
@@ -113,34 +145,53 @@
                 <article class="directory-item category-item" [class.archived]="category.archived">
                   <div class="category-header">
                     <div class="directory-item-main">
-                      <span class="item-symbol neutral" aria-hidden="true">{{
-                        category.name.slice(0, 1)
-                      }}</span>
                       <div class="item-copy">
-                        <h3>{{ category.name }}</h3>
+                        <div class="category-title-row">
+                          <span class="category-name">
+                            <span class="category-symbol" aria-hidden="true">{{
+                              categorySymbol(category.name)
+                            }}</span>
+                            <h3>{{ categoryDisplayName(category.name) }}</h3>
+                          </span>
+                          @if (children(category.id).length) {
+                            <button
+                              type="button"
+                              class="category-disclosure"
+                              (click)="toggleExpanded(category)"
+                              [attr.aria-expanded]="expanded(category)"
+                              [attr.aria-controls]="'category-children-' + category.id"
+                            >
+                              {{
+                                expanded(category)
+                                  ? 'Свернуть'
+                                  : 'Подкатегории · ' + children(category.id).length
+                              }}
+                            </button>
+                          }
+                        </div>
                         @if (category.description) {
                           <p>{{ category.description }}</p>
                         }
                       </div>
                     </div>
                     <div class="item-actions">
-                      @if (children(category.id).length) {
-                        <button
-                          type="button"
-                          class="secondary"
-                          (click)="toggleExpanded(category)"
-                          [attr.aria-expanded]="expanded(category)"
-                          [attr.aria-controls]="'category-children-' + category.id"
-                        >
-                          {{ expanded(category) ? 'Свернуть' : 'Показать подкатегории' }}
-                        </button>
-                      }
                       <button type="button" class="secondary" (click)="edit(category)">
                         Изменить
                       </button>
-                      <button type="button" class="secondary" (click)="toggleArchive(category)">
-                        {{ category.archived ? 'Восстановить' : 'Архивировать' }}
-                      </button>
+                      <details class="item-more-actions">
+                        <summary
+                          [attr.aria-label]="
+                            'Дополнительные действия для категории ' + category.name
+                          "
+                        >
+                          Ещё
+                        </summary>
+                        <div class="item-actions-popover">
+                          <button type="button" class="secondary" (click)="toggleArchive(category)">
+                            {{ category.archived ? 'Восстановить' : 'Архивировать' }}
+                          </button>
+                        </div>
+                      </details>
                     </div>
                   </div>
                   @if (children(category.id).length > 0 && expanded(category)) {
@@ -152,9 +203,24 @@
                             <button type="button" class="secondary" (click)="edit(child)">
                               Изменить
                             </button>
-                            <button type="button" class="secondary" (click)="toggleArchive(child)">
-                              {{ child.archived ? 'Восстановить' : 'Архивировать' }}
-                            </button>
+                            <details class="item-more-actions">
+                              <summary
+                                [attr.aria-label]="
+                                  'Дополнительные действия для подкатегории ' + child.name
+                                "
+                              >
+                                Ещё
+                              </summary>
+                              <div class="item-actions-popover">
+                                <button
+                                  type="button"
+                                  class="secondary"
+                                  (click)="toggleArchive(child)"
+                                >
+                                  {{ child.archived ? 'Восстановить' : 'Архивировать' }}
+                                </button>
+                              </div>
+                            </details>
                           </div>
                         </div>
                       }
