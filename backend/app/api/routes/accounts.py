@@ -6,6 +6,7 @@ from app.application.accounts import (
     AccountHasHistoryError,
     create_account_with_initial_balance,
     delete_account_without_history,
+    set_account_archived_with_default_cleanup,
 )
 from app.core.database import DatabaseSession
 from app.modules.accounts.models import Account
@@ -14,7 +15,6 @@ from app.modules.accounts.service import (
     AccountNotFoundError,
     get_account,
     list_accounts,
-    set_account_archived,
     update_account,
 )
 from app.modules.operations.contracts import account_balance
@@ -79,7 +79,8 @@ def replace_account(
 @write_router.post("/{account_id}/archive", response_model=AccountResponse)
 def archive_account(account_id: UUID, session: DatabaseSession) -> AccountResponse:
     try:
-        return _response(session, set_account_archived(session, account_id, archived=True))
+        set_account_archived_with_default_cleanup(session, account_id, archived=True)
+        return _response(session, get_account(session, account_id))
     except AccountNotFoundError as error:
         raise _not_found(error) from error
 
@@ -87,7 +88,8 @@ def archive_account(account_id: UUID, session: DatabaseSession) -> AccountRespon
 @write_router.post("/{account_id}/restore", response_model=AccountResponse)
 def restore_account(account_id: UUID, session: DatabaseSession) -> AccountResponse:
     try:
-        return _response(session, set_account_archived(session, account_id, archived=False))
+        set_account_archived_with_default_cleanup(session, account_id, archived=False)
+        return _response(session, get_account(session, account_id))
     except AccountNotFoundError as error:
         raise _not_found(error) from error
 

@@ -5,7 +5,7 @@
       <h1>Ваши деньги сейчас и в ближайшем будущем</h1>
       <p>Краткая сводка фактов, планов и сигналов, которые требуют действия.</p>
     </div>
-    <a class="button-link" routerLink="/operations" [queryParams]="{ new: 1 }">Добавить операцию</a>
+    <app-operation-create-menu [navigate]="true" />
   </header>
 
   @if (error(); as message) {

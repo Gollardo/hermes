@@ -202,6 +202,11 @@
   grid-template-columns: 1fr;
 }
 
+.allocation-choice label {
+  width: 100%;
+  min-width: 0;
+}
+
 .postpone-action {
   display: grid;
   grid-template-columns: minmax(8.5rem, 1fr) auto;

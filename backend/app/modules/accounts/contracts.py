@@ -7,7 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.accounts.models import Account, AccountType
-from app.modules.accounts.service import AccountNotFoundError, create_account, get_account
+from app.modules.accounts.service import (
+    AccountNotFoundError,
+    create_account,
+    get_account,
+    set_account_archived,
+)
 
 
 class AccountReferenceError(RuntimeError):
@@ -39,6 +44,10 @@ def create_account_identity(
 
 def delete_account_identity(session: Session, account_id: UUID) -> None:
     session.delete(get_account(session, account_id))
+
+
+def set_account_archived_identity(session: Session, account_id: UUID, *, archived: bool) -> None:
+    set_account_archived(session, account_id, archived=archived)
 
 
 def lock_account_identity(session: Session, account_id: UUID) -> AccountReference:
@@ -101,6 +110,7 @@ __all__ = [
     "list_account_identities",
     "create_account_identity",
     "delete_account_identity",
+    "set_account_archived_identity",
     "lock_account_identity",
     "lock_account_references",
 ]

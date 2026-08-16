@@ -10,11 +10,16 @@ from app.modules.accounts.contracts import (
     create_account_identity,
     delete_account_identity,
     lock_account_identity,
+    set_account_archived_identity,
 )
 from app.modules.funds.contracts import account_has_fund_history
 from app.modules.operations.contracts import account_has_history, post_initial_balance
 from app.modules.scheduling.contracts import account_has_schedule_reference
-from app.modules.settings.contracts import application_timezone, lock_base_currency
+from app.modules.settings.contracts import (
+    application_timezone,
+    clear_default_account_if_matches,
+    lock_base_currency,
+)
 
 
 class AccountHasHistoryError(RuntimeError):
@@ -45,6 +50,8 @@ def create_account_with_initial_balance(
 
 
 def delete_account_without_history(session: Session, account_id: UUID) -> None:
+    # Settings is always locked before Accounts to match settings replacement.
+    clear_default_account_if_matches(session, account_id)
     lock_account_identity(session, account_id)
     if (
         account_has_history(session, account_id)
@@ -53,3 +60,13 @@ def delete_account_without_history(session: Session, account_id: UUID) -> None:
     ):
         raise AccountHasHistoryError
     delete_account_identity(session, account_id)
+
+
+def set_account_archived_with_default_cleanup(
+    session: Session, account_id: UUID, *, archived: bool
+) -> None:
+    if archived:
+        # An archived account cannot remain eligible for operation prefill.
+        clear_default_account_if_matches(session, account_id)
+    lock_account_identity(session, account_id)
+    set_account_archived_identity(session, account_id, archived=archived)

@@ -5,7 +5,7 @@
       <h1>Журнал операций</h1>
       <p>Фактические остатки полностью складываются из движений этого журнала.</p>
     </div>
-    <button type="button" (click)="openCreate()">Добавить операцию</button>
+    <app-operation-create-menu (selected)="openCreate($event)" />
   </header>
 
   @if (error(); as message) {

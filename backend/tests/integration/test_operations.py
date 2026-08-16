@@ -156,6 +156,22 @@ def test_complete_operation_lifecycle_and_journal_filters(
         assert category_summary.json()["income"][0]["amount"] == "50.0000"
         assert category_summary.json()["expense"][0]["amount"] == "70.0000"
         assert category_summary.json()["expense"][0]["category_id"] == expense_category
+        report = client.get(
+            "/api/v1/reports/income-expense?type=expense&from_on=2026-08-01&through_on=2026-08-31"
+        )
+        assert report.status_code == 200
+        assert report.json()["total_amount"] == "70.0000"
+        assert report.json()["operation_count"] == 1
+        assert report.json()["categories"][0]["category_name"] == "Groceries"
+        assert report.json()["categories"][0]["root_category_name"] == "Food"
+        assert report.json()["categories"][0]["operations"][0]["id"] == expense.json()["id"]
+        assert (
+            client.get(
+                "/api/v1/reports/income-expense?type=expense"
+                "&from_on=2026-08-31&through_on=2026-08-01"
+            ).status_code
+            == 422
+        )
         assert (
             client.get(f"/api/v1/operations?type=expense&category_id={expense_category}").json()[
                 "total"

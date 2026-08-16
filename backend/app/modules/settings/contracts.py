@@ -3,6 +3,7 @@
 from app.modules.settings.models import ApplicationSettings
 from app.modules.settings.service import (
     application_timezone,
+    clear_default_account_if_matches,
     initialize_settings,
     lock_application_timezone,
     lock_base_currency,
@@ -14,6 +15,7 @@ __all__ = [
     "ApplicationSettings",
     "initialize_settings",
     "application_timezone",
+    "clear_default_account_if_matches",
     "lock_application_timezone",
     "lock_base_currency",
     "update_application_settings",

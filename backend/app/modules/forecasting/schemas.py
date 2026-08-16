@@ -74,3 +74,30 @@ class ForecastResponse(BaseModel):
     expected_expense: str
     overdue_excluded_count: int
     points: list[ForecastPointResponse]
+
+
+class FundForecastPointResponse(BaseModel):
+    period_from: date
+    on: date
+    change: str
+    balance: str
+
+
+class FundForecastSeriesResponse(BaseModel):
+    fund_id: UUID
+    fund_name: str
+    allocation_percentage: str
+    starting_balance: str
+    ending_balance: str
+    points: list[FundForecastPointResponse]
+
+
+class FundForecastResponse(BaseModel):
+    horizon: ForecastHorizon
+    granularity: ForecastGranularity
+    from_on: date
+    through_on: date
+    planned_transfer_total: str
+    planned_allocation_total: str
+    unallocated_total: str
+    series: list[FundForecastSeriesResponse]

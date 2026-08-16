@@ -9,6 +9,7 @@ import { DateTextPipe } from '../../shared/date-text.pipe';
 import { currencySymbol, formatMoney, MoneyPipe } from '../../shared/money.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
+import { CreateOperationType, OperationCreateMenu } from '../../shared/operation-create-menu';
 
 type OperationType = 'income' | 'expense' | 'transfer' | 'balance_adjustment';
 type CategoryType = 'income' | 'expense';
@@ -89,11 +90,19 @@ interface OperationPage {
 interface ApplicationSettings {
   base_currency: string;
   timezone: string;
+  default_account_id: string | null;
 }
 
 @Component({
   selector: 'app-operations-page',
-  imports: [ReactiveFormsModule, MoneyPipe, DateTextPipe, EntityCombobox, DecimalInput],
+  imports: [
+    ReactiveFormsModule,
+    MoneyPipe,
+    DateTextPipe,
+    EntityCombobox,
+    DecimalInput,
+    OperationCreateMenu,
+  ],
   templateUrl: './operations.html',
   styleUrl: './operations.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -115,6 +124,7 @@ export class OperationsPage implements OnInit {
   protected readonly baseCurrency = signal('RUB');
   private readonly timezone = signal('UTC');
   private readonly settingsReady = signal(false);
+  private readonly defaultAccountId = signal<string | null>(null);
   protected readonly page = signal(1);
   protected readonly pageSize = 25;
   protected readonly loading = signal(true);
@@ -124,6 +134,7 @@ export class OperationsPage implements OnInit {
   protected readonly expandedId = signal<string | null>(null);
   protected readonly formOpen = signal(false);
   protected readonly filtersOpen = signal(false);
+  private defaultAccountWasApplied = false;
 
   protected readonly form = this.builder.group({
     type: this.builder.control<OperationType | ''>('', Validators.required),
@@ -147,6 +158,10 @@ export class OperationsPage implements OnInit {
   });
 
   ngOnInit(): void {
+    this.form.controls.type.valueChanges.subscribe((type) => this.handleOperationType(type));
+    this.form.controls.accountId.valueChanges.subscribe((accountId) => {
+      if (accountId !== this.defaultAccountId()) this.defaultAccountWasApplied = false;
+    });
     const query = this.route?.snapshot.queryParamMap;
     const focusedId = query?.get('focus');
     if (focusedId) this.loadFocusedOperation(focusedId);
@@ -168,7 +183,8 @@ export class OperationsPage implements OnInit {
     this.loadSettings();
     this.loadDirectories();
     this.load();
-    if (query?.get('new') === '1') this.openCreate();
+    const createType = query?.get('new');
+    if (isCreateOperationType(createType)) this.openCreate(createType);
   }
 
   protected currentOperation(): Operation | undefined {
@@ -387,6 +403,7 @@ export class OperationsPage implements OnInit {
   }
 
   protected edit(operation: Operation): void {
+    this.defaultAccountWasApplied = false;
     this.editingId.set(operation.id);
     this.form.setValue({
       type: operation.type,
@@ -406,12 +423,15 @@ export class OperationsPage implements OnInit {
     this.formOpen.set(true);
   }
 
-  protected openCreate(): void {
+  protected openCreate(type: CreateOperationType = 'expense'): void {
     this.cancelEdit();
+    this.form.controls.type.setValue(type);
+    this.applyDefaultAccount();
     this.formOpen.set(true);
   }
 
   protected cancelEdit(): void {
+    this.defaultAccountWasApplied = false;
     this.editingId.set(null);
     this.form.reset({
       type: '',
@@ -551,7 +571,9 @@ export class OperationsPage implements OnInit {
       next: (settings) => {
         this.baseCurrency.set(currencySymbol(settings.base_currency));
         this.timezone.set(settings.timezone);
+        this.defaultAccountId.set(settings.default_account_id);
         this.settingsReady.set(true);
+        this.applyDefaultAccount();
         if (!this.editingId() && this.form.controls.occurredOn.pristine) {
           this.form.controls.occurredOn.setValue(this.today());
           this.form.controls.occurredOn.markAsPristine();
@@ -572,7 +594,10 @@ export class OperationsPage implements OnInit {
 
   private loadDirectories(): void {
     this.http.get<Account[]>(`${environment.apiBaseUrl}/accounts`).subscribe({
-      next: (accounts) => this.accounts.set(accounts),
+      next: (accounts) => {
+        this.accounts.set(accounts);
+        this.applyDefaultAccount();
+      },
       error: (error: unknown) =>
         this.error.set(apiErrorMessage(error, 'Не удалось загрузить счета.')),
     });
@@ -621,6 +646,38 @@ export class OperationsPage implements OnInit {
   private today(): string {
     return dateInTimezone(new Date(), this.timezone());
   }
+
+  private applyDefaultAccount(): void {
+    if (this.editingId() || this.form.controls.accountId.value) return;
+    const type = this.form.controls.type.value;
+    if (type !== 'income' && type !== 'expense') return;
+    const defaultId = this.defaultAccountId();
+    if (
+      defaultId &&
+      this.accounts().some((account) => account.id === defaultId && !account.archived)
+    ) {
+      this.form.controls.accountId.setValue(defaultId, { emitEvent: false });
+      this.defaultAccountWasApplied = true;
+    }
+  }
+
+  private handleOperationType(type: OperationType | ''): void {
+    if (type !== 'income' && type !== 'expense' && this.defaultAccountWasApplied) {
+      this.form.controls.accountId.setValue('', { emitEvent: false });
+      this.defaultAccountWasApplied = false;
+      return;
+    }
+    this.applyDefaultAccount();
+  }
+}
+
+function isCreateOperationType(value: string | null | undefined): value is CreateOperationType {
+  return (
+    value === 'expense' ||
+    value === 'income' ||
+    value === 'transfer' ||
+    value === 'balance_adjustment'
+  );
 }
 
 function moneyUnits(value: string): bigint | null {

@@ -23,10 +23,12 @@ The reserve snapshot comes from the Funds public batch read after Forecasting
 has taken shared account locks, preserving the Accounts → Funds lock order used
 by coverage-dependent writes.
 
-Scheduling occurrences do not currently select a virtual fund. Free mode
-therefore starts from today's free balance and applies planned physical effects
-without guessing which future expense may consume a reserve or which income may
-later be allocated. The UI states this limitation next to the series.
+Free mode starts from today's free balance and applies planned physical effects
+without guessing which future expense may consume a reserve. A separate fund
+projection applies only pending or postponed transfers explicitly marked for
+percentage allocation to the current active fund percentages. Confirmed and
+cancelled occurrences are excluded; current fund balances remain the starting
+point and every amount stays an exact decimal string.
 
 ## Boundary and flow
 
@@ -58,7 +60,7 @@ post expected operations. See the [forecast diagram](../architecture/data-flow.m
 - A single-account transfer is outgoing on its source and incoming on its
   destination. An internal transfer has zero effect on the all-accounts balance,
   but remains in the explanation for that date.
-- Week ends at `today + 7 days`; month, quarter, half-year and year preserve the
+- Two weeks ends at `today + 14 days`; month, quarter, half-year and year preserve the
   day of month where possible and clamp to the target month's last day.
 - All current account identities, including archived accounts, participate in
   the combined balance because their ledger history still contains physical

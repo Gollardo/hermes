@@ -49,6 +49,24 @@
             }
           </select>
 
+          <div class="control-label">
+            Счёт по умолчанию
+            <app-entity-combobox
+              inputId="settings-default-account"
+              formControlName="defaultAccountId"
+              [options]="accountOptions()"
+              recentKey="accounts"
+              placeholder="Не выбран"
+              [allowEmpty]="true"
+            />
+          </div>
+          <p class="locked-note">
+            Подставляется только при создании дохода или расхода и всегда остаётся изменяемым.
+          </p>
+          @if (accountsError(); as message) {
+            <p class="form-error" role="alert">{{ message }}</p>
+          }
+
           @if (settingsError(); as message) {
             <p class="form-error" role="alert">{{ message }}</p>
           }

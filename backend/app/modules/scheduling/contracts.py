@@ -62,6 +62,7 @@ class PlannedOccurrence:
     description: str | None
     account_id: UUID
     destination_account_id: UUID | None
+    allocate_to_funds: bool
     status: OccurrenceStatus
 
 
@@ -117,6 +118,7 @@ def forecast_schedule_snapshot(
                 description=item.description,
                 account_id=item.account_id,
                 destination_account_id=item.destination_account_id,
+                allocate_to_funds=item.allocate_to_funds,
                 status=item.status,
             )
             for item in occurrences

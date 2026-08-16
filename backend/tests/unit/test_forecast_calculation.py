@@ -1,14 +1,26 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import cast
 from uuid import UUID
 
 import pytest
+from sqlalchemy.orm import Session
 
 from app.modules.accounts.contracts import AccountReferenceError
 from app.modules.forecasting.schemas import ForecastHorizon, ForecastResponse
-from app.modules.forecasting.service import ForecastInputEvent, calculate_forecast, horizon_end
+from app.modules.forecasting.service import (
+    ForecastInputEvent,
+    build_fund_forecast,
+    calculate_forecast,
+    horizon_end,
+)
+from app.modules.funds.schemas import FundResponse
 from app.modules.operations.contracts import OperationType
-from app.modules.scheduling.contracts import OccurrenceStatus
+from app.modules.scheduling.contracts import (
+    ForecastScheduleSnapshot,
+    OccurrenceStatus,
+    PlannedOccurrence,
+)
 
 TODAY = date(2026, 8, 12)
 SOURCE = UUID("10000000-0000-0000-0000-000000000001")
@@ -64,6 +76,63 @@ def test_two_week_forecast_includes_its_inclusive_end() -> None:
     assert len(result.points) == 15
     assert result.points[-1].on == through_on
     assert result.ending_balance == "90.0000"
+
+
+def test_fund_forecast_applies_only_flagged_transfers_with_exact_rounding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fund_id = UUID("40000000-0000-0000-0000-000000000001")
+    occurrence = PlannedOccurrence(
+        id=UUID("30000000-0000-0000-0000-000000000001"),
+        rule_id=RULE,
+        due_on=date(2026, 8, 13),
+        type=OperationType.TRANSFER,
+        amount=Decimal("10.0001"),
+        description=None,
+        account_id=SOURCE,
+        destination_account_id=TARGET,
+        allocate_to_funds=True,
+        status=OccurrenceStatus.PENDING,
+    )
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.forecast_schedule_snapshot",
+        lambda *args, **kwargs: ForecastScheduleSnapshot(occurrences=[occurrence], overdue_count=0),
+    )
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.list_account_identities",
+        lambda *args, **kwargs: [],
+    )
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.locked_active_funds",
+        lambda *args, **kwargs: [
+            FundResponse(
+                id=fund_id,
+                name="Резерв",
+                description=None,
+                allocation_percentage="33.3300",
+                target_amount=None,
+                total_balance="5.0000",
+                progress_percentage=None,
+                archived=False,
+                version=1,
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            )
+        ],
+    )
+
+    result = build_fund_forecast(
+        cast(Session, object()),
+        today=TODAY,
+        horizon=ForecastHorizon.TWO_WEEKS,
+    )
+
+    assert result.planned_transfer_total == "10.0001"
+    assert result.planned_allocation_total == "3.3330"
+    assert result.unallocated_total == "6.6671"
+    assert result.series[0].starting_balance == "5.0000"
+    assert result.series[0].ending_balance == "8.3330"
+    assert result.series[0].points[1].change == "3.3330"
 
 
 def test_account_forecast_is_exact_deterministic_and_explained() -> None:

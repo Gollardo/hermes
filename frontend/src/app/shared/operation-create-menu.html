@@ -1,0 +1,34 @@
+<div class="create-menu">
+  <button
+    type="button"
+    class="create-menu-trigger"
+    aria-haspopup="menu"
+    aria-controls="operation-create-menu"
+    [attr.aria-expanded]="open()"
+    (click)="toggle()"
+    (keydown)="openFromKeyboard($event)"
+  >
+    Добавить операцию <span aria-hidden="true">▾</span>
+  </button>
+  @if (open()) {
+    <div
+      id="operation-create-menu"
+      class="create-menu-popover"
+      role="menu"
+      aria-label="Тип новой операции"
+    >
+      @for (item of items; track item.type) {
+        <button
+          type="button"
+          role="menuitem"
+          [attr.data-operation-type]="item.type"
+          (click)="choose(item.type)"
+          (keydown)="moveFocus($event)"
+        >
+          <strong>{{ item.label }}</strong>
+          <span>{{ item.hint }}</span>
+        </button>
+      }
+    </div>
+  }
+</div>

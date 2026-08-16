@@ -59,8 +59,9 @@ class FundArchivedMutationError(RuntimeError):
     pass
 
 
-def _lock_definitions(session: Session) -> None:
-    session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": FUND_DEFINITION_LOCK})
+def _lock_definitions(session: Session, *, shared: bool = False) -> None:
+    function = "pg_advisory_xact_lock_shared" if shared else "pg_advisory_xact_lock"
+    session.execute(text(f"SELECT {function}(:key)"), {"key": FUND_DEFINITION_LOCK})
 
 
 def _get_fund(session: Session, fund_id: UUID, *, lock: bool = False) -> Fund:
@@ -225,6 +226,18 @@ def list_funds(session: Session, *, include_archived: bool = True) -> list[FundR
         query = query.where(Fund.archived_at.is_(None))
     funds = session.scalars(
         query.order_by(Fund.archived_at.nulls_first(), Fund.name, Fund.id)
+    ).all()
+    return [_fund_response(session, fund) for fund in funds]
+
+
+def locked_active_funds(session: Session) -> list[FundResponse]:
+    """Return one active definition/balance snapshot for cross-module projections."""
+    _lock_definitions(session, shared=True)
+    funds = session.scalars(
+        select(Fund)
+        .where(Fund.archived_at.is_(None))
+        .order_by(Fund.name, Fund.id)
+        .with_for_update(read=True)
     ).all()
     return [_fund_response(session, fund) for fund in funds]
 

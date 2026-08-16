@@ -36,25 +36,65 @@ describe('SettingsPage', () => {
     http.expectOne('/api/v1/settings').flush({
       base_currency: 'RUB',
       timezone: 'Europe/Moscow',
+      default_account_id: null,
       base_currency_locked: false,
       updated_at: '2026-08-02T00:00:00Z',
     });
+    http
+      .expectOne('/api/v1/accounts')
+      .flush([{ id: 'account-1', name: 'Основной', archived: false }]);
     fixture.detectChanges();
 
     const currency = fixture.nativeElement.querySelector('#settings-currency') as HTMLInputElement;
     currency.value = 'EUR';
     currency.dispatchEvent(new Event('input'));
+    const defaultAccount = fixture.nativeElement.querySelector(
+      '#settings-default-account',
+    ) as HTMLInputElement;
+    defaultAccount.value = 'Осн';
+    defaultAccount.dispatchEvent(new Event('input'));
+    defaultAccount.dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+    (
+      fixture.nativeElement.querySelector('[data-option-id="account-1"]') as HTMLButtonElement
+    ).click();
     fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit'));
 
     const request = http.expectOne('/api/v1/settings');
     expect(request.request.method).toBe('PUT');
     expect(request.request.body.base_currency).toBe('EUR');
+    expect(request.request.body.default_account_id).toBe('account-1');
     request.flush({
       base_currency: 'EUR',
       timezone: 'Europe/Moscow',
+      default_account_id: 'account-1',
       base_currency_locked: false,
       updated_at: '2026-08-02T00:01:00Z',
     });
+  });
+
+  it('keeps security and backup settings available when accounts cannot load', () => {
+    fixture.detectChanges();
+    http.expectOne('/api/v1/settings').flush({
+      base_currency: 'RUB',
+      timezone: 'Europe/Moscow',
+      default_account_id: null,
+      base_currency_locked: false,
+      updated_at: '2026-08-02T00:00:00Z',
+    });
+    http
+      .expectOne('/api/v1/accounts')
+      .flush({ detail: 'Unavailable' }, { status: 503, statusText: 'Service Unavailable' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#settings-currency')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('#current-password')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('#backup-file')).not.toBeNull();
+    expect(
+      (fixture.nativeElement.querySelector('#settings-default-account') as HTMLInputElement)
+        .disabled,
+    ).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Остальные настройки доступны');
   });
 
   it('validates a selected backup and shows the replacement summary', async () => {
@@ -62,9 +102,11 @@ describe('SettingsPage', () => {
     http.expectOne('/api/v1/settings').flush({
       base_currency: 'RUB',
       timezone: 'Europe/Moscow',
+      default_account_id: null,
       base_currency_locked: true,
       updated_at: '2026-08-12T00:00:00Z',
     });
+    http.expectOne('/api/v1/accounts').flush([]);
     fixture.detectChanges();
 
     const input = fixture.nativeElement.querySelector('#backup-file') as HTMLInputElement;
@@ -79,10 +121,11 @@ describe('SettingsPage', () => {
     const request = http.expectOne('/api/v1/backup/preview');
     expect(request.request.method).toBe('POST');
     request.flush({
-      app_version: '0.1.2',
+      app_version: '0.2.0',
       exported_at: '2026-08-12T00:00:00Z',
       base_currency: 'RUB',
       timezone: 'Europe/Moscow',
+      default_account_id: null,
       integrity_verified: true,
       counts: {
         accounts: 1,
@@ -109,9 +152,11 @@ describe('SettingsPage', () => {
     http.expectOne('/api/v1/settings').flush({
       base_currency: 'RUB',
       timezone: 'Europe/Moscow',
+      default_account_id: null,
       base_currency_locked: true,
       updated_at: '2026-08-12T00:00:00Z',
     });
+    http.expectOne('/api/v1/accounts').flush([]);
     const page = fixture.componentInstance as unknown as {
       backupDocument: { set: (value: unknown) => void };
       restoreForm: { setValue: (value: { confirmation: string; masterPassword: string }) => void };
@@ -130,9 +175,11 @@ describe('SettingsPage', () => {
     http.expectOne('/api/v1/settings').flush({
       base_currency: 'RUB',
       timezone: 'Europe/Moscow',
+      default_account_id: null,
       base_currency_locked: true,
       updated_at: '2026-08-12T00:00:00Z',
     });
+    http.expectOne('/api/v1/accounts').flush([]);
     const backup = { format: 'hermes-json-backup', schema_version: 1 };
     const page = fixture.componentInstance as unknown as {
       backupDocument: { set: (value: unknown) => void };

@@ -28,6 +28,7 @@ class BackupModel(BaseModel):
 class SettingsRecord(BackupModel):
     base_currency: str
     timezone: str
+    default_account_id: UUID | None = None
     base_currency_locked_at: AwareDatetime | None
     created_at: AwareDatetime
     updated_at: AwareDatetime

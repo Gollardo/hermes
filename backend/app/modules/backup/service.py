@@ -76,7 +76,9 @@ def _record(model: type[Any], row: Any) -> Any:
 
 
 def _canonical_content(document: BackupDocument) -> bytes:
-    content = document.model_dump(mode="json", exclude={"integrity"})
+    # Schema v1 gained optional fields over time. Preserve the canonical shape
+    # of an older document instead of hashing Pydantic defaults it never held.
+    content = document.model_dump(mode="json", exclude={"integrity"}, exclude_unset=True)
     return json.dumps(content, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
 
@@ -191,6 +193,13 @@ def validate_document(data: BackupData) -> None:
         raise BackupInvariantError("Active fund percentages exceed 100")
     if data.accounts and data.settings.base_currency_locked_at is None:
         raise BackupInvariantError("Base currency must be locked when accounts exist")
+    if data.settings.default_account_id is not None:
+        account_by_id = {item.id: item for item in data.accounts}
+        default_account = account_by_id.get(data.settings.default_account_id)
+        if default_account is None:
+            raise BackupInvariantError("Default account reference is missing")
+        if default_account.archived_at is not None:
+            raise BackupInvariantError("Default account must be active")
     if any(
         item.parent_id is not None and item.parent_id not in category_ids
         for item in data.categories
@@ -463,9 +472,13 @@ def restore_backup(session: Session, document: BackupDocument) -> RestoreRespons
     settings = session.get(ApplicationSettings, 1)
     if settings is None:
         raise BackupInvariantError("Target settings are missing")
-    for field, value in document.data.settings.model_dump().items():
+    settings_values = document.data.settings.model_dump()
+    default_account_id = settings_values.pop("default_account_id")
+    settings.default_account_id = None
+    for field, value in settings_values.items():
         setattr(settings, field, value)
     _insert(session, Account, document.data.accounts)
+    settings.default_account_id = default_account_id
     _insert(session, Category, document.data.categories)
     _insert(session, FinancialOperation, document.data.operations)
     _insert(session, AccountMovement, document.data.account_movements)

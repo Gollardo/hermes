@@ -63,7 +63,7 @@ flowchart TB
     Forecasting --> Liabilities
     Forecasting --> Debts
     Reports --> Operations
-    Reports --> Funds
+    Reports --> Categories
     Imports --> Operations
     Imports --> Accounts
     Backup --> Modules["All module export/restore contracts"]

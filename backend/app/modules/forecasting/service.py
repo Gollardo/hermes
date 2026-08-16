@@ -19,8 +19,15 @@ from app.modules.forecasting.schemas import (
     ForecastPointResponse,
     ForecastResponse,
     ForecastScope,
+    FundForecastPointResponse,
+    FundForecastResponse,
+    FundForecastSeriesResponse,
 )
-from app.modules.funds.contracts import reserved_balances
+from app.modules.funds.contracts import (
+    locked_active_funds,
+    percentage_allocations,
+    reserved_balances,
+)
 from app.modules.operations.contracts import OperationType, account_balances
 from app.modules.scheduling.contracts import (
     OccurrenceStatus,
@@ -227,6 +234,87 @@ def build_forecast(
         horizon=horizon,
         overdue_excluded_count=schedule.overdue_count,
         balance_mode=balance_mode,
+    )
+
+
+def build_fund_forecast(
+    session: Session,
+    *,
+    today: date,
+    horizon: ForecastHorizon,
+) -> FundForecastResponse:
+    through_on = horizon_end(today, horizon)
+    schedule = forecast_schedule_snapshot(
+        session,
+        today=today,
+        due_to=through_on,
+        account_id=None,
+    )
+    # This follows the Scheduling -> Accounts -> Funds order used by the money
+    # forecast and prevents a posting from appearing in current and planned data.
+    list_account_identities(session, shared_lock=True)
+    funds = locked_active_funds(session)
+    percentages = [
+        (fund.id, Decimal(fund.allocation_percentage))
+        for fund in funds
+        if Decimal(fund.allocation_percentage) > 0
+    ]
+    changes: dict[UUID, dict[date, Decimal]] = {fund.id: defaultdict(Decimal) for fund in funds}
+    planned_transfer_total = Decimal(0)
+    planned_allocation_total = Decimal(0)
+    for occurrence in schedule.occurrences:
+        if not occurrence.allocate_to_funds:
+            continue
+        planned_transfer_total += occurrence.amount
+        for allocation in percentage_allocations(occurrence.amount, percentages):
+            changes[allocation.fund_id][occurrence.due_on] += allocation.amount
+            planned_allocation_total += allocation.amount
+
+    granularity = (
+        ForecastGranularity.MONTH if horizon == ForecastHorizon.YEAR else ForecastGranularity.DAY
+    )
+    series: list[FundForecastSeriesResponse] = []
+    for fund in funds:
+        current = Decimal(fund.total_balance)
+        starting = current
+        points: list[FundForecastPointResponse] = []
+        for period_from, on in _forecast_periods(today, through_on, granularity):
+            change = sum(
+                (
+                    amount
+                    for event_on, amount in changes[fund.id].items()
+                    if period_from <= event_on <= on
+                ),
+                Decimal(0),
+            )
+            current += change
+            points.append(
+                FundForecastPointResponse(
+                    period_from=period_from,
+                    on=on,
+                    change=_money(change),
+                    balance=_money(current),
+                )
+            )
+        series.append(
+            FundForecastSeriesResponse(
+                fund_id=fund.id,
+                fund_name=fund.name,
+                allocation_percentage=fund.allocation_percentage,
+                starting_balance=_money(starting),
+                ending_balance=_money(current),
+                points=points,
+            )
+        )
+    return FundForecastResponse(
+        horizon=horizon,
+        granularity=granularity,
+        from_on=today,
+        through_on=through_on,
+        planned_transfer_total=_money(planned_transfer_total),
+        planned_allocation_total=_money(planned_allocation_total),
+        unallocated_total=_money(planned_transfer_total - planned_allocation_total),
+        series=series,
     )
 
 

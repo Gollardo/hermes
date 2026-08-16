@@ -18,6 +18,7 @@ from app.modules.funds.router import read_router as funds_read_router
 from app.modules.funds.router import write_router as funds_write_router
 from app.modules.operations.router import read_router as operations_read_router
 from app.modules.operations.router import write_router as operations_write_router
+from app.modules.reports.router import read_router as reports_read_router
 from app.modules.scheduling.router import read_router as scheduling_read_router
 from app.modules.scheduling.router import write_router as scheduling_write_router
 
@@ -38,6 +39,7 @@ def create_api_router() -> APIRouter:
     protected.include_router(funds_read_router)
     protected.include_router(scheduling_read_router)
     protected.include_router(forecasting_read_router)
+    protected.include_router(reports_read_router)
     protected.include_router(backup_read_router)
     protected.include_router(
         settings_write_router,

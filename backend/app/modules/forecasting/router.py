@@ -6,8 +6,13 @@ from fastapi import APIRouter, HTTPException
 
 from app.core.database import DatabaseSession
 from app.modules.accounts.contracts import AccountReferenceError
-from app.modules.forecasting.schemas import ForecastBalanceMode, ForecastHorizon, ForecastResponse
-from app.modules.forecasting.service import build_forecast
+from app.modules.forecasting.schemas import (
+    ForecastBalanceMode,
+    ForecastHorizon,
+    ForecastResponse,
+    FundForecastResponse,
+)
+from app.modules.forecasting.service import build_forecast, build_fund_forecast
 from app.modules.settings.contracts import application_timezone
 
 read_router = APIRouter(prefix="/forecast", tags=["forecast"])
@@ -34,3 +39,12 @@ def read_forecast(
             status_code=404,
             detail={"code": "forecast_account_not_found", "message": "Account not found"},
         ) from error
+
+
+@read_router.get("/funds", response_model=FundForecastResponse)
+def read_fund_forecast(
+    session: DatabaseSession,
+    horizon: ForecastHorizon = ForecastHorizon.MONTH,
+) -> FundForecastResponse:
+    today = datetime.now(UTC).astimezone(ZoneInfo(application_timezone(session))).date()
+    return build_fund_forecast(session, today=today, horizon=horizon)

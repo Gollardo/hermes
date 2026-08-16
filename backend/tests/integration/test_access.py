@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from threading import Barrier
+from uuid import UUID
 
 import pytest
 from alembic import command
@@ -9,9 +10,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 from sqlalchemy.exc import OperationalError
 
+from app.application.accounts import set_account_archived_with_default_cleanup
+from app.application.settings import replace_application_settings
 from app.core.config import Settings
 from app.core.database import create_database_engine, create_session_factory
 from app.main import create_app
+from app.modules.accounts.contracts import AccountReferenceError
 from app.modules.auth.models import AuthSession, OwnerCredential
 from app.modules.auth.security import hash_password, hash_token
 from app.modules.auth.service import LoginStatus, login
@@ -225,6 +229,96 @@ def test_settings_validation_and_currency_lock(postgres_database_settings: Setti
         )
         assert updated.status_code == 200
         assert updated.json()["base_currency"] == "EUR"
+        account = client.post(
+            "/api/v1/accounts",
+            headers=csrf_headers(client),
+            json={"type": "debit", "name": "Main", "initial_balance": "0"},
+        )
+        assert account.status_code == 201
+        default_account = client.put(
+            "/api/v1/settings",
+            headers=csrf_headers(client),
+            json={
+                "base_currency": "EUR",
+                "timezone": "UTC",
+                "default_account_id": account.json()["id"],
+            },
+        )
+        assert default_account.status_code == 200
+        assert default_account.json()["default_account_id"] == account.json()["id"]
+        assert (
+            client.post(
+                f"/api/v1/accounts/{account.json()['id']}/archive",
+                headers=csrf_headers(client),
+            ).status_code
+            == 200
+        )
+        assert client.get("/api/v1/settings").json()["default_account_id"] is None
+        assert (
+            client.post(
+                f"/api/v1/accounts/{account.json()['id']}/restore",
+                headers=csrf_headers(client),
+            ).status_code
+            == 200
+        )
+        assert (
+            client.put(
+                "/api/v1/settings",
+                headers=csrf_headers(client),
+                json={
+                    "base_currency": "EUR",
+                    "timezone": "UTC",
+                    "default_account_id": account.json()["id"],
+                },
+            ).status_code
+            == 200
+        )
+        assert (
+            client.delete(
+                f"/api/v1/accounts/{account.json()['id']}", headers=csrf_headers(client)
+            ).status_code
+            == 204
+        )
+        assert client.get("/api/v1/settings").json()["default_account_id"] is None
+        account_with_history = client.post(
+            "/api/v1/accounts",
+            headers=csrf_headers(client),
+            json={"type": "debit", "name": "History", "initial_balance": "1"},
+        ).json()
+        assert (
+            client.put(
+                "/api/v1/settings",
+                headers=csrf_headers(client),
+                json={
+                    "base_currency": "EUR",
+                    "timezone": "UTC",
+                    "default_account_id": account_with_history["id"],
+                },
+            ).status_code
+            == 200
+        )
+        assert (
+            client.delete(
+                f"/api/v1/accounts/{account_with_history['id']}",
+                headers=csrf_headers(client),
+            ).status_code
+            == 409
+        )
+        assert (
+            client.get("/api/v1/settings").json()["default_account_id"]
+            == account_with_history["id"]
+        )
+        invalid_default = client.put(
+            "/api/v1/settings",
+            headers=csrf_headers(client),
+            json={
+                "base_currency": "EUR",
+                "timezone": "UTC",
+                "default_account_id": "00000000-0000-0000-0000-000000000099",
+            },
+        )
+        assert invalid_default.status_code == 409
+        assert invalid_default.json()["detail"]["code"] == "invalid_default_account"
         assert (
             client.put(
                 "/api/v1/settings",
@@ -252,6 +346,50 @@ def test_settings_validation_and_currency_lock(postgres_database_settings: Setti
             ).status_code
             == 200
         )
+
+
+def test_default_account_selection_serializes_with_archival(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        account_id = UUID(
+            client.post(
+                "/api/v1/accounts",
+                headers=csrf_headers(client),
+                json={"type": "debit", "name": "Main", "initial_balance": "0"},
+            ).json()["id"]
+        )
+        start = Barrier(2)
+
+        def select_default() -> str:
+            start.wait()
+            try:
+                with app.state.session_factory.begin() as session:
+                    replace_application_settings(
+                        session,
+                        base_currency="RUB",
+                        timezone="Europe/Moscow",
+                        default_account_id=account_id,
+                    )
+            except AccountReferenceError:
+                return "rejected"
+            return "selected"
+
+        def archive() -> None:
+            start.wait()
+            with app.state.session_factory.begin() as session:
+                set_account_archived_with_default_cleanup(session, account_id, archived=True)
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            selection = executor.submit(select_default)
+            archival = executor.submit(archive)
+            archival.result(timeout=5)
+            assert selection.result(timeout=5) in {"selected", "rejected"}
+
+        assert client.get(f"/api/v1/accounts/{account_id}").json()["archived"] is True
+        assert client.get("/api/v1/settings").json()["default_account_id"] is None
 
 
 def test_failed_logins_are_rate_limited(postgres_database_settings: Settings) -> None:

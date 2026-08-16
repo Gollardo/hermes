@@ -41,6 +41,55 @@ class PhysicalTransferDraft:
     destination_account_id: UUID
 
 
+@dataclass(frozen=True, slots=True)
+class ReportOperation:
+    id: UUID
+    occurred_on: date
+    description: str | None
+    category_id: UUID
+    amount: Decimal
+
+
+def report_operations(
+    session: Session,
+    *,
+    operation_type: OperationType,
+    from_on: date,
+    through_on: date,
+) -> list[ReportOperation]:
+    """Return exact income/expense facts for reporting through Operations ownership."""
+    rows = session.execute(
+        select(
+            FinancialOperation.id,
+            FinancialOperation.occurred_on,
+            FinancialOperation.description,
+            FinancialOperation.category_id,
+            AccountMovement.amount,
+        )
+        .join(AccountMovement, AccountMovement.operation_id == FinancialOperation.id)
+        .where(
+            FinancialOperation.type == operation_type,
+            FinancialOperation.occurred_on.between(from_on, through_on),
+        )
+        .order_by(
+            FinancialOperation.occurred_on.desc(),
+            FinancialOperation.created_at.desc(),
+            FinancialOperation.id.desc(),
+        )
+    ).all()
+    return [
+        ReportOperation(
+            id=operation_id,
+            occurred_on=occurred_on,
+            description=description,
+            category_id=category_id,
+            amount=abs(Decimal(amount)),
+        )
+        for operation_id, occurred_on, description, category_id, amount in rows
+        if category_id is not None
+    ]
+
+
 def post_physical_transfer(session: Session, draft: PhysicalTransferDraft) -> UUID:
     """Post one transfer inside the caller's transaction and return its identity."""
     operation = create_operation(
@@ -137,6 +186,7 @@ __all__ = [
     "OperationHistoryReference",
     "OperationType",
     "PhysicalTransferDraft",
+    "ReportOperation",
     "ScheduledOperationDraft",
     "account_balance",
     "account_balances",
@@ -145,5 +195,6 @@ __all__ = [
     "operation_history_references",
     "post_initial_balance",
     "post_physical_transfer",
+    "report_operations",
     "post_scheduled_operation",
 ]

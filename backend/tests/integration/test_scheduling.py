@@ -492,12 +492,20 @@ def test_scheduled_transfer_and_percentage_allocation_are_atomic(
             json={"name": "Reserve", "allocation_percentage": "25"},
         )
         assert fund.status_code == 201
+        fund_forecast = client.get("/api/v1/forecast/funds?horizon=two_weeks")
+        assert fund_forecast.status_code == 200
+        assert fund_forecast.json()["planned_transfer_total"] == "20.0000"
+        assert fund_forecast.json()["planned_allocation_total"] == "5.0000"
+        assert fund_forecast.json()["series"][0]["ending_balance"] == "5.0000"
         confirmed = client.post(
             f"/api/v1/scheduling/occurrences/{occurrence['id']}/confirm",
             headers=headers,
             json={"version": occurrence["version"], "amount": "24"},
         )
         assert confirmed.status_code == 200
+        confirmed_forecast = client.get("/api/v1/forecast/funds?horizon=two_weeks")
+        assert Decimal(confirmed_forecast.json()["planned_transfer_total"]) == 0
+        assert confirmed_forecast.json()["series"][0]["starting_balance"] == "6.0000"
         balances = {item["id"]: item["balance"] for item in client.get("/api/v1/accounts").json()}
         assert balances[source] == "76.0000"
         assert balances[destination] == "24.0000"

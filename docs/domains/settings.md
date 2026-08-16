@@ -2,8 +2,8 @@
 
 ## Ownership and current fields
 
-The `settings` module owns persisted owner preferences, currently the base
-currency and IANA timezone. Runtime deployment configuration remains in
+The `settings` module owns persisted owner preferences: the base currency,
+IANA timezone and an optional default account. Runtime deployment configuration remains in
 `app.core.config` and environment variables.
 
 Setup creates exactly one settings row in the same transaction as the owner
@@ -27,6 +27,12 @@ change the base currency only while it is unlocked.
 - Currency changes and the first financial lock take a row-level lock on the
   singleton settings record, so concurrent transactions cannot change the
   currency after a financial write establishes the lock.
+- A default account must reference an active account. Archiving clears the
+  preference in the same transaction; deletion is protected by both application
+  cleanup and a nullable foreign key with `ON DELETE SET NULL`. It is only a
+  mutable convenience default for new income and expense forms, never a posting
+  rule. Settings updates and account archival/deletion use the common lock order
+  `Settings → Accounts`.
 
 ## Explicit assumptions
 

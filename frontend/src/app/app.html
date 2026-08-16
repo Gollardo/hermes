@@ -64,6 +64,9 @@
               </svg>
               <span>Фонды</span>
             </a>
+          </div>
+
+          <div class="nav-group">
             <p class="plan-label">План</p>
             <a routerLink="/calendar" routerLinkActive="active">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -76,6 +79,16 @@
                 <path d="M4 18 9 12l4 3 7-9M4 20h16" />
               </svg>
               <span>Прогноз</span>
+            </a>
+          </div>
+
+          <div class="nav-group reports-nav-group">
+            <p>Отчёты</p>
+            <a routerLink="/reports" routerLinkActive="active">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19V9M12 19V5M19 19v-7M3 19h18" />
+              </svg>
+              <span>Доходы и расходы</span>
             </a>
           </div>
 
@@ -123,7 +136,7 @@
             <span aria-hidden="true">☰</span>
             {{ sidebarHidden() ? 'Показать меню' : 'Скрыть меню' }}
           </button>
-          <span class="release-pill">0.1.2</span>
+          <span class="release-pill">0.2.0</span>
         </header>
 
         @if (actionError(); as message) {

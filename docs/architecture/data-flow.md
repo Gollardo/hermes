@@ -197,3 +197,10 @@ occurrences are excluded explicitly and reported, while an internal transfer is
 neutral only in the combined scope. Free mode subtracts the current Funds-owned
 per-account reserves from the starting physical balances through a batch public
 read contract; total mode leaves physical balances unchanged.
+
+The fund perspective reuses the same horizon and coherent
+Scheduling → Accounts → Funds lock order. It starts from current virtual fund
+balances and applies only actionable transfers whose rules explicitly request
+percentage allocation, using the current locked active percentages and the
+Funds-owned round-down algorithm. It is an additional read model: failure to
+load it does not disguise or invalidate a successfully calculated cash forecast.

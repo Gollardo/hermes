@@ -47,6 +47,10 @@ describe('App', () => {
     expect(compiled.querySelector('.plan-label')?.textContent).toContain('План');
     expect(compiled.textContent).toContain('Календарь');
     expect(compiled.textContent).toContain('Прогноз');
+    expect(compiled.querySelector('.reports-nav-group > p')?.textContent).toContain('Отчёты');
+    expect(compiled.querySelector('.reports-nav-group a')?.textContent).toContain(
+      'Доходы и расходы',
+    );
   });
 
   it('lets the owner hide and restore the sidebar', () => {

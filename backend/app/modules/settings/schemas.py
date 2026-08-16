@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, field_validator
 
@@ -8,6 +9,7 @@ from app.modules.settings.validation import normalize_currency, normalize_timezo
 class SettingsResponse(BaseModel):
     base_currency: str
     timezone: str
+    default_account_id: UUID | None
     base_currency_locked: bool
     updated_at: datetime
 
@@ -15,6 +17,7 @@ class SettingsResponse(BaseModel):
 class SettingsUpdateRequest(BaseModel):
     base_currency: str
     timezone: str
+    default_account_id: UUID | None = None
 
     @field_validator("base_currency")
     @classmethod

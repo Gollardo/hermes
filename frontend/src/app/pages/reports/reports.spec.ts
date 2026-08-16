@@ -1,0 +1,134 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+
+import { ReportsPage } from './reports';
+
+describe('ReportsPage', () => {
+  let fixture: ComponentFixture<ReportsPage>;
+  let http: HttpTestingController;
+
+  beforeEach(async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-16T12:00:00Z'));
+    await TestBed.configureTestingModule({
+      imports: [ReportsPage],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    }).compileComponents();
+    fixture = TestBed.createComponent(ReportsPage);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    http.verify();
+    vi.useRealTimers();
+  });
+
+  it('shows exact category totals and operation drill-down links', () => {
+    fixture.detectChanges();
+    http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB', timezone: 'Europe/Moscow' });
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/v1/reports/income-expense' &&
+        candidate.params.get('type') === 'expense',
+    );
+    request.flush({
+      type: 'expense',
+      from_on: '2026-08-01',
+      through_on: '2026-08-31',
+      total_amount: '1200.0000',
+      operation_count: 1,
+      categories: [
+        {
+          category_id: 'category-1',
+          category_name: 'Аренда',
+          root_category_id: 'root-1',
+          root_category_name: 'Жильё',
+          amount: '1200.0000',
+          share: '100.00',
+          operations: [
+            {
+              id: 'operation-1',
+              occurred_on: '2026-08-10',
+              description: 'Квартира',
+              amount: '1200.0000',
+            },
+          ],
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Жильё → Аренда');
+    expect(text).toContain('1 200.00 ₽');
+    expect(text).toContain('10 августа 2026');
+    expect(fixture.nativeElement.querySelector('.category-chart')).not.toBeNull();
+    expect(
+      (fixture.nativeElement.querySelector('.category-operations a') as HTMLAnchorElement).href,
+    ).toContain('focus=operation-1');
+  });
+
+  it('uses the application timezone for the default month', () => {
+    vi.setSystemTime(new Date('2026-08-31T22:30:00Z'));
+    fixture.detectChanges();
+    http
+      .expectOne('/api/v1/settings')
+      .flush({ base_currency: 'RUB', timezone: 'Pacific/Kiritimati' });
+
+    const request = http.expectOne(
+      '/api/v1/reports/income-expense?type=expense&from_on=2026-09-01&through_on=2026-09-30',
+    );
+    request.flush({
+      type: 'expense',
+      from_on: '2026-09-01',
+      through_on: '2026-09-30',
+      total_amount: '0.0000',
+      operation_count: 0,
+      categories: [],
+    });
+  });
+
+  it('ignores an older response after the report type changes again', () => {
+    fixture.detectChanges();
+    http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB', timezone: 'Europe/Moscow' });
+    http
+      .expectOne((request) => request.params.get('type') === 'expense')
+      .flush({
+        type: 'expense',
+        from_on: '2026-08-01',
+        through_on: '2026-08-31',
+        total_amount: '0.0000',
+        operation_count: 0,
+        categories: [],
+      });
+    const page = fixture.componentInstance as unknown as {
+      changeType: (type: 'expense' | 'income') => void;
+    };
+    page.changeType('income');
+    const stale = http.expectOne((request) => request.params.get('type') === 'income');
+    page.changeType('expense');
+    const current = http.expectOne((request) => request.params.get('type') === 'expense');
+    current.flush({
+      type: 'expense',
+      from_on: '2026-08-01',
+      through_on: '2026-08-31',
+      total_amount: '10.0000',
+      operation_count: 1,
+      categories: [],
+    });
+    stale.flush({
+      type: 'income',
+      from_on: '2026-08-01',
+      through_on: '2026-08-31',
+      total_amount: '99.0000',
+      operation_count: 1,
+      categories: [],
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('10.00 ₽');
+    expect(fixture.nativeElement.textContent).not.toContain('99.00 ₽');
+  });
+});

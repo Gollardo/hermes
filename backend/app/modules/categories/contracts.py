@@ -175,6 +175,32 @@ class CategoryRoot:
     type: CategoryType
 
 
+@dataclass(frozen=True, slots=True)
+class CategoryPath:
+    id: UUID
+    name: str
+    root_id: UUID
+    root_name: str
+
+
+def category_path_map(session: Session) -> dict[UUID, CategoryPath]:
+    categories = session.scalars(select(Category)).all()
+    by_id = {category.id: category for category in categories}
+    return {
+        category.id: CategoryPath(
+            id=category.id,
+            name=category.name,
+            root_id=(
+                by_id[category.parent_id].id if category.parent_id is not None else category.id
+            ),
+            root_name=(
+                by_id[category.parent_id].name if category.parent_id is not None else category.name
+            ),
+        )
+        for category in categories
+    }
+
+
 def category_root_map(session: Session) -> dict[UUID, CategoryRoot]:
     categories = session.scalars(select(Category)).all()
     by_id = {category.id: category for category in categories}
@@ -223,10 +249,12 @@ def category_name(session: Session, category_id: UUID) -> str | None:
 
 __all__ = [
     "CategoryReferenceError",
+    "CategoryPath",
     "CategoryRoot",
     "CategoryType",
     "OnboardingExpenseGroup",
     "category_name",
+    "category_path_map",
     "category_root_map",
     "category_subtree_ids",
     "create_onboarding_categories",

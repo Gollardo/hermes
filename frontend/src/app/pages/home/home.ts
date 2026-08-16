@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { DateTextPipe } from '../../shared/date-text.pipe';
 import { currencySymbol, MoneyPipe } from '../../shared/money.pipe';
+import { OperationCreateMenu } from '../../shared/operation-create-menu';
 
 interface Coverage {
   physical_balance: string;
@@ -85,7 +86,7 @@ interface Settings {
 
 @Component({
   selector: 'app-home-page',
-  imports: [RouterLink, MoneyPipe, DateTextPipe],
+  imports: [RouterLink, MoneyPipe, DateTextPipe, OperationCreateMenu],
   templateUrl: './home.html',
   styleUrl: './home.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

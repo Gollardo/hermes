@@ -6,12 +6,20 @@ import { environment } from '../../../environments/environment';
 import { AuthService, apiErrorMessage } from '../../core/auth.service';
 import { formatTextTimestamp } from '../../shared/date-text.pipe';
 import { currencySymbol } from '../../shared/money.pipe';
+import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 
 interface ApplicationSettings {
   base_currency: string;
   timezone: string;
+  default_account_id: string | null;
   base_currency_locked: boolean;
   updated_at: string;
+}
+
+interface Account {
+  id: string;
+  name: string;
+  archived: boolean;
 }
 
 interface BackupPreview {
@@ -32,7 +40,7 @@ const RESTORE_CONFIRMATION = 'ЗАМЕНИТЬ ВСЕ ДАННЫЕ';
 
 @Component({
   selector: 'app-settings-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, EntityCombobox],
   templateUrl: './settings.html',
   styleUrl: './settings.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -48,10 +56,12 @@ export class SettingsPage implements OnInit {
   protected readonly savingSettings = signal(false);
   protected readonly changingPassword = signal(false);
   protected readonly settingsError = signal<string | null>(null);
+  protected readonly accountsError = signal<string | null>(null);
   protected readonly settingsSuccess = signal<string | null>(null);
   protected readonly passwordError = signal<string | null>(null);
   protected readonly passwordSuccess = signal<string | null>(null);
   protected readonly currencyLocked = signal(false);
+  protected readonly accounts = signal<Account[]>([]);
   protected readonly backupDocument = signal<unknown | null>(null);
   protected readonly backupPreview = signal<BackupPreview | null>(null);
   protected readonly backupBusy = signal(false);
@@ -65,7 +75,14 @@ export class SettingsPage implements OnInit {
   protected readonly settingsForm = this.formBuilder.group({
     baseCurrency: ['RUB', [Validators.required, Validators.pattern(/^[A-Za-z]{3}$/)]],
     timezone: ['UTC', Validators.required],
+    defaultAccountId: this.formBuilder.control({ value: '', disabled: true }),
   });
+
+  protected accountOptions(): EntityOption[] {
+    return this.accounts()
+      .filter((account) => !account.archived)
+      .map((account) => ({ id: account.id, label: account.name }));
+  }
 
   protected readonly passwordForm = this.formBuilder.group({
     currentPassword: ['', [Validators.required, Validators.maxLength(1024)]],
@@ -95,6 +112,7 @@ export class SettingsPage implements OnInit {
       .put<ApplicationSettings>(`${environment.apiBaseUrl}/settings`, {
         base_currency: value.baseCurrency,
         timezone: value.timezone,
+        default_account_id: value.defaultAccountId || null,
       })
       .subscribe({
         next: (settings) => {
@@ -267,6 +285,19 @@ export class SettingsPage implements OnInit {
         this.settingsError.set(apiErrorMessage(error, 'Не удалось загрузить настройки.'));
       },
     });
+    this.http.get<Account[]>(`${environment.apiBaseUrl}/accounts`).subscribe({
+      next: (accounts) => {
+        this.accounts.set(accounts);
+        this.accountsError.set(null);
+        this.settingsForm.controls.defaultAccountId.enable();
+      },
+      error: (error: unknown) => {
+        this.settingsForm.controls.defaultAccountId.disable();
+        this.accountsError.set(
+          apiErrorMessage(error, 'Не удалось загрузить счета. Остальные настройки доступны.'),
+        );
+      },
+    });
   }
 
   private applySettings(settings: ApplicationSettings): void {
@@ -274,6 +305,7 @@ export class SettingsPage implements OnInit {
     this.settingsForm.setValue({
       baseCurrency: settings.base_currency,
       timezone: settings.timezone,
+      defaultAccountId: settings.default_account_id ?? '',
     });
     if (settings.base_currency_locked) {
       this.settingsForm.controls.baseCurrency.disable();

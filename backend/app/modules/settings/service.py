@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -33,6 +34,7 @@ def initialize_settings(session: Session, *, base_currency: str, timezone: str) 
             id=1,
             base_currency=base_currency,
             timezone=timezone,
+            default_account_id=None,
             base_currency_locked_at=None,
             created_at=now,
             updated_at=now,
@@ -53,7 +55,11 @@ def application_timezone(session: Session) -> str:
 
 
 def update_application_settings(
-    session: Session, *, base_currency: str, timezone: str
+    session: Session,
+    *,
+    base_currency: str,
+    timezone: str,
+    default_account_id: UUID | None = None,
 ) -> ApplicationSettings:
     settings = session.scalar(
         select(ApplicationSettings).where(ApplicationSettings.id == 1).with_for_update()
@@ -64,8 +70,21 @@ def update_application_settings(
         raise BaseCurrencyLockedError
     settings.base_currency = base_currency
     settings.timezone = timezone
+    settings.default_account_id = default_account_id
     settings.updated_at = datetime.now(UTC)
     return settings
+
+
+def clear_default_account_if_matches(session: Session, account_id: UUID) -> None:
+    """Clear a default-account reference before the account becomes unavailable."""
+    settings = session.scalar(
+        select(ApplicationSettings).where(ApplicationSettings.id == 1).with_for_update()
+    )
+    if settings is None:
+        raise SettingsNotInitializedError
+    if settings.default_account_id == account_id:
+        settings.default_account_id = None
+        settings.updated_at = datetime.now(UTC)
 
 
 def lock_base_currency(session: Session) -> None:

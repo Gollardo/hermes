@@ -81,6 +81,38 @@ interface DateTick {
   label: string;
 }
 
+interface FundForecastPoint {
+  period_from: string;
+  on: string;
+  change: string;
+  balance: string;
+}
+
+interface FundForecastSeries {
+  fund_id: string;
+  fund_name: string;
+  allocation_percentage: string;
+  starting_balance: string;
+  ending_balance: string;
+  points: FundForecastPoint[];
+}
+
+interface FundForecast {
+  horizon: ForecastHorizon;
+  granularity: 'day' | 'month';
+  from_on: string;
+  through_on: string;
+  planned_transfer_total: string;
+  planned_allocation_total: string;
+  unallocated_total: string;
+  series: FundForecastSeries[];
+}
+
+interface FundPlotSeries extends FundForecastSeries {
+  color: string;
+  pointsAttribute: string;
+}
+
 interface PlotSegment {
   key: string;
   x1: number;
@@ -100,12 +132,18 @@ interface ForecastRiskMarker extends PlotCoordinate {
   selector: 'app-forecast-page',
   imports: [FormsModule, RouterLink, MoneyPipe, DateTextPipe, EntityCombobox],
   templateUrl: './forecast.html',
-  styleUrls: ['./forecast.css', './forecast-chart.css', './forecast-details.css'],
+  styleUrls: [
+    './forecast.css',
+    './forecast-chart.css',
+    './forecast-details.css',
+    './forecast-funds.css',
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ForecastPage implements OnInit {
   private readonly http = inject(HttpClient);
   private requestId = 0;
+  private fundRequestId = 0;
 
   protected readonly accounts = signal<Account[]>([]);
   protected readonly horizons: readonly HorizonOption[] = [
@@ -118,6 +156,8 @@ export class ForecastPage implements OnInit {
   protected readonly timelineEventLimit = TIMELINE_EVENT_LIMIT;
   protected readonly baseCurrency = signal('RUB');
   protected readonly forecast = signal<ForecastDataset | null>(null);
+  protected readonly fundForecast = signal<FundForecast | null>(null);
+  protected readonly fundError = signal<string | null>(null);
   protected readonly accountOptions = computed<EntityOption[]>(() =>
     this.accounts().map((account) => ({
       id: account.id,
@@ -138,6 +178,35 @@ export class ForecastPage implements OnInit {
   protected readonly viewModel = computed<ForecastViewModel | null>(() => {
     const value = this.forecast();
     return value ? buildForecastViewModel(value) : null;
+  });
+
+  protected readonly fundPlot = computed<FundPlotSeries[]>(() => {
+    const value = this.fundForecast();
+    if (!value?.series.length) return [];
+    const maximum = Math.max(
+      1,
+      ...value.series.flatMap((series) => [
+        Number(series.starting_balance),
+        ...series.points.map((point) => Number(point.balance)),
+      ]),
+    );
+    return value.series.map((series, seriesIndex) => {
+      const points = [
+        Number(series.starting_balance),
+        ...series.points.map((point) => Number(point.balance)),
+      ];
+      return {
+        ...series,
+        color: fundColor(seriesIndex),
+        pointsAttribute: points
+          .map((amount, index) => {
+            const x = 4 + (index / Math.max(points.length - 1, 1)) * 92;
+            const y = 44 - (amount / maximum) * 38;
+            return `${x},${y}`;
+          })
+          .join(' '),
+      };
+    });
   });
 
   protected readonly selectedPoint = computed(() => {
@@ -351,6 +420,7 @@ export class ForecastPage implements OnInit {
         this.accounts.set(accounts);
         this.baseCurrency.set(currencySymbol(settings.base_currency));
         this.loadForecast();
+        this.loadFundForecast();
       },
       error: (error: unknown) => {
         this.loading.set(false);
@@ -367,6 +437,7 @@ export class ForecastPage implements OnInit {
   protected changeHorizon(value: ForecastHorizon): void {
     this.selectedHorizon.set(value);
     this.loadForecast();
+    this.loadFundForecast();
   }
 
   protected changeBalanceMode(mode: ForecastBalanceMode): void {
@@ -495,6 +566,28 @@ export class ForecastPage implements OnInit {
     return `${this.chartTitle(viewModel.dataset.balance_mode)} с ${formatTextDate(viewModel.dataset.from_on)} по ${formatTextDate(viewModel.dataset.through_on)}. ${risk}`;
   }
 
+  protected fundDonutStyle(): string {
+    const series = this.fundForecast()?.series ?? [];
+    const total = series.reduce((sum, item) => sum + Number(item.ending_balance), 0);
+    if (total <= 0) return 'var(--surface-soft)';
+    let cursor = 0;
+    return `conic-gradient(${series
+      .map((item, index) => {
+        const start = cursor;
+        cursor += (Number(item.ending_balance) / total) * 100;
+        return `${fundColor(index)} ${start}% ${cursor}%`;
+      })
+      .join(', ')})`;
+  }
+
+  protected fundColor(index: number): string {
+    return fundColor(index);
+  }
+
+  protected retryFundForecast(): void {
+    this.loadFundForecast();
+  }
+
   private loadForecast(): void {
     const requestId = ++this.requestId;
     this.loading.set(true);
@@ -529,6 +622,29 @@ export class ForecastPage implements OnInit {
       },
     });
   }
+
+  private loadFundForecast(): void {
+    const requestId = ++this.fundRequestId;
+    this.fundForecast.set(null);
+    this.fundError.set(null);
+    const params = new HttpParams().set('horizon', this.selectedHorizon());
+    this.http.get<FundForecast>(`${environment.apiBaseUrl}/forecast/funds`, { params }).subscribe({
+      next: (forecast) => {
+        if (requestId === this.fundRequestId) this.fundForecast.set(forecast);
+      },
+      error: (error: unknown) => {
+        if (requestId !== this.fundRequestId) return;
+        // This additional read model must not hide an otherwise valid cash forecast.
+        this.fundError.set(apiErrorMessage(error, 'Не удалось рассчитать перспективу фондов.'));
+      },
+    });
+  }
+}
+
+const FUND_COLORS = ['#17734f', '#5d9e78', '#8a641f', '#607080', '#9b5f79', '#4f7c9b'];
+
+function fundColor(index: number): string {
+  return FUND_COLORS[index % FUND_COLORS.length];
 }
 
 function segment(

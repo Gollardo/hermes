@@ -1,0 +1,134 @@
+<section class="reports-page">
+  <header class="page-header">
+    <div class="page-header-copy">
+      <p class="eyebrow">Отчёты</p>
+      <h1>Доходы и расходы</h1>
+      <p>Разберите структуру операций за месяц или произвольный период.</p>
+    </div>
+  </header>
+
+  <section class="panel report-controls" aria-label="Параметры отчёта">
+    <fieldset>
+      <legend>Тип операций</legend>
+      <div class="report-switch">
+        <button
+          type="button"
+          class="secondary"
+          [class.active]="reportType() === 'expense'"
+          [attr.aria-pressed]="reportType() === 'expense'"
+          (click)="changeType('expense')"
+        >
+          Расходы
+        </button>
+        <button
+          type="button"
+          class="secondary"
+          [class.active]="reportType() === 'income'"
+          [attr.aria-pressed]="reportType() === 'income'"
+          (click)="changeType('income')"
+        >
+          Доходы
+        </button>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Период</legend>
+      <div class="report-switch">
+        <button
+          type="button"
+          class="secondary"
+          [class.active]="periodMode() === 'month'"
+          [attr.aria-pressed]="periodMode() === 'month'"
+          (click)="changeMode('month')"
+        >
+          По месяцам
+        </button>
+        <button
+          type="button"
+          class="secondary"
+          [class.active]="periodMode() === 'custom'"
+          [attr.aria-pressed]="periodMode() === 'custom'"
+          (click)="changeMode('custom')"
+        >
+          Произвольный
+        </button>
+      </div>
+    </fieldset>
+    @if (periodMode() === 'month') {
+      <label
+        >Месяц <input type="month" [ngModel]="selectedMonth()" (ngModelChange)="applyMonth($event)"
+      /></label>
+    } @else {
+      <label
+        >С даты <input type="date" [ngModel]="fromOn()" (ngModelChange)="fromOn.set($event)"
+      /></label>
+      <label
+        >По дату <input type="date" [ngModel]="throughOn()" (ngModelChange)="throughOn.set($event)"
+      /></label>
+      <button type="button" (click)="applyCustom()">Построить</button>
+    }
+  </section>
+
+  @if (error(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+  @if (loading() && !report()) {
+    <section class="panel empty-state">Строим отчёт…</section>
+  } @else if (report(); as data) {
+    <section class="panel report-chart-panel" aria-labelledby="report-chart-title">
+      <div class="report-summary">
+        <div>
+          <p class="section-label">
+            {{ data.from_on | textDate }} — {{ data.through_on | textDate }}
+          </p>
+          <h2 id="report-chart-title">{{ typeLabel(data.type) }} по категориям</h2>
+        </div>
+        <div>
+          <strong>{{ data.total_amount | money }} {{ baseCurrency() }}</strong>
+          <span>{{ data.operation_count }} операций</span>
+        </div>
+      </div>
+      @if (data.categories.length) {
+        <div
+          class="category-chart"
+          role="img"
+          [attr.aria-label]="typeLabel(data.type) + ' по категориям'"
+        >
+          @for (category of data.categories; track category.category_id) {
+            <div class="chart-row">
+              <span>{{ categoryLabel(category) }}</span>
+              <div><i [style.width.%]="category.share"></i></div>
+              <strong>{{ category.amount | money }} {{ baseCurrency() }}</strong>
+              <small>{{ category.share }}%</small>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="empty-state">За выбранный период операций этого типа нет.</p>
+      }
+    </section>
+
+    @if (data.categories.length) {
+      <section class="panel report-list" aria-labelledby="report-list-title">
+        <div class="panel-heading"><h2 id="report-list-title">Операции по категориям</h2></div>
+        @for (category of data.categories; track category.category_id) {
+          <details open>
+            <summary>
+              <span>{{ categoryLabel(category) }}</span>
+              <strong>{{ category.amount | money }} {{ baseCurrency() }}</strong>
+            </summary>
+            <div class="category-operations">
+              @for (operation of category.operations; track operation.id) {
+                <a routerLink="/operations" [queryParams]="{ focus: operation.id }">
+                  <span>{{ operation.occurred_on | textDate }}</span>
+                  <b>{{ operation.description || category.category_name }}</b>
+                  <strong>{{ operation.amount | money }} {{ baseCurrency() }}</strong>
+                </a>
+              }
+            </div>
+          </details>
+        }
+      </section>
+    }
+  }
+</section>

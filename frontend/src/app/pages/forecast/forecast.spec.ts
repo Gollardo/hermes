@@ -63,6 +63,41 @@ const FORECAST = {
   ],
 };
 
+const FUND_FORECAST = {
+  horizon: 'month',
+  granularity: 'day',
+  from_on: '2026-08-12',
+  through_on: '2026-09-12',
+  planned_transfer_total: '0.0000',
+  planned_allocation_total: '0.0000',
+  unallocated_total: '0.0000',
+  series: [],
+};
+
+const POPULATED_FUND_FORECAST = {
+  ...FUND_FORECAST,
+  planned_transfer_total: '100.0000',
+  planned_allocation_total: '80.0000',
+  unallocated_total: '20.0000',
+  series: [
+    {
+      fund_id: 'fund-1',
+      fund_name: 'Резерв',
+      allocation_percentage: '80.0000',
+      starting_balance: '20.0000',
+      ending_balance: '100.0000',
+      points: [
+        {
+          period_from: '2026-08-12',
+          on: '2026-08-20',
+          change: '80.0000',
+          balance: '100.0000',
+        },
+      ],
+    },
+  ],
+};
+
 describe('ForecastPage', () => {
   let fixture: ComponentFixture<ForecastPage>;
   let http: HttpTestingController;
@@ -104,6 +139,44 @@ describe('ForecastPage', () => {
     expect(calendarLink.getAttribute('href')).toContain('focus=occurrence-1');
   });
 
+  it('renders the fund allocation diagram, trajectory and exact values', () => {
+    flushInitial(POPULATED_FUND_FORECAST);
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(FORECAST);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.fund-projection-donut')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.fund-line-chart polyline')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Резерв · 80.0000%');
+    expect(fixture.nativeElement.textContent).toContain('20.00 →');
+    expect(fixture.nativeElement.textContent).toContain('100.00 ₽');
+    expect(fixture.nativeElement.textContent).toContain('Нераспределённый остаток: 20.00 ₽');
+  });
+
+  it('keeps the cash forecast visible and exposes a retry when fund projection fails', () => {
+    fixture.detectChanges();
+    http.expectOne('/api/v1/scheduling/materialize').flush({
+      horizon_from: '2026-08-12',
+      horizon_to: '2027-08-12',
+      created: 0,
+      updated: 0,
+      cancelled: 0,
+    });
+    http.expectOne('/api/v1/accounts').flush([]);
+    http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
+    http
+      .expectOne('/api/v1/forecast/funds?horizon=month')
+      .flush({ detail: 'Unavailable' }, { status: 503, statusText: 'Service Unavailable' });
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(FORECAST);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.forecast-chart')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Перспектива фондов недоступна');
+    (
+      fixture.nativeElement.querySelector('.fund-forecast-error button') as HTMLButtonElement
+    ).click();
+    http.expectOne('/api/v1/forecast/funds?horizon=month').flush(FUND_FORECAST);
+  });
+
   it('replaces stale data with loading and explains an event-free horizon', () => {
     flushInitial();
     http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(noRiskForecast());
@@ -121,6 +194,9 @@ describe('ForecastPage', () => {
     http
       .expectOne('/api/v1/forecast?horizon=two_weeks&balance_mode=free')
       .flush({ ...noRiskForecast(), horizon: 'two_weeks' });
+    http
+      .expectOne('/api/v1/forecast/funds?horizon=two_weeks')
+      .flush({ ...FUND_FORECAST, horizon: 'two_weeks' });
   });
 
   it('requests a selected account and horizon', () => {
@@ -152,6 +228,9 @@ describe('ForecastPage', () => {
           request.params.get('account_id') === 'account-1',
       )
       .flush({ ...FORECAST, horizon: 'quarter' });
+    http
+      .expectOne('/api/v1/forecast/funds?horizon=quarter')
+      .flush({ ...FUND_FORECAST, horizon: 'quarter' });
   });
 
   it('defaults to free money and can include reserved money', () => {
@@ -355,7 +434,7 @@ describe('ForecastPage', () => {
     expect(points[2].tabIndex).toBe(0);
   });
 
-  function flushInitial(): void {
+  function flushInitial(fundForecast: object = FUND_FORECAST): void {
     fixture.detectChanges();
     http.expectOne('/api/v1/scheduling/materialize').flush({
       horizon_from: '2026-08-12',
@@ -368,6 +447,7 @@ describe('ForecastPage', () => {
       .expectOne('/api/v1/accounts')
       .flush([{ id: 'account-1', name: 'Основной', archived: false }]);
     http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
+    http.expectOne('/api/v1/forecast/funds?horizon=month').flush(fundForecast);
   }
 });
 

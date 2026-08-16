@@ -76,6 +76,7 @@ describe('OperationsPage', () => {
     total?: number;
     totalAmount?: string;
     timezone?: string;
+    defaultAccountId?: string | null;
     focusedOperation?: TestOperation;
     expectedJournalParams?: Record<string, string>;
   }): void {
@@ -88,6 +89,7 @@ describe('OperationsPage', () => {
     http.expectOne('/api/v1/settings').flush({
       base_currency: 'RUB',
       timezone: options?.timezone ?? 'UTC',
+      default_account_id: options?.defaultAccountId ?? null,
     });
     http
       .expectOne('/api/v1/accounts')
@@ -126,10 +128,13 @@ describe('OperationsPage', () => {
       total_amount: options?.totalAmount ?? '0.0000',
     });
     fixture.detectChanges();
-    const add = [...fixture.nativeElement.querySelectorAll('button')].find(
-      (button: HTMLButtonElement) => button.textContent.trim() === 'Добавить операцию',
-    ) as HTMLButtonElement;
+    const add = fixture.nativeElement.querySelector('.create-menu-trigger') as HTMLButtonElement;
     add.click();
+    fixture.detectChanges();
+    const expense = fixture.nativeElement.querySelector(
+      '[data-operation-type="expense"]',
+    ) as HTMLButtonElement;
+    expense.click();
     fixture.detectChanges();
   }
 
@@ -177,6 +182,26 @@ describe('OperationsPage', () => {
     http
       .expectOne((candidate) => candidate.url === '/api/v1/operations')
       .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+  });
+
+  it('prefills an active default account for a new expense', () => {
+    flushInitial({ defaultAccountId: 'account-1' });
+
+    const input = fixture.nativeElement.querySelector('#operation-account') as HTMLInputElement;
+    expect(input.value).toBe('Main');
+  });
+
+  it('does not carry an automatic default account into a transfer', () => {
+    flushInitial({ defaultAccountId: 'account-1' });
+    expect(
+      (fixture.nativeElement.querySelector('#operation-account') as HTMLInputElement).value,
+    ).toBe('Main');
+
+    setValue('#operation-type', 'transfer');
+
+    expect(
+      (fixture.nativeElement.querySelector('#operation-account') as HTMLInputElement).value,
+    ).toBe('');
   });
 
   it('keeps filters collapsed by default and applies dashboard drill-down parameters', () => {

@@ -5,6 +5,7 @@ from app.application.settings import (
     replace_application_settings,
 )
 from app.core.database import DatabaseSession
+from app.modules.accounts.contracts import AccountReferenceError
 from app.modules.settings.contracts import ApplicationSettings
 from app.modules.settings.schemas import SettingsResponse, SettingsUpdateRequest
 from app.modules.settings.service import BaseCurrencyLockedError, get_application_settings
@@ -17,6 +18,7 @@ def _response(settings: ApplicationSettings) -> SettingsResponse:
     return SettingsResponse(
         base_currency=settings.base_currency,
         timezone=settings.timezone,
+        default_account_id=settings.default_account_id,
         base_currency_locked=settings.base_currency_locked_at is not None,
         updated_at=settings.updated_at,
     )
@@ -37,7 +39,16 @@ def replace_settings(
             session,
             base_currency=payload.base_currency,
             timezone=payload.timezone,
+            default_account_id=payload.default_account_id,
         )
+    except AccountReferenceError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "invalid_default_account",
+                "message": "Default account is unavailable",
+            },
+        ) from error
     except BaseCurrencyLockedError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

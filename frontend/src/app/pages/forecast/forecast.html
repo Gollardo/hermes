@@ -530,5 +530,75 @@
         </section>
       </aside>
     </div>
+
+    @if (fundError(); as message) {
+      <section class="panel fund-forecast-error" aria-labelledby="fund-forecast-error-title">
+        <div>
+          <h2 id="fund-forecast-error-title">Перспектива фондов недоступна</h2>
+          <p role="alert">{{ message }} Основной прогноз средств остаётся актуальным.</p>
+        </div>
+        <button type="button" class="secondary" (click)="retryFundForecast()">Повторить</button>
+      </section>
+    } @else if (fundForecast(); as funds) {
+      <section class="panel fund-forecast-panel" aria-labelledby="fund-forecast-title">
+        <div class="fund-forecast-heading">
+          <div>
+            <p class="section-label">План распределения</p>
+            <h2 id="fund-forecast-title">Сколько будет в фондах</h2>
+            <p>
+              Текущие остатки плюс запланированные переводы с распределением до
+              {{ funds.through_on | textDate }}.
+            </p>
+          </div>
+          <strong>{{ funds.planned_allocation_total | money }} {{ baseCurrency() }}</strong>
+        </div>
+        @if (funds.series.length) {
+          <div class="fund-projection-layout">
+            <div
+              class="fund-projection-donut"
+              [style.background]="fundDonutStyle()"
+              role="img"
+              aria-label="Прогнозируемое распределение средств между фондами"
+            ></div>
+            <div class="fund-line-chart">
+              <svg
+                viewBox="0 0 100 48"
+                preserveAspectRatio="none"
+                role="img"
+                aria-label="Динамика прогнозируемых остатков фондов"
+              >
+                <line x1="4" y1="44" x2="96" y2="44" />
+                <line x1="4" y1="25" x2="96" y2="25" />
+                <line x1="4" y1="6" x2="96" y2="6" />
+                @for (series of fundPlot(); track series.fund_id) {
+                  <polyline [attr.points]="series.pointsAttribute" [attr.stroke]="series.color" />
+                }
+              </svg>
+            </div>
+          </div>
+          <ul class="fund-legend">
+            @for (series of funds.series; track series.fund_id; let index = $index) {
+              <li>
+                <i [style.background]="fundColor(index)" aria-hidden="true"></i>
+                <span>{{ series.fund_name }} · {{ series.allocation_percentage }}%</span>
+                <small>
+                  {{ series.starting_balance | money }} →
+                  <strong>{{ series.ending_balance | money }} {{ baseCurrency() }}</strong>
+                </small>
+              </li>
+            }
+          </ul>
+          <p class="fund-allocation-note">
+            Из {{ funds.planned_transfer_total | money }} {{ baseCurrency() }} плановых переводов
+            распределится {{ funds.planned_allocation_total | money }} {{ baseCurrency() }}.
+            Нераспределённый остаток: {{ funds.unallocated_total | money }} {{ baseCurrency() }}.
+          </p>
+        } @else {
+          <p class="empty-state">
+            Создайте активные фонды и задайте проценты, чтобы увидеть перспективу распределения.
+          </p>
+        }
+      </section>
+    }
   }
 </section>

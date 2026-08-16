@@ -1,3 +1,5 @@
+import hashlib
+import json
 from collections.abc import Callable
 from copy import deepcopy
 from datetime import UTC, date, datetime
@@ -7,8 +9,8 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from app.modules.backup.schemas import BackupData
-from app.modules.backup.service import BackupInvariantError, validate_document
+from app.modules.backup.schemas import BackupData, BackupDocument
+from app.modules.backup.service import BackupInvariantError, validate_document, verify_integrity
 
 
 def add_negative_individual_fund_position(data: dict[str, Any]) -> None:
@@ -107,6 +109,11 @@ def exceed_active_fund_percentage(data: dict[str, Any]) -> None:
                 "version": 1,
             }
         )
+
+
+def archive_default_account(data: dict[str, Any]) -> None:
+    data["settings"]["default_account_id"] = data["accounts"][0]["id"]
+    data["accounts"][0]["archived_at"] = data["settings"]["updated_at"]
 
 
 def valid_data() -> dict[str, Any]:
@@ -263,6 +270,29 @@ def test_valid_backup_domain_shape() -> None:
     validate_document(data)
 
 
+def test_schema_one_checksum_remains_compatible_with_omitted_optional_fields() -> None:
+    raw_document: dict[str, Any] = {
+        "format": "hermes-json-backup",
+        "schema_version": 1,
+        "app_version": "0.1.2",
+        "exported_at": datetime.now(UTC).isoformat(),
+        "data": valid_data(),
+    }
+    raw_document["integrity"] = {
+        "algorithm": "sha256",
+        "digest": "0" * 64,
+    }
+
+    document = BackupDocument.model_validate(raw_document)
+    assert "default_account_id" not in raw_document["data"]["settings"]
+    old_schema_content = document.model_dump(mode="json", exclude={"integrity"}, exclude_unset=True)
+    canonical = json.dumps(
+        old_schema_content, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode()
+    document.integrity.digest = hashlib.sha256(canonical).hexdigest()
+    verify_integrity(document)
+
+
 def test_backup_rejects_fund_allocation_on_non_transfer_schedule() -> None:
     invalid = valid_data()
     invalid["recurring_rules"][0]["allocate_to_funds"] = True
@@ -324,6 +354,7 @@ def test_backup_rejects_invalid_target_and_duplicate_weekdays() -> None:
         ),
         (exceed_active_fund_percentage, "Active fund percentages exceed 100"),
         (add_negative_individual_fund_position, "individual fund position"),
+        (archive_default_account, "Default account must be active"),
     ],
 )
 def test_rejects_signed_but_domain_invalid_backup(

@@ -7,6 +7,18 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Quick-create operation menu with a preselected operation type.
+- Optional active default account for new income and expense operations.
+- Income/expense category report for monthly and custom periods.
+- Fund-balance perspective for planned transfers with percentage allocation.
+
+### Changed
+
+- Scheduled transfer allocation text now uses the full form width.
+- Application version advanced to 0.2.0.
+
 ## [0.1.2] - 2026-08-15
 
 ### Added

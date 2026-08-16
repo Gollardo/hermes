@@ -1,0 +1,40 @@
+:host {
+  display: inline-block;
+  position: relative;
+}
+.create-menu-trigger span {
+  font-size: 0.7rem;
+}
+.create-menu-popover {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  min-width: 14rem;
+  padding: 0.35rem;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  z-index: 20;
+}
+.create-menu-popover button {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  display: grid;
+  justify-items: start;
+  min-height: 0;
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+}
+.create-menu-popover button:hover,
+.create-menu-popover button:focus-visible {
+  background: var(--surface-accent);
+  box-shadow: none;
+  transform: none;
+}
+.create-menu-popover span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
