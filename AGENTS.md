@@ -24,8 +24,9 @@
 
 ## UI/UX rules
 
-- Before creating or changing screens, study `docs/ui-ux/` and the relevant
-  domain documents.
+- Before creating or changing any UI, read the root [UI/UX contract](DESIGN.md),
+  then study the relevant documents under `docs/ui-ux/` and the relevant domain
+  documents.
 - Use owner-approved UX principles. Until approval, use the principles in
   `docs/ui-ux/` to guide prototypes while preserving their status as product
   hypotheses and distinguishing them from confirmed behavior and future roadmap
