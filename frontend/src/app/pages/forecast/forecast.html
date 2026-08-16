@@ -550,48 +550,102 @@
               {{ funds.through_on | textDate }}.
             </p>
           </div>
-          <strong>{{ funds.planned_allocation_total | money }} {{ baseCurrency() }}</strong>
+          <div class="fund-allocation-total">
+            <span>Распределится из переводов</span>
+            <strong>{{ funds.planned_allocation_total | money }} {{ baseCurrency() }}</strong>
+          </div>
         </div>
         @if (funds.series.length) {
           <div class="fund-projection-layout">
-            <div
-              class="fund-projection-donut"
-              [style.background]="fundDonutStyle()"
-              role="img"
-              aria-label="Прогнозируемое распределение средств между фондами"
-            ></div>
-            <div class="fund-line-chart">
-              <svg
-                viewBox="0 0 100 48"
-                preserveAspectRatio="none"
+            <div class="fund-share-summary">
+              <span>Структура к {{ funds.through_on | textDate }}</span>
+              <div
+                class="fund-projection-donut"
+                [style.background]="fundDonutStyle()"
                 role="img"
-                aria-label="Динамика прогнозируемых остатков фондов"
-              >
-                <line x1="4" y1="44" x2="96" y2="44" />
-                <line x1="4" y1="25" x2="96" y2="25" />
-                <line x1="4" y1="6" x2="96" y2="6" />
-                @for (series of fundPlot(); track series.fund_id) {
-                  <polyline [attr.points]="series.pointsAttribute" [attr.stroke]="series.color" />
-                }
-              </svg>
+                [attr.aria-label]="
+                  'Конечное распределение средств между фондами. Фондов: ' + funds.series.length
+                "
+              ></div>
             </div>
+            <div class="fund-line-chart">
+              <div class="fund-y-axis" aria-hidden="true">
+                @for (tick of fundAxisTicks(); track tick.y) {
+                  <span>{{ tick.label }} {{ baseCurrency() }}</span>
+                }
+              </div>
+              <div class="fund-chart-stage">
+                <svg
+                  viewBox="0 0 100 48"
+                  preserveAspectRatio="none"
+                  role="img"
+                  [attr.aria-label]="fundChartAriaLabel(funds)"
+                >
+                  <line x1="4" y1="44" x2="96" y2="44" />
+                  <line x1="4" y1="25" x2="96" y2="25" />
+                  <line x1="4" y1="6" x2="96" y2="6" />
+                  @for (series of fundPlot(); track series.fund_id) {
+                    <polyline
+                      [attr.points]="series.pointsAttribute"
+                      [attr.stroke]="series.color"
+                      [class.active]="activeFundId() === series.fund_id"
+                      [class.muted]="activeFundId() && activeFundId() !== series.fund_id"
+                    />
+                  }
+                </svg>
+                @if (activeFundSeries(); as activeFund) {
+                  <p class="fund-active-series">
+                    <span>{{ activeFund.fund_name }}</span>
+                    <strong>{{ activeFund.ending_balance | money }} {{ baseCurrency() }}</strong>
+                  </p>
+                }
+              </div>
+              <div class="fund-date-axis" aria-hidden="true">
+                <span>{{ funds.from_on | textDate }}</span>
+                <span>{{ funds.through_on | textDate }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="fund-legend-header" aria-hidden="true">
+            <span>Фонд и доля</span>
+            <span>Сейчас</span>
+            <span></span>
+            <span>К {{ funds.through_on | textDate }}</span>
           </div>
           <ul class="fund-legend">
             @for (series of funds.series; track series.fund_id; let index = $index) {
-              <li>
-                <i [style.background]="fundColor(index)" aria-hidden="true"></i>
-                <span>{{ series.fund_name }} · {{ series.allocation_percentage }}%</span>
-                <small>
-                  {{ series.starting_balance | money }} →
-                  <strong>{{ series.ending_balance | money }} {{ baseCurrency() }}</strong>
-                </small>
+              <li
+                tabindex="0"
+                (mouseenter)="activeFundId.set(series.fund_id)"
+                (mouseleave)="activeFundId.set(null)"
+                (focus)="activeFundId.set(series.fund_id)"
+                (blur)="activeFundId.set(null)"
+              >
+                <span class="fund-name">
+                  <i [style.background]="fundColor(index)" aria-hidden="true"></i>
+                  <span
+                    >{{ series.fund_name }} ·
+                    {{ formatPercentage(series.allocation_percentage) }}%</span
+                  >
+                </span>
+                <small>{{ series.starting_balance | money }} {{ baseCurrency() }}</small>
+                <span class="fund-direction" aria-hidden="true">→</span>
+                <strong class="fund-ending-balance">
+                  {{ series.ending_balance | money }} {{ baseCurrency() }}
+                </strong>
               </li>
             }
           </ul>
           <p class="fund-allocation-note">
-            Из {{ funds.planned_transfer_total | money }} {{ baseCurrency() }} плановых переводов
-            распределится {{ funds.planned_allocation_total | money }} {{ baseCurrency() }}.
-            Нераспределённый остаток: {{ funds.unallocated_total | money }} {{ baseCurrency() }}.
+            @if (isZero(funds.unallocated_total)) {
+              Все {{ funds.planned_transfer_total | money }} {{ baseCurrency() }} плановых переводов
+              будут распределены по фондам.
+            } @else {
+              Распределится {{ funds.planned_allocation_total | money }} {{ baseCurrency() }} из
+              {{ funds.planned_transfer_total | money }} {{ baseCurrency() }}. Останется свободно:
+              <strong>{{ funds.unallocated_total | money }} {{ baseCurrency() }}</strong
+              >.
+            }
           </p>
         } @else {
           <p class="empty-state">

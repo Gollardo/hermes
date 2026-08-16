@@ -31,14 +31,37 @@
   color: var(--muted);
   margin: 0;
 }
+.fund-allocation-total {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 0.15rem;
+  text-align: right;
+}
+.fund-allocation-total span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.fund-allocation-total strong {
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
 .fund-projection-layout {
-  align-items: stretch;
+  align-items: flex-start;
+}
+.fund-share-summary {
+  color: var(--muted);
+  display: grid;
+  flex: 0 0 11rem;
+  font-size: 0.72rem;
+  gap: 0.5rem;
+  justify-items: center;
+  text-align: center;
 }
 .fund-projection-donut {
-  aspect-ratio: 1;
   border-radius: 50%;
-  flex: 0 0 12rem;
+  height: 10rem;
   position: relative;
+  width: 10rem;
 }
 .fund-projection-donut::after {
   background: var(--surface);
@@ -51,9 +74,27 @@
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 0.9rem;
+  display: grid;
   flex: 1;
-  min-height: 16rem;
-  padding: 0.5rem;
+  grid-template-columns: minmax(4.75rem, auto) minmax(0, 1fr);
+  grid-template-rows: minmax(9rem, 1fr) auto;
+  min-height: 13rem;
+  padding: 0.75rem 0.85rem 0.6rem;
+}
+.fund-chart-stage {
+  min-width: 0;
+  position: relative;
+}
+.fund-y-axis {
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  justify-content: space-between;
+  padding: 0.65rem 0.65rem 0.55rem 0;
+  text-align: right;
+  white-space: nowrap;
 }
 .fund-line-chart svg {
   height: 100%;
@@ -68,30 +109,97 @@
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 1.1;
+  stroke-width: 1.3;
   vector-effect: non-scaling-stroke;
+}
+.fund-line-chart polyline.active {
+  stroke-width: 2.4;
+}
+.fund-line-chart polyline.muted {
+  opacity: 0.2;
+}
+.fund-date-axis {
+  color: var(--muted);
+  display: flex;
+  font-size: 0.68rem;
+  grid-column: 2;
+  justify-content: space-between;
+  padding: 0.25rem 0.25rem 0;
+}
+.fund-active-series {
+  background: rgb(255 255 255 / 92%);
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  display: flex;
+  font-size: 0.72rem;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  position: absolute;
+  right: 0.5rem;
+  top: 0.35rem;
+}
+.fund-active-series strong {
+  font-variant-numeric: tabular-nums;
+}
+.fund-legend-header,
+.fund-legend li {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(12rem, 1fr) minmax(8rem, auto) 1.25rem minmax(10rem, auto);
+}
+.fund-legend-header {
+  color: var(--muted);
+  font-size: 0.7rem;
+  padding: 0 0 0.15rem;
+}
+.fund-legend-header span:not(:first-child) {
+  text-align: right;
 }
 .fund-legend {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.25rem;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 .fund-legend li {
+  align-items: baseline;
   border-top: 1px solid var(--line);
-  padding-top: 0.55rem;
+  padding: 0.4rem 0;
+}
+.fund-legend li:hover,
+.fund-legend li:focus-visible {
+  background: var(--surface-soft);
+}
+.fund-legend li:focus-visible {
+  outline: 3px solid rgb(23 115 79 / 22%);
+  outline-offset: 2px;
 }
 .fund-legend i {
   border-radius: 50%;
   flex: 0 0 0.8rem;
   height: 0.8rem;
 }
-.fund-legend span {
-  flex: 1;
+.fund-name {
+  align-items: center;
+  display: flex;
+  gap: 0.65rem;
+  min-width: 0;
 }
 .fund-legend small {
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.fund-direction {
+  color: var(--muted);
+  text-align: center;
+}
+.fund-ending-balance {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 .fund-allocation-note {
   background: var(--surface-accent);
@@ -101,6 +209,10 @@
   margin: 0;
   padding: 0.75rem;
 }
+.fund-allocation-note strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
 @media (max-width: 48rem) {
   .fund-forecast-heading,
   .fund-projection-layout,
@@ -108,8 +220,23 @@
     align-items: stretch;
     flex-direction: column;
   }
-  .fund-projection-donut {
+  .fund-share-summary {
     margin: auto;
-    width: 12rem;
+  }
+  .fund-legend-header {
+    display: none;
+  }
+  .fund-legend li {
+    gap: 0.35rem 0.75rem;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  .fund-name {
+    grid-column: 1 / -1;
+  }
+  .fund-allocation-total {
+    text-align: left;
+  }
+  .fund-line-chart {
+    grid-template-columns: minmax(4rem, auto) minmax(0, 1fr);
   }
 }

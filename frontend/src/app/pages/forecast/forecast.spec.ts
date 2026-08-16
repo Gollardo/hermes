@@ -146,10 +146,12 @@ describe('ForecastPage', () => {
 
     expect(fixture.nativeElement.querySelector('.fund-projection-donut')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.fund-line-chart polyline')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Резерв · 80.0000%');
-    expect(fixture.nativeElement.textContent).toContain('20.00 →');
+    expect(fixture.nativeElement.textContent).toContain('Резерв · 80%');
+    expect(fixture.nativeElement.textContent).toContain('Сейчас');
+    expect(fixture.nativeElement.textContent).toContain('20.00 ₽');
     expect(fixture.nativeElement.textContent).toContain('100.00 ₽');
-    expect(fixture.nativeElement.textContent).toContain('Нераспределённый остаток: 20.00 ₽');
+    expect(fixture.nativeElement.textContent).toContain('Останется свободно:');
+    expect(fixture.nativeElement.textContent).toContain('20.00 ₽');
   });
 
   it('keeps the cash forecast visible and exposes a retry when fund projection fails', () => {
