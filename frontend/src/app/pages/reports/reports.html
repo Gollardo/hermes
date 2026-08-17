@@ -8,7 +8,7 @@
   </header>
 
   <section class="panel report-controls" aria-label="Параметры отчёта">
-    <fieldset>
+    <fieldset class="type-control">
       <legend>Тип операций</legend>
       <div class="report-switch">
         <button
@@ -31,7 +31,7 @@
         </button>
       </div>
     </fieldset>
-    <fieldset>
+    <fieldset class="period-control">
       <legend>Период</legend>
       <div class="report-switch">
         <button
@@ -77,29 +77,39 @@
   } @else if (report(); as data) {
     <section class="panel report-chart-panel" aria-labelledby="report-chart-title">
       <div class="report-summary">
-        <div>
+        <div class="report-summary-copy">
           <p class="section-label">
             {{ data.from_on | textDate }} — {{ data.through_on | textDate }}
           </p>
           <h2 id="report-chart-title">{{ typeLabel(data.type) }} по категориям</h2>
         </div>
-        <div>
+        <div class="report-total">
+          <span>Всего {{ data.type === 'expense' ? 'расходов' : 'доходов' }}</span>
           <strong>{{ data.total_amount | money }} {{ baseCurrency() }}</strong>
-          <span>{{ data.operation_count }} операций</span>
+          <small>{{ data.operation_count }} операций</small>
         </div>
       </div>
       @if (data.categories.length) {
         <div
           class="category-chart"
-          role="img"
+          role="list"
           [attr.aria-label]="typeLabel(data.type) + ' по категориям'"
         >
           @for (category of data.categories; track category.category_id) {
-            <div class="chart-row">
-              <span>{{ categoryLabel(category) }}</span>
-              <div><i [style.width.%]="category.share"></i></div>
-              <strong>{{ category.amount | money }} {{ baseCurrency() }}</strong>
-              <small>{{ category.share }}%</small>
+            <div class="chart-row" role="listitem">
+              <span class="category-label">
+                <strong>{{ category.category_name }}</strong>
+                @if (category.category_id !== category.root_category_id) {
+                  <small>{{ category.root_category_name }}</small>
+                }
+              </span>
+              <div class="chart-bar" aria-hidden="true">
+                <i [style.width.%]="category.share"></i>
+              </div>
+              <div class="chart-value">
+                <strong>{{ category.amount | money }} {{ baseCurrency() }}</strong>
+                <small>{{ category.share }}%</small>
+              </div>
             </div>
           }
         </div>
@@ -112,10 +122,19 @@
       <section class="panel report-list" aria-labelledby="report-list-title">
         <div class="panel-heading"><h2 id="report-list-title">Операции по категориям</h2></div>
         @for (category of data.categories; track category.category_id) {
-          <details open>
+          <details>
             <summary>
-              <span>{{ categoryLabel(category) }}</span>
-              <strong>{{ category.amount | money }} {{ baseCurrency() }}</strong>
+              <span class="category-summary-label">
+                <strong>{{ category.category_name }}</strong>
+                @if (category.category_id !== category.root_category_id) {
+                  <small>{{ category.root_category_name }}</small>
+                }
+              </span>
+              <span class="category-summary-meta">
+                <small>Операций: {{ category.operations.length }}</small>
+                <strong>{{ category.amount | money }} {{ baseCurrency() }}</strong>
+                <span class="category-disclosure" aria-hidden="true">›</span>
+              </span>
             </summary>
             <div class="category-operations">
               @for (operation of category.operations; track operation.id) {
@@ -123,6 +142,7 @@
                   <span>{{ operation.occurred_on | textDate }}</span>
                   <b>{{ operation.description || category.category_name }}</b>
                   <strong>{{ operation.amount | money }} {{ baseCurrency() }}</strong>
+                  <span class="operation-link-affordance" aria-hidden="true">›</span>
                 </a>
               }
             </div>

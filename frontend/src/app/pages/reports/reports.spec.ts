@@ -61,10 +61,17 @@ describe('ReportsPage', () => {
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;
-    expect(text).toContain('Жильё → Аренда');
+    expect(text).toContain('Жильё');
+    expect(text).toContain('Аренда');
+    expect(text).toContain('Операций: 1');
     expect(text).toContain('1 200.00 ₽');
     expect(text).toContain('10 августа 2026');
-    expect(fixture.nativeElement.querySelector('.category-chart')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.category-chart').getAttribute('role')).toBe(
+      'list',
+    );
+    expect(fixture.nativeElement.querySelector('.report-list details').open).toBe(false);
+    expect(fixture.nativeElement.querySelector('.category-disclosure')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.operation-link-affordance')).not.toBeNull();
     expect(
       (fixture.nativeElement.querySelector('.category-operations a') as HTMLAnchorElement).href,
     ).toContain('focus=operation-1');
