@@ -80,10 +80,15 @@ describe('HomePage', () => {
     expect(cards[2].textContent).toContain('Текущее состояние');
     expect(cards[2].querySelector('li')?.textContent).toContain('Large');
     expect(cards[0].querySelectorAll('.chart-swatch')).toHaveLength(2);
+    expect(cards[1].querySelector('.donut')).toBeNull();
     const expenseLink = cards[0].querySelector('li a') as HTMLAnchorElement;
     expect(expenseLink.getAttribute('href')).toContain('/operations');
     expect(expenseLink.getAttribute('href')).toContain('category_id=food');
     expect(expenseLink.getAttribute('href')).toContain('occurred_from=2026-08-01');
+    expect(fixture.nativeElement.querySelectorAll('.overview-balances article')).toHaveLength(3);
+    expect(fixture.nativeElement.querySelector('.forecast-ending').textContent).toContain(
+      '140.00 ₽',
+    );
   });
 
   it('keeps the financial overview available when category analytics fail', () => {

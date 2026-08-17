@@ -18,65 +18,95 @@
       <article class="primary-balance">
         <span>Свободно сейчас</span>
         <strong>{{ data.total_free | money }} {{ baseCurrency() }}</strong>
+        <small>Доступно после резервов в фондах</small>
         <a routerLink="/funds">Проверить распределение по фондам →</a>
       </article>
       <article>
-        <span>Общий физический остаток</span
+        <span>Физический остаток</span
         ><strong>{{ physicalTotal() | money }} {{ baseCurrency() }}</strong
         ><a routerLink="/accounts">Все счета →</a>
       </article>
       <article>
-        <span>Зарезервировано в фондах</span
+        <span>Из них зарезервировано</span
         ><strong>{{ data.total_reserved | money }} {{ baseCurrency() }}</strong
         ><a routerLink="/funds">Все фонды →</a>
       </article>
-      @if (forecast(); as value) {
-        <article>
-          <span>Свободно через месяц · {{ value.through_on | textDate }}</span
-          ><strong>{{ value.ending_balance | money }} {{ baseCurrency() }}</strong
-          ><a routerLink="/forecast">Открыть прогноз →</a>
-        </article>
-      }
     </section>
 
-    @if (forecast(); as value) {
-      <section class="panel forecast-preview" [class.risk]="value.first_negative_on">
-        <div>
-          <p class="section-label">Ближайший месяц</p>
-          @if (value.first_negative_on) {
-            <h2>Возможен дефицит {{ value.first_negative_on | textDate }}</h2>
-          } @else {
-            <h2>
-              Минимум {{ value.minimum_balance | money }} {{ baseCurrency() }} ·
-              {{ value.minimum_on | textDate }}
-            </h2>
-          }
-          <p>
-            Прогноз начинается с текущего свободного остатка {{ value.starting_balance | money }}
-            {{ baseCurrency() }} и учитывает известные ожидаемые события.
-          </p>
+    <div class="priority-grid">
+      <section class="panel attention-panel" aria-labelledby="attention-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Сегодня и просроченные</p>
+            <h2 id="attention-title">Требуют внимания</h2>
+          </div>
+          <span class="count-pill">{{ attentionTotal() }}</span>
         </div>
-        <a class="button-link secondary" routerLink="/forecast">Разобрать прогноз</a>
+        @if (!attention().length) {
+          <p class="empty-state">На сегодня обязательных действий нет.</p>
+        } @else {
+          <div class="overview-list">
+            @for (item of attention(); track item.id) {
+              <article [class.overdue]="item.overdue">
+                <div>
+                  <span
+                    >{{ item.overdue ? 'Просрочено' : 'Сегодня' }} ·
+                    {{ typeLabel(item.type) }}</span
+                  ><strong>{{ item.description || typeLabel(item.type) }}</strong>
+                </div>
+                <b>{{ item.amount | money }} {{ baseCurrency() }}</b>
+              </article>
+            }
+          </div>
+          <a class="section-link" routerLink="/calendar">Обработать в календаре →</a>
+        }
       </section>
-    }
+
+      @if (forecast(); as value) {
+        <section class="panel forecast-preview" [class.risk]="value.first_negative_on">
+          <div>
+            <p class="section-label">Ближайший месяц</p>
+            @if (value.first_negative_on) {
+              <h2>Возможен дефицит {{ value.first_negative_on | textDate }}</h2>
+            } @else {
+              <h2>
+                Минимум {{ value.minimum_balance | money }} {{ baseCurrency() }} ·
+                {{ value.minimum_on | textDate }}
+              </h2>
+            }
+            <p class="forecast-ending">
+              Свободно к {{ value.through_on | textDate }}:
+              <strong>{{ value.ending_balance | money }} {{ baseCurrency() }}</strong>
+            </p>
+            <p>
+              Прогноз начинается с текущего свободного остатка {{ value.starting_balance | money }}
+              {{ baseCurrency() }} и учитывает известные ожидаемые события.
+            </p>
+          </div>
+          <a class="button-link secondary" routerLink="/forecast">Разобрать прогноз</a>
+        </section>
+      }
+    </div>
 
     @if (analyticsError(); as message) {
       <p class="form-error analytics-error" role="status">{{ message }}</p>
     }
     <section class="analytics-grid" aria-label="Структура доходов, расходов и фондов">
       @for (chart of analyticsCharts(); track chart.title) {
-        <article class="panel donut-card">
+        <article class="panel donut-card" [class.income-chart]="chart.operationType === 'income'">
           <div>
             <p class="section-label">{{ chart.context }}</p>
             <h2>{{ chart.title }}</h2>
           </div>
           @if (chartItems(chart.items).length) {
-            <div
-              class="donut"
-              [style.background]="donutStyle(chart.items)"
-              role="img"
-              [attr.aria-label]="chart.title"
-            ></div>
+            @if (chartItems(chart.items).length > 1) {
+              <div
+                class="donut"
+                [style.background]="donutStyle(chart.items)"
+                role="img"
+                [attr.aria-label]="chart.title"
+              ></div>
+            }
             <ul>
               @for (item of chartItems(chart.items); track item.category_id) {
                 <li>
@@ -110,42 +140,14 @@
       }
     </section>
 
-    <div class="overview-columns">
-      <section class="panel" aria-labelledby="attention-title">
-        <div class="panel-heading">
-          <div>
-            <p class="section-label">Сегодня и просроченные</p>
-            <h2 id="attention-title">Требуют внимания</h2>
-          </div>
-          <span class="count-pill">{{ attentionTotal() }}</span>
+    <section class="panel recent-panel" aria-labelledby="recent-title">
+      <div class="panel-heading">
+        <div>
+          <p class="section-label">Факты</p>
+          <h2 id="recent-title">Последние операции</h2>
         </div>
-        @if (!attention().length) {
-          <p class="empty-state">На сегодня обязательных действий нет.</p>
-        } @else {
-          <div class="overview-list">
-            @for (item of attention(); track item.id) {
-              <article [class.overdue]="item.overdue">
-                <div>
-                  <span
-                    >{{ item.overdue ? 'Просрочено' : 'Сегодня' }} ·
-                    {{ typeLabel(item.type) }}</span
-                  ><strong>{{ item.description || typeLabel(item.type) }}</strong>
-                </div>
-                <b>{{ item.amount | money }} {{ baseCurrency() }}</b>
-              </article>
-            }
-          </div>
-          <a class="section-link" routerLink="/calendar">Обработать в календаре →</a>
-        }
-      </section>
-
-      <section class="panel" aria-labelledby="recent-title">
-        <div class="panel-heading">
-          <div>
-            <p class="section-label">Факты</p>
-            <h2 id="recent-title">Последние операции</h2>
-          </div>
-        </div>
+      </div>
+      <div class="recent-content">
         @if (!recentOperations().length) {
           <p class="empty-state">Фактических операций пока нет.</p>
         } @else {
@@ -163,7 +165,7 @@
           </div>
           <a class="section-link" routerLink="/operations">Открыть весь журнал →</a>
         }
-      </section>
-    </div>
+      </div>
+    </section>
   }
 </section>
