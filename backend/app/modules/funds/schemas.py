@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
 
 from app.core.validation import Money, parse_decimal
+from app.modules.settings.contracts import FundAllocationMode
 
 
 def parse_percentage(value: object) -> Decimal:
@@ -98,8 +99,12 @@ class FundResponse(BaseModel):
     name: str
     description: str | None
     allocation_percentage: str
+    manual_allocation_percentage: str
+    allocation_mode: FundAllocationMode
     target_amount: str | None
     total_balance: str
+    remaining_amount: str | None
+    distribution_status: Literal["manual", "active", "filled", "archived"]
     progress_percentage: str | None
     archived: bool
     version: int
@@ -129,6 +134,7 @@ class FundSummaryResponse(BaseModel):
     positions: list[FundPositionResponse]
     accounts: list[AccountCoverageResponse]
     active_percentage: str
+    allocation_mode: FundAllocationMode
     total_reserved: str
     total_free: str
 
@@ -148,6 +154,7 @@ class AllocationPreviewRequest(BaseModel):
 class AllocationItem(BaseModel):
     fund_id: UUID
     amount: Money
+    allocation_percentage: str | None = None
 
     @field_validator("amount")
     @classmethod

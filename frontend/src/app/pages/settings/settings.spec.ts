@@ -73,6 +73,44 @@ describe('SettingsPage', () => {
     });
   });
 
+  it('switches from dynamic allocation to manual by fixing the current percentages', () => {
+    fixture.detectChanges();
+    http.expectOne('/api/v1/settings').flush({
+      base_currency: 'RUB',
+      timezone: 'Europe/Moscow',
+      default_account_id: null,
+      fund_allocation_mode: 'dynamic',
+      base_currency_locked: true,
+      updated_at: '2026-08-17T00:00:00Z',
+    });
+    http.expectOne('/api/v1/accounts').flush([]);
+    fixture.detectChanges();
+
+    const manual = fixture.nativeElement.querySelector(
+      'input[type="radio"][value="manual"]',
+    ) as HTMLInputElement;
+    manual.click();
+    fixture.detectChanges();
+    const button = [...fixture.nativeElement.querySelectorAll('.fund-policy-panel button')].find(
+      (item: HTMLButtonElement) => item.textContent.includes('Зафиксировать'),
+    ) as HTMLButtonElement;
+    button.click();
+
+    const request = http.expectOne('/api/v1/settings/fund-allocation-mode');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ mode: 'manual' });
+    request.flush({
+      base_currency: 'RUB',
+      timezone: 'Europe/Moscow',
+      default_account_id: null,
+      fund_allocation_mode: 'manual',
+      base_currency_locked: true,
+      updated_at: '2026-08-17T00:01:00Z',
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Текущие проценты зафиксированы');
+  });
+
   it('keeps security and backup settings available when accounts cannot load', () => {
     fixture.detectChanges();
     http.expectOne('/api/v1/settings').flush({

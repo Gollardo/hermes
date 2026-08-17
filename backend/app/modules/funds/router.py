@@ -31,6 +31,7 @@ from app.modules.funds.schemas import (
     TransferAllocationResponse,
 )
 from app.modules.funds.service import (
+    DynamicFundTargetsRequiredError,
     FundAllocationUnavailableError,
     FundArchiveBalanceError,
     FundBalanceError,
@@ -51,6 +52,12 @@ write_router = APIRouter(prefix="/funds", tags=["funds"])
 
 def _raise_domain_error(error: RuntimeError) -> None:
     mapping: list[tuple[type[RuntimeError], int, str, str]] = [
+        (
+            DynamicFundTargetsRequiredError,
+            409,
+            "dynamic_fund_targets_required",
+            "Every non-archived fund needs a target in dynamic mode",
+        ),
         (FundNotFoundError, 404, "fund_not_found", "Fund is unavailable"),
         (
             FundAllocationUnavailableError,
@@ -115,6 +122,7 @@ def add_fund(payload: FundCreateRequest, session: DatabaseSession) -> FundRespon
         FundCoverageError,
         FundNotFoundError,
         FundPercentageLimitError,
+        DynamicFundTargetsRequiredError,
     ) as error:
         _raise_domain_error(error)
         raise AssertionError from error
@@ -126,7 +134,12 @@ def replace_fund(
 ) -> FundResponse:
     try:
         return get_fund_response(session, update_fund(session, fund_id, payload).id)
-    except (FundNotFoundError, FundConflictError, FundPercentageLimitError) as error:
+    except (
+        FundNotFoundError,
+        FundConflictError,
+        FundPercentageLimitError,
+        DynamicFundTargetsRequiredError,
+    ) as error:
         _raise_domain_error(error)
         raise AssertionError from error
 
@@ -146,7 +159,12 @@ def restore(fund_id: UUID, payload: FundLifecycleRequest, session: DatabaseSessi
     try:
         fund = archive_fund(session, fund_id, restore=True, expected_version=payload.version)
         return get_fund_response(session, fund.id)
-    except (FundNotFoundError, FundConflictError, FundPercentageLimitError) as error:
+    except (
+        FundNotFoundError,
+        FundConflictError,
+        FundPercentageLimitError,
+        DynamicFundTargetsRequiredError,
+    ) as error:
         _raise_domain_error(error)
         raise AssertionError from error
 

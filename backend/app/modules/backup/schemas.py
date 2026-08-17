@@ -19,6 +19,7 @@ from app.modules.categories.contracts import CategoryType
 from app.modules.funds.backup import FundEventType
 from app.modules.operations.contracts import OperationType
 from app.modules.scheduling.backup import OccurrenceStatus, RecurrenceFrequency
+from app.modules.settings.models import FundAllocationMode
 
 
 class BackupModel(BaseModel):
@@ -29,6 +30,7 @@ class SettingsRecord(BackupModel):
     base_currency: str
     timezone: str
     default_account_id: UUID | None = None
+    fund_allocation_mode: FundAllocationMode = FundAllocationMode.MANUAL
     base_currency_locked_at: AwareDatetime | None
     created_at: AwareDatetime
     updated_at: AwareDatetime

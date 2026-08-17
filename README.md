@@ -4,8 +4,8 @@ Hermes is an early-stage, single-owner, self-hosted web application for personal
 finance. It is intended for a home server or local computer and keeps its data
 independent of external cloud services.
 
-> **Current version:** `0.3.0` completes the visual redesign of the application
-> and refines daily operation entry, overview analytics and free-money planning.
+> **Current version:** `0.4.0` adds manual/dynamic fund allocation and
+> recalculates planned allocations from projected fund balances.
 
 ## Project priorities and contributions
 
@@ -29,8 +29,8 @@ and the maintainer's available time.
 - income/expense category trees with archive-safe lifecycle rules.
 - income, expense, transfer and balance-adjustment CRUD with exact movements;
 - collapsible journal filters, details and pagination with optimistic edit protection.
-- virtual funds, physical/free coverage, explicit percentage allocation and
-  virtual redistribution between accounts and funds, optional targets and progress.
+- virtual funds, physical/free coverage, manual or target-aware dynamic
+  percentage allocation, redistribution between accounts and funds, and progress.
 - recurring income, expense and transfer rules with selectable weekly weekdays,
   weekly/monthly intervals and exact dated snapshots;
 - monthly calendar, upcoming/overdue list and confirm/postpone/cancel actions;

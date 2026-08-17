@@ -17,6 +17,26 @@
   gap: 1.5rem;
   justify-content: space-between;
 }
+
+.allocation-mode-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.allocation-mode-note p {
+  max-width: 48rem;
+  margin: 0;
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .allocation-mode-note {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
 .fund-primary-actions h2,
 .fund-primary-actions p:not(.section-label) {
   margin: 0.2rem 0 0;

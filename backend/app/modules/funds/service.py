@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import ROUND_DOWN, Decimal
 from uuid import UUID
@@ -22,8 +23,11 @@ from app.modules.funds.schemas import (
     FundUpdateRequest,
     RedistributionCreateRequest,
 )
+from app.modules.settings.contracts import FundAllocationMode, fund_allocation_mode
 
 MONEY_QUANTUM = Decimal("0.0001")
+PERCENTAGE_QUANTUM = Decimal("0.0001")
+MIN_DYNAMIC_PERCENTAGE = Decimal("5")
 FUND_DEFINITION_LOCK = 4_621_083_119
 
 
@@ -59,6 +63,25 @@ class FundArchivedMutationError(RuntimeError):
     pass
 
 
+class DynamicFundTargetsRequiredError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class FundDistributionState:
+    fund_id: UUID
+    balance: Decimal
+    target_amount: Decimal | None
+
+
+@dataclass(frozen=True, slots=True)
+class LockedDistributionSnapshot:
+    mode: FundAllocationMode
+    funds: list[Fund]
+    balances: dict[UUID, Decimal]
+    percentages: list[tuple[UUID, Decimal]]
+
+
 def _lock_definitions(session: Session, *, shared: bool = False) -> None:
     function = "pg_advisory_xact_lock_shared" if shared else "pg_advisory_xact_lock"
     session.execute(text(f"SELECT {function}(:key)"), {"key": FUND_DEFINITION_LOCK})
@@ -89,6 +112,142 @@ def _check_percentage(session: Session, value: Decimal, *, excluding: UUID | Non
         raise FundPercentageLimitError
 
 
+def dynamic_percentages(states: list[FundDistributionState]) -> list[tuple[UUID, Decimal]]:
+    """Calculate exact four-decimal percentages for incomplete funds."""
+    active = [
+        state
+        for state in states
+        if state.target_amount is not None and state.balance < state.target_amount
+    ]
+    if not active:
+        return []
+    remaining = {
+        state.fund_id: state.target_amount - state.balance
+        for state in active
+        if state.target_amount is not None
+    }
+    total_remaining = sum(remaining.values(), Decimal(0))
+    count = Decimal(len(active))
+    base = min(MIN_DYNAMIC_PERCENTAGE, Decimal(100) / count)
+    dynamic_pool = Decimal(100) - count * base
+    raw = {
+        state.fund_id: base + dynamic_pool * remaining[state.fund_id] / total_remaining
+        for state in active
+    }
+    rounded = {
+        fund_id: percentage.quantize(PERCENTAGE_QUANTUM, rounding=ROUND_DOWN)
+        for fund_id, percentage in raw.items()
+    }
+    units = int((Decimal(100) - sum(rounded.values(), Decimal(0))) / PERCENTAGE_QUANTUM)
+    order = sorted(raw, key=lambda fund_id: (-(raw[fund_id] - rounded[fund_id]), fund_id))
+    for fund_id in order[:units]:
+        rounded[fund_id] += PERCENTAGE_QUANTUM
+    return [(fund_id, rounded[fund_id]) for fund_id in sorted(rounded)]
+
+
+def complete_percentage_allocations(
+    amount: Decimal, percentages: list[tuple[UUID, Decimal]]
+) -> list[AllocationItem]:
+    """Allocate the complete exact amount using deterministic largest remainders."""
+    if not percentages:
+        return []
+    raw = {fund_id: amount * percentage / 100 for fund_id, percentage in percentages}
+    rounded = {
+        fund_id: value.quantize(MONEY_QUANTUM, rounding=ROUND_DOWN)
+        for fund_id, value in raw.items()
+    }
+    units = int((amount - sum(rounded.values(), Decimal(0))) / MONEY_QUANTUM)
+    order = sorted(raw, key=lambda fund_id: (-(raw[fund_id] - rounded[fund_id]), fund_id))
+    for fund_id in order[:units]:
+        rounded[fund_id] += MONEY_QUANTUM
+    return [AllocationItem(fund_id=fund_id, amount=rounded[fund_id]) for fund_id in sorted(rounded)]
+
+
+def _fund_balances(session: Session, fund_ids: set[UUID]) -> dict[UUID, Decimal]:
+    balances = dict.fromkeys(fund_ids, Decimal(0))
+    if not fund_ids:
+        return balances
+    rows = session.execute(
+        select(FundMovement.fund_id, func.coalesce(func.sum(FundMovement.amount), 0))
+        .where(FundMovement.fund_id.in_(fund_ids))
+        .group_by(FundMovement.fund_id)
+    )
+    for fund_id, value in rows:
+        balances[fund_id] = Decimal(value or 0)
+    return balances
+
+
+def _percentages_for(
+    mode: FundAllocationMode, funds: list[Fund], balances: dict[UUID, Decimal]
+) -> list[tuple[UUID, Decimal]]:
+    if mode == FundAllocationMode.MANUAL:
+        return [
+            (fund.id, Decimal(fund.allocation_percentage))
+            for fund in sorted(funds, key=lambda item: item.id)
+            if Decimal(fund.allocation_percentage) > 0
+        ]
+    if any(fund.target_amount is None for fund in funds):
+        raise DynamicFundTargetsRequiredError
+    return dynamic_percentages(
+        [
+            FundDistributionState(
+                fund_id=fund.id,
+                balance=balances[fund.id],
+                target_amount=fund.target_amount,
+            )
+            for fund in funds
+        ]
+    )
+
+
+def locked_distribution_snapshot(session: Session, *, shared: bool) -> LockedDistributionSnapshot:
+    _lock_definitions(session, shared=shared)
+    query = (
+        select(Fund)
+        .where(Fund.archived_at.is_(None))
+        .order_by(Fund.id)
+        .with_for_update(read=shared)
+    )
+    funds = list(session.scalars(query).all())
+    balances = _fund_balances(session, {fund.id for fund in funds})
+    mode = fund_allocation_mode(session)
+    return LockedDistributionSnapshot(
+        mode=mode,
+        funds=funds,
+        balances=balances,
+        percentages=_percentages_for(mode, funds, balances),
+    )
+
+
+def validate_dynamic_targets(session: Session) -> None:
+    _lock_definitions(session)
+    missing = session.scalar(
+        select(Fund.id).where(Fund.archived_at.is_(None), Fund.target_amount.is_(None)).limit(1)
+    )
+    if missing is not None:
+        raise DynamicFundTargetsRequiredError
+
+
+def snapshot_dynamic_percentages_as_manual(session: Session) -> None:
+    """Freeze current derived values, including zero for filled and archived funds."""
+    _lock_definitions(session)
+    funds = list(session.scalars(select(Fund).order_by(Fund.id).with_for_update()).all())
+    active = [fund for fund in funds if fund.archived_at is None]
+    balances = _fund_balances(session, {fund.id for fund in active})
+    if any(fund.target_amount is None for fund in active):
+        raise DynamicFundTargetsRequiredError
+    percentages = dict(_percentages_for(FundAllocationMode.DYNAMIC, active, balances))
+    now = datetime.now(UTC)
+    for fund in funds:
+        value = percentages.get(fund.id, Decimal(0))
+        if Decimal(fund.allocation_percentage) == value:
+            continue
+        fund.allocation_percentage = value
+        fund.updated_at = now
+        fund.version += 1
+    session.flush()
+
+
 def create_fund(
     session: Session,
     *,
@@ -98,7 +257,11 @@ def create_fund(
     target_amount: Decimal | None,
 ) -> Fund:
     _lock_definitions(session)
-    _check_percentage(session, percentage)
+    mode = fund_allocation_mode(session)
+    if mode == FundAllocationMode.DYNAMIC and target_amount is None:
+        raise DynamicFundTargetsRequiredError
+    if mode == FundAllocationMode.MANUAL:
+        _check_percentage(session, percentage)
     now = datetime.now(UTC)
     fund = Fund(
         name=name,
@@ -120,7 +283,11 @@ def update_fund(session: Session, fund_id: UUID, payload: FundUpdateRequest) -> 
     if fund.version != payload.version:
         raise FundConflictError
     if fund.archived_at is None:
-        _check_percentage(session, payload.allocation_percentage, excluding=fund.id)
+        mode = fund_allocation_mode(session)
+        if mode == FundAllocationMode.DYNAMIC and payload.target_amount is None:
+            raise DynamicFundTargetsRequiredError
+        if mode == FundAllocationMode.MANUAL:
+            _check_percentage(session, payload.allocation_percentage, excluding=fund.id)
     fund.name = payload.name
     fund.description = payload.description
     fund.allocation_percentage = payload.allocation_percentage
@@ -188,7 +355,11 @@ def archive_fund(
     if restore:
         if fund.archived_at is None:
             return fund
-        _check_percentage(session, fund.allocation_percentage)
+        mode = fund_allocation_mode(session)
+        if mode == FundAllocationMode.DYNAMIC and fund.target_amount is None:
+            raise DynamicFundTargetsRequiredError
+        if mode == FundAllocationMode.MANUAL:
+            _check_percentage(session, fund.allocation_percentage)
         fund.archived_at = None
     else:
         if fund.archived_at is not None:
@@ -202,16 +373,43 @@ def archive_fund(
     return fund
 
 
-def _fund_response(session: Session, fund: Fund) -> FundResponse:
-    balance = fund_balance(session, fund.id)
+def _fund_response(
+    session: Session,
+    fund: Fund,
+    *,
+    balance: Decimal | None = None,
+    effective_percentage: Decimal | None = None,
+    mode: FundAllocationMode | None = None,
+) -> FundResponse:
+    balance = fund_balance(session, fund.id) if balance is None else balance
+    mode = fund_allocation_mode(session) if mode is None else mode
+    if fund.archived_at is not None:
+        effective_percentage = Decimal(0)
+        status = "archived"
+    elif mode == FundAllocationMode.MANUAL:
+        effective_percentage = Decimal(fund.allocation_percentage)
+        status = "manual"
+    elif fund.target_amount is not None and balance >= fund.target_amount:
+        effective_percentage = Decimal(0)
+        status = "filled"
+    else:
+        effective_percentage = effective_percentage or Decimal(0)
+        status = "active"
     progress = balance * 100 / fund.target_amount if fund.target_amount is not None else None
+    remaining = (
+        max(fund.target_amount - balance, Decimal(0)) if fund.target_amount is not None else None
+    )
     return FundResponse(
         id=fund.id,
         name=fund.name,
         description=fund.description,
-        allocation_percentage=format(fund.allocation_percentage, "f"),
+        allocation_percentage=format(effective_percentage, "f"),
+        manual_allocation_percentage=format(fund.allocation_percentage, "f"),
+        allocation_mode=mode,
         target_amount=format(fund.target_amount, "f") if fund.target_amount is not None else None,
         total_balance=format(balance, "f"),
+        remaining_amount=format(remaining, "f") if remaining is not None else None,
+        distribution_status=status,
         progress_percentage=format(progress, ".2f") if progress is not None else None,
         archived=fund.archived_at is not None,
         version=fund.version,
@@ -221,41 +419,59 @@ def _fund_response(session: Session, fund: Fund) -> FundResponse:
 
 
 def list_funds(session: Session, *, include_archived: bool = True) -> list[FundResponse]:
+    _lock_definitions(session, shared=True)
     query = select(Fund)
     if not include_archived:
         query = query.where(Fund.archived_at.is_(None))
-    funds = session.scalars(
-        query.order_by(Fund.archived_at.nulls_first(), Fund.name, Fund.id)
-    ).all()
-    return [_fund_response(session, fund) for fund in funds]
+    funds = list(
+        session.scalars(
+            query.order_by(Fund.archived_at.nulls_first(), Fund.name, Fund.id).with_for_update(
+                read=True
+            )
+        ).all()
+    )
+    balances = _fund_balances(session, {fund.id for fund in funds})
+    mode = fund_allocation_mode(session)
+    active = [fund for fund in funds if fund.archived_at is None]
+    percentages = dict(_percentages_for(mode, active, balances))
+    return [
+        _fund_response(
+            session,
+            fund,
+            balance=balances[fund.id],
+            effective_percentage=percentages.get(fund.id, Decimal(0)),
+            mode=mode,
+        )
+        for fund in funds
+    ]
 
 
 def locked_active_funds(session: Session) -> list[FundResponse]:
     """Return one active definition/balance snapshot for cross-module projections."""
-    _lock_definitions(session, shared=True)
-    funds = session.scalars(
-        select(Fund)
-        .where(Fund.archived_at.is_(None))
-        .order_by(Fund.name, Fund.id)
-        .with_for_update(read=True)
-    ).all()
-    return [_fund_response(session, fund) for fund in funds]
+    snapshot = locked_distribution_snapshot(session, shared=True)
+    percentages = dict(snapshot.percentages)
+    return [
+        _fund_response(
+            session,
+            fund,
+            balance=snapshot.balances[fund.id],
+            effective_percentage=percentages.get(fund.id, Decimal(0)),
+            mode=snapshot.mode,
+        )
+        for fund in sorted(snapshot.funds, key=lambda item: (item.name, item.id))
+    ]
 
 
 def locked_percentage_definitions(session: Session) -> list[tuple[UUID, Decimal]]:
-    """Return one locked active percentage snapshot without loading fund balances."""
-    _lock_definitions(session, shared=True)
-    rows = session.execute(
-        select(Fund.id, Fund.allocation_percentage)
-        .where(Fund.archived_at.is_(None), Fund.allocation_percentage > 0)
-        .order_by(Fund.id)
-        .with_for_update(read=True)
-    )
-    return [(fund_id, Decimal(percentage)) for fund_id, percentage in rows]
+    """Return one locked mode-aware percentage snapshot."""
+    return locked_distribution_snapshot(session, shared=True).percentages
 
 
 def get_fund_response(session: Session, fund_id: UUID) -> FundResponse:
-    return _fund_response(session, _get_fund(session, fund_id))
+    response = next((item for item in list_funds(session) if item.id == fund_id), None)
+    if response is None:
+        raise FundNotFoundError
+    return response
 
 
 def validate_account_coverage(session: Session, physical_balances: dict[UUID, Decimal]) -> None:
@@ -312,11 +528,19 @@ def summary_with_physical_balances(
                 archived=account.archived,
             )
         )
+    mode = fund_allocation_mode(session)
     return FundSummaryResponse(
         funds=funds,
         positions=positions,
         accounts=coverage,
-        active_percentage=format(_percentage_total(session), "f"),
+        active_percentage=format(
+            sum(
+                (Decimal(fund.allocation_percentage) for fund in funds if not fund.archived),
+                Decimal(0),
+            ),
+            "f",
+        ),
+        allocation_mode=mode,
         total_reserved=format(sum((Decimal(f.total_balance) for f in funds), Decimal(0)), "f"),
         total_free=format(sum((Decimal(a.free_balance) for a in coverage), Decimal(0)), "f"),
     )
@@ -338,10 +562,19 @@ def percentage_allocations(
 def allocation_preview_with_free_balance(
     session: Session, account_id: UUID, amount: Decimal, free: Decimal
 ) -> AllocationPreviewResponse:
-    funds = session.scalars(select(Fund).where(Fund.archived_at.is_(None)).order_by(Fund.id)).all()
-    allocations = percentage_allocations(
-        amount, [(fund.id, fund.allocation_percentage) for fund in funds]
+    snapshot = locked_distribution_snapshot(session, shared=False)
+    allocations = (
+        complete_percentage_allocations(amount, snapshot.percentages)
+        if snapshot.mode == FundAllocationMode.DYNAMIC
+        else percentage_allocations(amount, snapshot.percentages)
     )
+    percentage_by_fund = dict(snapshot.percentages)
+    allocations = [
+        item.model_copy(
+            update={"allocation_percentage": format(percentage_by_fund[item.fund_id], "f")}
+        )
+        for item in allocations
+    ]
     allocated = sum((item.amount for item in allocations), Decimal(0))
     return AllocationPreviewResponse(
         account_id=account_id,
@@ -358,7 +591,6 @@ def locked_percentage_allocation_preview_with_free_balance(
     session: Session, account_id: UUID, amount: Decimal, free: Decimal
 ) -> AllocationPreviewResponse:
     """Read one percentage snapshot protected from concurrent fund-definition changes."""
-    _lock_definitions(session)
     return allocation_preview_with_free_balance(session, account_id, amount, free)
 
 

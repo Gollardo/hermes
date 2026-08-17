@@ -11,8 +11,12 @@ const SUMMARY = {
       name: 'Reserve',
       description: null,
       allocation_percentage: '10.0000',
+      manual_allocation_percentage: '10.0000',
+      allocation_mode: 'manual',
       target_amount: '20.0000',
       total_balance: '25.0000',
+      remaining_amount: '0',
+      distribution_status: 'manual',
       progress_percentage: '125.00',
       archived: false,
       version: 1,
@@ -30,6 +34,7 @@ const SUMMARY = {
     },
   ],
   active_percentage: '10.0000',
+  allocation_mode: 'manual',
   total_reserved: '25.0000',
   total_free: '75.0000',
 };
@@ -66,6 +71,37 @@ describe('FundsPage', () => {
     expect(progress.textContent).toContain('125.00%');
     expect((progress.querySelector('progress') as HTMLProgressElement).value).toBe(100);
     expect(fixture.nativeElement.textContent).toContain('125.00%');
+  });
+
+  it('explains dynamic percentages and removes manual percentage editing', () => {
+    fixture.detectChanges();
+    http.expectOne('/api/v1/settings').flush({ timezone: 'UTC', base_currency: 'RUB' });
+    http.expectOne('/api/v1/funds/summary').flush({
+      ...SUMMARY,
+      allocation_mode: 'dynamic',
+      active_percentage: '0',
+      funds: [
+        {
+          ...SUMMARY.funds[0],
+          allocation_percentage: '0',
+          allocation_mode: 'dynamic',
+          distribution_status: 'filled',
+        },
+      ],
+    });
+    http
+      .expectOne((request) => request.url === '/api/v1/funds/history')
+      .flush({ items: [], page: 1, page_size: 25, total: 0 });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Динамически по целям');
+    expect(fixture.nativeElement.textContent).toContain('Цель достигнута');
+    clickButton('Изменить');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#fund-percentage')).toBeNull();
+    expect(
+      (fixture.nativeElement.querySelector('#fund-target') as HTMLInputElement).placeholder,
+    ).toBe('Обязательно');
   });
 
   it('normalizes and submits an optional target entered with a comma', () => {
@@ -117,7 +153,7 @@ describe('FundsPage', () => {
     http.expectOne('/api/v1/funds/allocation-preview').flush({
       account_id: 'account-1',
       amount: '10',
-      allocations: [{ fund_id: 'fund-1', amount: '2.5000' }],
+      allocations: [{ fund_id: 'fund-1', amount: '2.5000', allocation_percentage: '25.0000' }],
       allocated_amount: '2.5000',
       unallocated_amount: '7.5000',
       free_before: '75.0000',
@@ -134,6 +170,7 @@ describe('FundsPage', () => {
       positions: [],
       accounts: [],
       active_percentage: '0',
+      allocation_mode: 'manual',
       total_reserved: '0',
       total_free: '0',
     });

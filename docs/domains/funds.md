@@ -7,13 +7,13 @@ fund may span physical accounts. Funds owns definitions, percentages, events
 and per-account virtual movements; Operations owns physical movements. The
 posting model is recorded in [ADR 0002](../decisions/0002-virtual-fund-ledger.md).
 
-## Implemented model in 0.1.0-alpha.4
+## Implemented model through 0.4.0
 
 - A fund has a name, optional description, optional positive target amount,
   exact allocation percentage, lifecycle state and optimistic version. A target
   is planning metadata and never changes ledger balance.
-- Active percentages total at most 100%. Changing a percentage never moves
-  existing money.
+- Allocation has a global manual or dynamic mode. Manual percentages total at
+  most 100%. Changing a percentage or mode never moves existing money.
 - Fund totals and positions are sums of `NUMERIC(20,4)` movements; there is no
   mutable authoritative balance.
 - Account coverage is `physical = reserved + free`, with
@@ -40,7 +40,9 @@ posting model is recorded in [ADR 0002](../decisions/0002-virtual-fund-ledger.md
 - New actions use active physical accounts; operation entry exposes a fund only
   when it has a positive position on the selected source account.
 
-## Rounding policy
+## Allocation modes and rounding
+
+Manual mode preserves the original policy. For every active fund independently:
 
 For every active fund independently:
 
@@ -53,6 +55,29 @@ remainders stay free. Manual values must be non-negative, unique per fund and
 total no more than both the selected amount and current free balance. Binary
 floating point is rejected at API boundaries.
 
+Dynamic mode requires a positive target on every non-archived fund. Before
+each distribution, active funds are those with `balance < target`; archived or
+filled funds receive zero. For `N` active funds:
+
+```text
+remaining_i = target_i - balance_i
+base = min(5, 100 / N)
+percent_i = base + (100 - N * base) * remaining_i / sum(remaining)
+```
+
+Percentages use four decimal places and a deterministic largest-remainder
+correction in UUID order so active percentages total exactly 100. The same
+correction assigns every `0.0001` of an incoming amount; overshooting a target
+is allowed and is not redistributed within that operation. If no active fund
+exists, allocation is unavailable and the surrounding transfer rolls back.
+The next preview, transfer or forecast event recomputes from current/projected
+balances. Direct replenishment, spending, archival and restoration therefore
+affect the next calculation without a stored percentage cache.
+
+Switching dynamic to manual copies the current effective percentages into the
+manual percentage fields atomically; filled and archived funds are stored as
+zero. Switching manual to dynamic validates all non-archived targets first.
+
 ## Concurrency and lifecycle
 
 Account rows and then fund rows are locked in UUID order before
@@ -60,14 +85,17 @@ coverage-dependent writes. Concurrent commands cannot overreserve one account
 or fund position. Definition writes share a transaction advisory lock, so the
 percentage limit also holds under concurrency.
 
-The alpha archive policy permits archive only at zero total balance. Restore is
-explicit, version-checked and rechecks the percentage limit. Editing or deleting
+The archive policy permits archive only at zero total balance. Restore is
+explicit and version-checked. An archived fund is excluded from dynamic
+calculation; restoration re-includes it when it is below target and, in dynamic
+mode, requires a target. Editing or deleting
 an older linked operation cannot make an archived fund non-zero. Reserved money
 is never silently released or moved.
 
-## Deliberately outside alpha.4
+## Deliberately outside 0.4.0
 
 - automatic allocation while posting income;
+- per-transfer mode overrides or custom dynamic formulas;
 - splitting one expense or transfer across several funds;
 - target date, icons, colours or gamification;
 - batch allocation across multiple accounts;

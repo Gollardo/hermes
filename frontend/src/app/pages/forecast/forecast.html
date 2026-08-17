@@ -557,6 +557,13 @@
               Текущие остатки плюс запланированные переводы с распределением до
               {{ funds.through_on | textDate }}.
             </p>
+            <p class="fund-mode-label">
+              {{
+                funds.allocation_mode === 'dynamic'
+                  ? 'Динамические проценты пересчитываются перед каждым переводом.'
+                  : 'Используются текущие ручные проценты.'
+              }}
+            </p>
           </div>
           <div class="fund-allocation-total">
             <span>Распределится из переводов</span>
@@ -591,9 +598,11 @@
                 <span class="fund-name">
                   <i [style.background]="fundColor(index)" aria-hidden="true"></i>
                   <span
-                    >{{ series.fund_name }} ·
-                    {{ formatPercentage(series.allocation_percentage) }}%</span
-                  >
+                    >{{ series.fund_name }} · {{ formatPercentage(series.allocation_percentage) }}%
+                    @if (funds.allocation_mode === 'dynamic') {
+                      → {{ formatPercentage(series.ending_allocation_percentage) }}%
+                    }
+                  </span>
                 </span>
                 <small>{{ series.starting_balance | money }} {{ baseCurrency() }}</small>
                 <span class="fund-direction" aria-hidden="true">→</span>
@@ -604,7 +613,11 @@
             }
           </ul>
           <p class="fund-allocation-note">
-            @if (isZero(funds.unallocated_total)) {
+            @if (funds.blocked_allocation_count) {
+              По текущему состоянию не распределяется:
+              <strong>{{ funds.unallocated_total | money }} {{ baseCurrency() }}</strong
+              >. Заблокированные переводы не могут быть подтверждены с распределением.
+            } @else if (isZero(funds.unallocated_total)) {
               Все {{ funds.planned_transfer_total | money }} {{ baseCurrency() }} плановых переводов
               будут распределены по фондам.
             } @else {
@@ -616,7 +629,18 @@
           </p>
         } @else {
           <p class="empty-state">
-            Создайте активные фонды и задайте проценты, чтобы увидеть перспективу распределения.
+            @if (funds.allocation_mode === 'dynamic') {
+              Создайте неархивный фонд с целью, чтобы увидеть перспективу распределения.
+            } @else {
+              Создайте активный фонд и задайте процент, чтобы увидеть перспективу распределения.
+            }
+          </p>
+        }
+        @if (funds.blocked_allocation_count) {
+          <p class="form-error" role="alert">
+            Плановых переводов без доступных незаполненных фондов:
+            {{ funds.blocked_allocation_count }}. Такие переводы нельзя подтвердить с
+            распределением, пока не появится активный фонд.
           </p>
         }
       </section>

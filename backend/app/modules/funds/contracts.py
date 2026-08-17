@@ -21,17 +21,21 @@ from app.modules.funds.schemas import (
     TransferAllocationResponse,
 )
 from app.modules.funds.service import (
+    DynamicFundTargetsRequiredError,
     FundAllocationUnavailableError,
     FundArchivedMutationError,
     FundBalanceError,
     FundCoverageError,
+    FundDistributionState,
     FundNotFoundError,
     account_has_fund_history,
     allocation_preview_with_free_balance,
+    complete_percentage_allocations,
     create_allocation_with_free_balance,
     create_fund,
     create_fund_transfer,
     create_redistribution_with_physical_balances,
+    dynamic_percentages,
     event_response,
     event_responses,
     fund_names,
@@ -45,8 +49,10 @@ from app.modules.funds.service import (
     replace_operation_movements,
     reserved_balance,
     reserved_balances,
+    snapshot_dynamic_percentages_as_manual,
     summary_with_physical_balances,
     validate_account_coverage,
+    validate_dynamic_targets,
 )
 
 
@@ -74,6 +80,7 @@ def fund_response(session: Session, fund_id: UUID) -> FundResponse:
 
 __all__ = [
     "FundBalanceError",
+    "DynamicFundTargetsRequiredError",
     "FundArchivedMutationError",
     "FundAllocationUnavailableError",
     "FundCoverageError",
@@ -93,6 +100,7 @@ __all__ = [
     "TransferAllocationResponse",
     "account_has_fund_history",
     "allocation_preview_with_free_balance",
+    "complete_percentage_allocations",
     "create_allocation_with_free_balance",
     "create_fund_definition",
     "create_fund_transfer",
@@ -107,6 +115,10 @@ __all__ = [
     "locked_percentage_definitions",
     "locked_percentage_allocation_preview_with_free_balance",
     "percentage_allocations",
+    "dynamic_percentages",
+    "FundDistributionState",
+    "snapshot_dynamic_percentages_as_manual",
+    "validate_dynamic_targets",
     "replace_operation_movements",
     "reserved_balance",
     "reserved_balances",

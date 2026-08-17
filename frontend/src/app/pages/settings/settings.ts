@@ -12,6 +12,7 @@ interface ApplicationSettings {
   base_currency: string;
   timezone: string;
   default_account_id: string | null;
+  fund_allocation_mode: 'manual' | 'dynamic';
   base_currency_locked: boolean;
   updated_at: string;
 }
@@ -59,10 +60,14 @@ export class SettingsPage implements OnInit {
   }));
   protected readonly loading = signal(true);
   protected readonly savingSettings = signal(false);
+  protected readonly savingFundMode = signal(false);
   protected readonly changingPassword = signal(false);
   protected readonly settingsError = signal<string | null>(null);
   protected readonly accountsError = signal<string | null>(null);
   protected readonly settingsSuccess = signal<string | null>(null);
+  protected readonly fundModeError = signal<string | null>(null);
+  protected readonly fundModeSuccess = signal<string | null>(null);
+  protected readonly currentFundMode = signal<'manual' | 'dynamic'>('manual');
   protected readonly passwordError = signal<string | null>(null);
   protected readonly passwordSuccess = signal<string | null>(null);
   protected readonly currencyLocked = signal(false);
@@ -81,6 +86,9 @@ export class SettingsPage implements OnInit {
     baseCurrency: ['RUB', [Validators.required, Validators.pattern(/^[A-Za-z]{3}$/)]],
     timezone: ['UTC', Validators.required],
     defaultAccountId: this.formBuilder.control({ value: '', disabled: true }),
+  });
+  protected readonly fundModeForm = this.formBuilder.group({
+    mode: this.formBuilder.control<'manual' | 'dynamic'>('manual'),
   });
 
   protected accountOptions(): EntityOption[] {
@@ -159,6 +167,32 @@ export class SettingsPage implements OnInit {
         error: (error: unknown) => {
           this.changingPassword.set(false);
           this.passwordError.set(apiErrorMessage(error, 'Не удалось изменить мастер-пароль.'));
+        },
+      });
+  }
+
+  protected saveFundMode(): void {
+    const mode = this.fundModeForm.controls.mode.value;
+    this.fundModeError.set(null);
+    this.fundModeSuccess.set(null);
+    this.savingFundMode.set(true);
+    this.http
+      .put<ApplicationSettings>(`${environment.apiBaseUrl}/settings/fund-allocation-mode`, { mode })
+      .subscribe({
+        next: (settings) => {
+          this.savingFundMode.set(false);
+          this.applySettings(settings);
+          this.fundModeSuccess.set(
+            mode === 'dynamic'
+              ? 'Динамическое распределение включено.'
+              : 'Текущие проценты зафиксированы для ручного режима.',
+          );
+        },
+        error: (error: unknown) => {
+          this.savingFundMode.set(false);
+          this.fundModeError.set(
+            apiErrorMessage(error, 'Не удалось изменить режим распределения.'),
+          );
         },
       });
   }
@@ -306,12 +340,15 @@ export class SettingsPage implements OnInit {
   }
 
   private applySettings(settings: ApplicationSettings): void {
+    const fundMode = settings.fund_allocation_mode ?? 'manual';
     this.currencyLocked.set(settings.base_currency_locked);
     this.settingsForm.setValue({
       baseCurrency: settings.base_currency,
       timezone: settings.timezone,
       defaultAccountId: settings.default_account_id ?? '',
     });
+    this.currentFundMode.set(fundMode);
+    this.fundModeForm.setValue({ mode: fundMode });
     if (settings.base_currency_locked) {
       this.settingsForm.controls.baseCurrency.disable();
     }

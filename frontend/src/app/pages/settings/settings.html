@@ -142,6 +142,71 @@
       </section>
     </div>
 
+    <section class="panel fund-policy-panel" aria-labelledby="fund-policy-title">
+      <div class="panel-heading setting-heading">
+        <span class="setting-icon soft" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 18V9m7 9V5m7 13v-6M3 20h18" />
+          </svg>
+        </span>
+        <div>
+          <p class="section-label">Фонды</p>
+          <h2 id="fund-policy-title">Режим распределения</h2>
+          <p>Определяет, как рассчитываются доли при следующем пополнении фондов.</p>
+        </div>
+      </div>
+      <form [formGroup]="fundModeForm" (ngSubmit)="saveFundMode()">
+        <fieldset class="mode-options">
+          <legend>Расчёт процентов</legend>
+          <label class="mode-option">
+            <input type="radio" formControlName="mode" value="dynamic" />
+            <span>
+              <strong>Динамически по целям</strong>
+              <small>
+                Незаполненные фонды делят 100% с гарантированной базовой долей. После каждого
+                пополнения проценты пересчитываются.
+              </small>
+            </span>
+          </label>
+          <label class="mode-option">
+            <input type="radio" formControlName="mode" value="manual" />
+            <span>
+              <strong>Вручную</strong>
+              <small>
+                Процент задаётся в каждом фонде. При переходе из динамического режима текущие
+                вычисленные проценты будут зафиксированы без изменения уже накопленных сумм.
+              </small>
+            </span>
+          </label>
+        </fieldset>
+        @if (fundModeForm.controls.mode.value === 'dynamic') {
+          <p class="field-hint">
+            У каждого неархивного фонда должна быть положительная целевая сумма. Архивные и
+            заполненные фонды не участвуют в расчёте.
+          </p>
+        }
+        @if (fundModeError(); as message) {
+          <p class="form-error" role="alert">{{ message }}</p>
+        }
+        @if (fundModeSuccess(); as message) {
+          <p class="form-success" role="status">{{ message }}</p>
+        }
+        <button
+          type="submit"
+          class="secondary"
+          [disabled]="savingFundMode() || fundModeForm.controls.mode.value === currentFundMode()"
+        >
+          {{
+            savingFundMode()
+              ? 'Сохраняем…'
+              : fundModeForm.controls.mode.value === 'manual' && currentFundMode() === 'dynamic'
+                ? 'Зафиксировать текущие проценты'
+                : 'Применить режим'
+          }}
+        </button>
+      </form>
+    </section>
+
     <section class="panel backup-panel" aria-labelledby="backup-title">
       <div class="panel-heading setting-heading">
         <span class="setting-icon soft" aria-hidden="true">

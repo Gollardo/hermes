@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, field_validator
 
+from app.modules.settings.models import FundAllocationMode
 from app.modules.settings.validation import normalize_currency, normalize_timezone
 
 
@@ -10,6 +11,7 @@ class SettingsResponse(BaseModel):
     base_currency: str
     timezone: str
     default_account_id: UUID | None
+    fund_allocation_mode: FundAllocationMode
     base_currency_locked: bool
     updated_at: datetime
 
@@ -28,3 +30,7 @@ class SettingsUpdateRequest(BaseModel):
     @classmethod
     def valid_timezone(cls, value: str) -> str:
         return normalize_timezone(value)
+
+
+class FundAllocationModeUpdateRequest(BaseModel):
+    mode: FundAllocationMode

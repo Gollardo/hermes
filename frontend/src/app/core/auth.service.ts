@@ -170,6 +170,8 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
       fund_percentage_limit: 'Сумма процентов активных фондов не может превышать 100%.',
       fund_allocation_unavailable:
         'Распределение не выполнено: задайте положительный процент хотя бы одному активному фонду.',
+      dynamic_fund_targets_required:
+        'Для динамического режима задайте целевую сумму каждому неархивному фонду.',
       fund_has_balance: 'Фонд можно архивировать только после обнуления остатка.',
       insufficient_fund_balance: 'В выбранном фонде на этом счёте недостаточно денег.',
       insufficient_free_balance: 'На счёте недостаточно свободных денег для резервирования.',

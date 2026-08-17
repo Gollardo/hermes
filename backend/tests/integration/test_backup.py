@@ -1,4 +1,5 @@
 from copy import deepcopy
+from decimal import Decimal
 
 import pytest
 from fastapi import FastAPI
@@ -119,7 +120,7 @@ def test_export_preview_and_transactional_restore_on_initialized_database(
         document = exported.json()
         assert document["format"] == "hermes-json-backup"
         assert document["schema_version"] == 1
-        assert document["app_version"] == "0.3.0"
+        assert document["app_version"] == "0.4.0"
         assert document["data"]["account_movements"][0]["amount"] == "125.5000"
         assert "password" not in exported.text
         assert "sessions" not in document["data"]
@@ -278,6 +279,64 @@ def test_restore_complete_backup_into_clean_initialized_target(
         assert restored.json()["counts"]["recurring_rules"] == 1
         assert client.get("/api/v1/funds/summary").json()["total_reserved"] == "10.0000"
         assert len(client.get("/api/v1/scheduling/rules").json()) == 1
+
+
+def test_backup_round_trips_dynamic_fund_allocation_mode(
+    postgres_database_settings: Settings,
+) -> None:
+    with TestClient(create_app(postgres_database_settings)) as client:
+        assert client.post("/api/v1/setup", json=SETUP).status_code == 201
+        headers = csrf(client)
+        assert (
+            client.post(
+                "/api/v1/funds",
+                headers=headers,
+                json={
+                    "name": "Reserve",
+                    "target_amount": "100",
+                    "allocation_percentage": "25",
+                },
+            ).status_code
+            == 201
+        )
+        switched = client.put(
+            "/api/v1/settings/fund-allocation-mode",
+            headers=headers,
+            json={"mode": "dynamic"},
+        )
+        assert switched.status_code == 200
+        assert (
+            client.post(
+                "/api/v1/funds",
+                headers=headers,
+                json={
+                    "name": "Second",
+                    "target_amount": "100",
+                    "allocation_percentage": "100",
+                },
+            ).status_code
+            == 201
+        )
+        document = client.get("/api/v1/backup/export").json()
+        assert document["data"]["settings"]["fund_allocation_mode"] == "dynamic"
+        assert sum(
+            Decimal(item["allocation_percentage"]) for item in document["data"]["funds"]
+        ) > Decimal("100")
+
+        restored = client.post(
+            "/api/v1/backup/restore",
+            headers=headers,
+            json={
+                "backup": document,
+                "confirmation": "ЗАМЕНИТЬ ВСЕ ДАННЫЕ",
+                "master_password": MASTER_PASSWORD,
+            },
+        )
+        assert restored.status_code == 200
+        assert client.get("/api/v1/settings").json()["fund_allocation_mode"] == "dynamic"
+        assert {item["allocation_percentage"] for item in client.get("/api/v1/funds").json()} == {
+            "50.0000"
+        }
 
 
 def test_failed_restore_rolls_back_existing_data(postgres_database_settings: Settings) -> None:

@@ -44,15 +44,181 @@ def _account(client: TestClient, headers: dict[str, str], name: str, balance: st
 
 
 def _fund(
-    client: TestClient, headers: dict[str, str], name: str, percentage: str
+    client: TestClient,
+    headers: dict[str, str],
+    name: str,
+    percentage: str,
+    target_amount: str | None = None,
 ) -> dict[str, object]:
+    payload: dict[str, str] = {"name": name, "allocation_percentage": percentage}
+    if target_amount is not None:
+        payload["target_amount"] = target_amount
     response = client.post(
         "/api/v1/funds",
         headers=headers,
-        json={"name": name, "allocation_percentage": percentage},
+        json=payload,
     )
     assert response.status_code == 201
     return cast(dict[str, object], response.json())
+
+
+def test_dynamic_mode_recalculates_and_archive_restore_changes_eligibility(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        source = _account(client, headers, "Main", "500")
+        destination = _account(client, headers, "Savings", "0")
+        first = _fund(client, headers, "First", "10", "100")
+        second = _fund(client, headers, "Second", "20", "100")
+
+        enabled = client.put(
+            "/api/v1/settings/fund-allocation-mode",
+            headers=headers,
+            json={"mode": "dynamic"},
+        )
+        assert enabled.status_code == 200
+        assert enabled.json()["fund_allocation_mode"] == "dynamic"
+        summary = client.get("/api/v1/funds/summary").json()
+        percentages = {item["id"]: item["allocation_percentage"] for item in summary["funds"]}
+        assert percentages == {first["id"]: "50.0000", second["id"]: "50.0000"}
+
+        archived = client.post(
+            f"/api/v1/funds/{second['id']}/archive",
+            headers=headers,
+            json={"version": second["version"]},
+        )
+        assert archived.status_code == 200
+        summary = client.get("/api/v1/funds/summary").json()
+        percentages = {item["id"]: item["allocation_percentage"] for item in summary["funds"]}
+        assert percentages[first["id"]] == "100.0000"
+        assert percentages[second["id"]] == "0"
+
+        no_funds = client.post(
+            f"/api/v1/funds/{first['id']}/archive",
+            headers=headers,
+            json={"version": first["version"]},
+        )
+        assert no_funds.status_code == 200
+        rejected = client.post(
+            "/api/v1/funds/transfer-and-allocate",
+            headers=headers,
+            json={
+                "source_account_id": source,
+                "destination_account_id": destination,
+                "amount": "10",
+                "occurred_on": "2026-08-17",
+            },
+        )
+        assert rejected.status_code == 409
+        assert rejected.json()["detail"]["code"] == "fund_allocation_unavailable"
+        balances = {item["id"]: item["balance"] for item in client.get("/api/v1/accounts").json()}
+        assert balances[source] == "500.0000"
+        assert balances[destination] == "0"
+
+        first = client.post(
+            f"/api/v1/funds/{first['id']}/restore",
+            headers=headers,
+            json={"version": no_funds.json()["version"]},
+        ).json()
+        second = client.post(
+            f"/api/v1/funds/{second['id']}/restore",
+            headers=headers,
+            json={"version": archived.json()["version"]},
+        ).json()
+        restored = client.get("/api/v1/funds/summary").json()
+        assert {item["allocation_percentage"] for item in restored["funds"]} == {"50.0000"}
+
+        direct = client.post(
+            "/api/v1/funds/allocations",
+            headers=headers,
+            json={
+                "account_id": source,
+                "amount": "50",
+                "occurred_on": "2026-08-17",
+                "allocations": [{"fund_id": first["id"], "amount": "50"}],
+            },
+        )
+        assert direct.status_code == 201
+        after_direct = client.get("/api/v1/funds/summary").json()
+        percentages = {item["id"]: item["allocation_percentage"] for item in after_direct["funds"]}
+        assert percentages == {first["id"]: "35.0000", second["id"]: "65.0000"}
+
+        distributed = client.post(
+            "/api/v1/funds/transfer-and-allocate",
+            headers=headers,
+            json={
+                "source_account_id": source,
+                "destination_account_id": destination,
+                "amount": "100",
+                "occurred_on": "2026-08-17",
+            },
+        )
+        assert distributed.status_code == 201
+        movements = {
+            item["fund_id"]: item["amount"]
+            for item in distributed.json()["allocation"]["movements"]
+        }
+        assert movements == {first["id"]: "35.0000", second["id"]: "65.0000"}
+
+        before_manual = client.get("/api/v1/funds/summary").json()
+        before_percentages = {
+            item["id"]: item["allocation_percentage"] for item in before_manual["funds"]
+        }
+        assert before_percentages == {first["id"]: "32.0000", second["id"]: "68.0000"}
+        manual = client.put(
+            "/api/v1/settings/fund-allocation-mode",
+            headers=headers,
+            json={"mode": "manual"},
+        )
+        assert manual.status_code == 200
+        after_manual = client.get("/api/v1/funds/summary").json()
+        assert {
+            item["id"]: item["allocation_percentage"] for item in after_manual["funds"]
+        } == before_percentages
+        assert {
+            item["id"]: item["manual_allocation_percentage"] for item in after_manual["funds"]
+        } == before_percentages
+
+
+def test_dynamic_mode_requires_targets_for_every_non_archived_fund(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        fund = _fund(client, headers, "Without target", "25")
+
+        rejected = client.put(
+            "/api/v1/settings/fund-allocation-mode",
+            headers=headers,
+            json={"mode": "dynamic"},
+        )
+        assert rejected.status_code == 409
+        assert rejected.json()["detail"]["code"] == "dynamic_fund_targets_required"
+
+        archived = client.post(
+            f"/api/v1/funds/{fund['id']}/archive",
+            headers=headers,
+            json={"version": fund["version"]},
+        )
+        assert archived.status_code == 200
+        enabled = client.put(
+            "/api/v1/settings/fund-allocation-mode",
+            headers=headers,
+            json={"mode": "dynamic"},
+        )
+        assert enabled.status_code == 200
+        restore = client.post(
+            f"/api/v1/funds/{fund['id']}/restore",
+            headers=headers,
+            json={"version": archived.json()["version"]},
+        )
+        assert restore.status_code == 409
+        assert restore.json()["detail"]["code"] == "dynamic_fund_targets_required"
 
 
 def test_fund_lifecycle_allocation_and_operation_invariants(

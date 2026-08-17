@@ -29,8 +29,10 @@ postponed transfer explicitly marked for percentage allocation, it also
 subtracts the exact future allocation from free money: the source loses the
 full physical transfer, while the destination receives only its unallocated
 part as free money. The same transfer remains neutral across all accounts in
-total mode. A separate fund projection applies those allocations to current
-active fund percentages. Confirmed and cancelled occurrences are excluded;
+total mode. A separate fund projection applies those allocations using the
+configured manual or dynamic mode. In dynamic mode it recalculates percentages
+before every planned replenishment from projected balances, in `(due_on,
+occurrence_id)` order. Confirmed and cancelled occurrences are excluded;
 current fund balances remain the starting point and every amount stays an exact
 decimal string.
 
@@ -73,12 +75,19 @@ post expected operations. See the [forecast diagram](../architecture/data-flow.m
   the combined balance because their ledger history still contains physical
   money. A selected archived account can still be inspected.
 - Money is calculated with `Decimal`; API money fields are exact decimal strings.
+- The fund projection exposes the allocation mode, each event's percentages and
+  amounts, each fund's starting/ending percentage, and blocked transfers when no
+  incomplete active fund exists. It permits target overshoot without
+  redistributing within the same event.
 - The current account model has one locked base currency and no per-account
   currency, so all-account aggregation is compatible by construction.
 - The calculation is read-only and persists no projection or snapshot. Beta.2
   therefore adds no schema migration.
-- One request takes shared locks on the selected actionable occurrences and
-  account identities before reading ledger movements. Confirmation and posting
+- One request takes one shared-lock schedule snapshot before account identities
+  and ledger movements. Total mode may scope that snapshot to the selected
+  account; free mode locks the global actionable schedule once because dynamic
+  fund percentages depend on every planned replenishment, then derives the
+  selected-account view and overdue count in memory. Confirmation and posting
   use the corresponding exclusive locks in the same Scheduling-to-Accounts
   order, so one forecast cannot count an occurrence in both actual and planned
   money during a concurrent confirmation.
@@ -91,6 +100,8 @@ post expected operations. See the [forecast diagram](../architecture/data-flow.m
 - Performance and snapshot strategy once data volume is measurable.
 - The consistent read currently holds shared locks for the request and returns
   every explaining event plus up to one point per day for a half-year horizon.
+  A selected-account free forecast also locks the global actionable schedule to
+  preserve one deterministic allocation sequence.
   Large schedules may require a versioned read projection or another snapshot
   strategy that preserves explanations.
 - Whether future multi-currency accounts require separate series or explicit FX

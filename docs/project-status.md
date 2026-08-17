@@ -10,10 +10,10 @@
 
 ## Current phase
 
-**0.3.0 — переработана визуальная часть всего приложения.**
+**0.4.0 — динамическое распределение новых поступлений по фондам.**
 
-Следующий шаг: production-like container build и owner acceptance версии
-`0.3.0` на реальных данных.
+Следующий шаг: owner acceptance динамического распределения и последовательного
+прогноза версии `0.4.0` на реальных данных.
 Политики ADR 0001, ADR 0002 и ADR 0003 требуют owner review после реального
 использования.
 
@@ -113,6 +113,9 @@
 - Настройка «Счёт по умолчанию» принимает только активный счёт и автоматически
   подставляет его только в новые доходы/расходы; выбор остаётся изменяемым, а
   архивирование или удаление счёта очищает настройку атомарно.
+- Настройка режима фондов переключает ручные и динамические проценты. Включение
+  динамики требует целей у всех неархивных фондов; возврат в ручной режим
+  атомарно сохраняет текущие вычисленные проценты.
 
 ### Schema and delivery
 
@@ -122,6 +125,8 @@
   инициализированных данных.
 - Production image содержит Angular build и FastAPI, запускает Alembic до Uvicorn
   и сохраняет один HTTP entrypoint.
+- Миграция `0011_dynamic_fund_allocation` добавляет глобальный режим с безопасным
+  backfill `manual`, database check и обратимым downgrade до `0010`.
 - Runtime-параметры сессии, throttling и Secure-cookie доступны через
   `HERMES_*`; development Compose явно использует non-Secure cookie только для
   локального HTTP.
@@ -245,6 +250,14 @@
   прогресс каждого фонда и общий прогресс всех заданных целей.
 - Создание фонда может атомарно выделить сумму только ему. Перевод между двумя
   фондами на одном счёте сохраняет физический баланс и общий reserved.
+- В динамическом режиме незаполненные неархивные фонды получают гарантированную
+  долю до 5% и пропорциональную абсолютному остатку часть. Проценты и денежное
+  распределение точно замыкаются на 100%, пересчитываются перед каждым
+  пополнением и допускают превышение цели без перераспределения внутри операции.
+- Заполненные и архивные фонды получают 0%; расход или восстановление
+  автоматически возвращает фонд в следующий расчёт, если он снова ниже цели.
+- Перспектива фондов последовательно пересчитывает динамические проценты после
+  каждого запланированного пополнения и явно показывает заблокированные события.
 
 ### Recurring rules and calendar
 
@@ -335,6 +348,9 @@
   миграция для beta.2 не добавлялась.
 - Forecast snapshot берёт shared locks на ожидаемые экземпляры и account
   identities в том же порядке Scheduling → Accounts, что и confirmation.
+  Free-прогноз выбранного счёта делает один глобальный schedule snapshot и
+  фильтрует его в памяти: это сохраняет единую последовательность динамических
+  пополнений без повторного захвата occurrence locks.
   Конкурентное подтверждение поэтому не может попасть одновременно в фактический
   starting balance и плановую часть одного ответа.
 - Экран перед чтением прогноза синхронизирует rolling one-year materialization,
@@ -343,14 +359,31 @@
 
 ## Verification snapshot
 
+- Для `0.4.0` пройдены 70 non-PostgreSQL backend-тестов, 54/54 PostgreSQL
+  integration-теста и 100/100 frontend-тестов. Отдельно проверены формула для
+  1/20/21/25 фондов, точное замыкание процентов и денег, overshoot, пересчёт
+  после одного фонда, archive/restore, отсутствие активных целей, atomic
+  rollback, фиксация dynamic → manual, backup round trip и последовательный
+  прогноз. Ruff, mypy, Angular lint, Prettier, TypeScript, docs-check,
+  production Angular build и production Docker Compose build прошли. Code-review
+  hardening отдельно фиксирует единственный глобальный schedule snapshot для
+  account free forecast и восстановление dynamic backup, в котором неиспользуемая
+  сумма ручных процентов больше 100%.
+- На временной чистой PostgreSQL-базе пройдены `upgrade head`, `alembic check`,
+  `downgrade 0011 → 0010` и повторный `upgrade 0010 → 0011`; временная база
+  после проверки удалена.
+- `npm audit --omit=dev` сообщает 0 production vulnerabilities. Полный dev graph
+  сообщает high advisory для build-only `nanoid 3.3.17`, зафиксированного
+  существующим override; обновление зависимости не включено в функциональный
+  scope `0.4.0`.
+
 - `rc.1`: 97 backend-сценариев (52 non-PostgreSQL passed, 45 skipped без opt-in);
   полный PostgreSQL integration snapshot 46/46 passed, включая атомарный
   first-run restore, transfer-and-allocation и их rollback, а также forecasting
   snapshot с обновлённым series contract.
   Frontend: 63/63 теста passed; lint/format/typecheck/docs passed.
-- Полный `npm audit` после совместимых security patch overrides для build-only
-  `hono` и `nanoid` сообщает 0 известных advisories; production dependency graph
-  также чист.
+- Исторический полный `npm audit` после прежних overrides сообщал 0 advisories;
+  актуальный снимок для `0.4.0` приведён выше.
 - Поиск `float` в финансовом backend-коде нашёл только входной rejection guard
   и docstring о запрете float arithmetic.
 - PostgreSQL scenarios: clean migration/setup, protected API, CSRF/logout/login,
@@ -462,6 +495,13 @@
   build. Сохраняются известные non-blocking предупреждения style budget.
 
 ## Release assumptions and technical debt
+
+- Build-only dependency `nanoid 3.3.17` имеет актуальный high advisory; runtime
+  production graph чист. Нужен отдельный совместимый dependency update и полный
+  повтор проверок, чтобы не расширять функциональный diff этого релиза.
+- Style-budget warnings остаются для `funds.css`, `forecast.css`,
+  `forecast-chart.css`, `scheduling.css`, `directory.css` и `app.css`; новый UI
+  режима увеличил `funds.css` до 6.86 KiB при warning-пороге 4 KiB.
 
 - Срок сессии, password policy и throttle являются документированными alpha
   defaults, а не окончательно утверждённой долгосрочной политикой.

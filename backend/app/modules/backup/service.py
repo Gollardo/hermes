@@ -39,6 +39,7 @@ from app.modules.scheduling.backup import (
 )
 from app.modules.settings.backup import ApplicationSettings
 from app.modules.settings.contracts import normalize_currency, normalize_timezone
+from app.modules.settings.models import FundAllocationMode
 
 FORMAT = "hermes-json-backup"
 SCHEMA_VERSION = 1
@@ -184,13 +185,18 @@ def validate_document(data: BackupData) -> None:
     ):
         raise BackupInvariantError("Fund percentage is outside 0 through 100")
     if (
-        sum(
+        data.settings.fund_allocation_mode == FundAllocationMode.MANUAL
+        and sum(
             (item.allocation_percentage for item in data.funds if item.archived_at is None),
             Decimal(0),
         )
         > 100
     ):
         raise BackupInvariantError("Active fund percentages exceed 100")
+    if data.settings.fund_allocation_mode == FundAllocationMode.DYNAMIC and any(
+        item.archived_at is None and item.target_amount is None for item in data.funds
+    ):
+        raise BackupInvariantError("Dynamic allocation requires targets for all active funds")
     if data.accounts and data.settings.base_currency_locked_at is None:
         raise BackupInvariantError("Base currency must be locked when accounts exist")
     if data.settings.default_account_id is not None:
@@ -541,10 +547,20 @@ def validate_restored_state(session: Session) -> None:
     ).first()
     if archived_balance:
         raise BackupInvariantError("An archived fund would have a non-zero balance")
-    active_percentage = session.scalar(
-        select(func.coalesce(func.sum(Fund.allocation_percentage), 0)).where(
-            Fund.archived_at.is_(None)
+    settings = session.get(ApplicationSettings, 1)
+    if settings is None:
+        raise BackupInvariantError("Target settings are missing")
+    if settings.fund_allocation_mode == FundAllocationMode.MANUAL:
+        active_percentage = session.scalar(
+            select(func.coalesce(func.sum(Fund.allocation_percentage), 0)).where(
+                Fund.archived_at.is_(None)
+            )
         )
-    )
-    if Decimal(active_percentage or 0) > Decimal("100"):
-        raise BackupInvariantError("Active fund percentages exceed 100")
+        if Decimal(active_percentage or 0) > Decimal("100"):
+            raise BackupInvariantError("Active fund percentages exceed 100")
+    if settings.fund_allocation_mode == FundAllocationMode.DYNAMIC:
+        missing_target = session.scalar(
+            select(Fund.id).where(Fund.archived_at.is_(None), Fund.target_amount.is_(None)).limit(1)
+        )
+        if missing_target is not None:
+            raise BackupInvariantError("Dynamic allocation requires targets for all active funds")

@@ -3,11 +3,17 @@ from fastapi import APIRouter, HTTPException, status
 from app.application.settings import (
     TimezoneLockedByScheduleError,
     replace_application_settings,
+    replace_fund_allocation_mode,
 )
 from app.core.database import DatabaseSession
 from app.modules.accounts.contracts import AccountReferenceError
+from app.modules.funds.contracts import DynamicFundTargetsRequiredError
 from app.modules.settings.contracts import ApplicationSettings
-from app.modules.settings.schemas import SettingsResponse, SettingsUpdateRequest
+from app.modules.settings.schemas import (
+    FundAllocationModeUpdateRequest,
+    SettingsResponse,
+    SettingsUpdateRequest,
+)
 from app.modules.settings.service import BaseCurrencyLockedError, get_application_settings
 
 read_router = APIRouter(prefix="/settings", tags=["settings"])
@@ -19,6 +25,7 @@ def _response(settings: ApplicationSettings) -> SettingsResponse:
         base_currency=settings.base_currency,
         timezone=settings.timezone,
         default_account_id=settings.default_account_id,
+        fund_allocation_mode=settings.fund_allocation_mode,
         base_currency_locked=settings.base_currency_locked_at is not None,
         updated_at=settings.updated_at,
     )
@@ -66,3 +73,20 @@ def replace_settings(
             },
         ) from error
     return _response(settings)
+
+
+@write_router.put("/fund-allocation-mode", response_model=SettingsResponse)
+def replace_allocation_mode(
+    payload: FundAllocationModeUpdateRequest,
+    session: DatabaseSession,
+) -> SettingsResponse:
+    try:
+        return _response(replace_fund_allocation_mode(session, payload.mode))
+    except DynamicFundTargetsRequiredError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "dynamic_fund_targets_required",
+                "message": "Every non-archived fund needs a target in dynamic mode",
+            },
+        ) from error

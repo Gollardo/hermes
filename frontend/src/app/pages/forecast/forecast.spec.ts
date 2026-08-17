@@ -64,6 +64,7 @@ const FORECAST = {
 };
 
 const FUND_FORECAST = {
+  allocation_mode: 'manual',
   horizon: 'month',
   granularity: 'day',
   from_on: '2026-08-12',
@@ -71,6 +72,8 @@ const FUND_FORECAST = {
   planned_transfer_total: '0.0000',
   planned_allocation_total: '0.0000',
   unallocated_total: '0.0000',
+  blocked_allocation_count: 0,
+  allocation_events: [],
   series: [],
 };
 
@@ -84,6 +87,7 @@ const POPULATED_FUND_FORECAST = {
       fund_id: 'fund-1',
       fund_name: 'Резерв',
       allocation_percentage: '80.0000',
+      ending_allocation_percentage: '80.0000',
       starting_balance: '20.0000',
       ending_balance: '100.0000',
       points: [
@@ -152,6 +156,25 @@ describe('ForecastPage', () => {
     expect(fixture.nativeElement.textContent).toContain('100.00 ₽');
     expect(fixture.nativeElement.textContent).toContain('Останется свободно:');
     expect(fixture.nativeElement.textContent).toContain('20.00 ₽');
+  });
+
+  it('shows blocked dynamic replenishments even when no fund series exists', () => {
+    flushInitial({
+      ...FUND_FORECAST,
+      allocation_mode: 'dynamic',
+      planned_transfer_total: '100.0000',
+      unallocated_total: '100.0000',
+      blocked_allocation_count: 1,
+    });
+    http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(FORECAST);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Создайте неархивный фонд с целью, чтобы увидеть перспективу распределения.',
+    );
+    expect(fixture.nativeElement.textContent).toContain(
+      'Плановых переводов без доступных незаполненных фондов: 1',
+    );
   });
 
   it('keeps the cash forecast visible and exposes a retry when fund projection fails', () => {

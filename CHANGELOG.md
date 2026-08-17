@@ -7,6 +7,26 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-17
+
+### Added
+
+- Global manual/dynamic fund allocation mode with atomic switching.
+- Target-aware dynamic percentages with a guaranteed base share and exact,
+  deterministic four-decimal distribution.
+- Sequential dynamic fund projection for scheduled replenishments.
+- Migration `0011_dynamic_fund_allocation` and backup support for the mode.
+
+### Changed
+
+- Filled and archived funds are excluded from dynamic allocations; restored or
+  spent funds automatically return when below target.
+- Dynamic percentages are recalculated for each preview, confirmed replenishment
+  and planned forecast occurrence. Target overshoot remains allowed without an
+  intra-operation redistribution.
+- Switching to manual mode freezes the current calculated percentages.
+- Application version advanced to 0.4.0.
+
 ## [0.3.0] - 2026-08-17
 
 ### Added

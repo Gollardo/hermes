@@ -3,7 +3,8 @@
 ## Ownership and current fields
 
 The `settings` module owns persisted owner preferences: the base currency,
-IANA timezone and an optional default account. Runtime deployment configuration remains in
+IANA timezone, an optional default account and the global fund allocation mode.
+Runtime deployment configuration remains in
 `app.core.config` and environment variables.
 
 Setup creates exactly one settings row in the same transaction as the owner
@@ -33,6 +34,11 @@ change the base currency only while it is unlocked.
   mutable convenience default for new income and expense forms, never a posting
   rule. Settings updates and account archival/deletion use the common lock order
   `Settings → Accounts`.
+- Fund allocation mode is `manual` or `dynamic`. Enabling dynamic mode requires
+  a positive target for every non-archived fund. Returning to manual mode
+  snapshots current effective percentages, including zero for filled and
+  archived funds, in the same transaction. The application use case observes
+  the common `Settings → Funds` lock order.
 
 ## Explicit assumptions
 

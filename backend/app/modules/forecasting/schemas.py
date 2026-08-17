@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from app.modules.operations.contracts import OperationType
 from app.modules.scheduling.contracts import OccurrenceStatus
+from app.modules.settings.contracts import FundAllocationMode
 
 
 class ForecastScope(StrEnum):
@@ -87,12 +88,29 @@ class FundForecastSeriesResponse(BaseModel):
     fund_id: UUID
     fund_name: str
     allocation_percentage: str
+    ending_allocation_percentage: str
     starting_balance: str
     ending_balance: str
     points: list[FundForecastPointResponse]
 
 
+class FundForecastAllocationItemResponse(BaseModel):
+    fund_id: UUID
+    allocation_percentage: str
+    amount: str
+
+
+class FundForecastAllocationEventResponse(BaseModel):
+    occurrence_id: UUID
+    due_on: date
+    incoming_amount: str
+    allocated_amount: str
+    executable: bool
+    allocations: list[FundForecastAllocationItemResponse]
+
+
 class FundForecastResponse(BaseModel):
+    allocation_mode: FundAllocationMode
     horizon: ForecastHorizon
     granularity: ForecastGranularity
     from_on: date
@@ -100,4 +118,6 @@ class FundForecastResponse(BaseModel):
     planned_transfer_total: str
     planned_allocation_total: str
     unallocated_total: str
+    blocked_allocation_count: int
+    allocation_events: list[FundForecastAllocationEventResponse]
     series: list[FundForecastSeriesResponse]

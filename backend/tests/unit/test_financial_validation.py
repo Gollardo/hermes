@@ -8,7 +8,12 @@ from pydantic import ValidationError
 from app.application.accounts import calendar_date_at
 from app.modules.accounts.schemas import AccountCreateRequest
 from app.modules.funds.schemas import AllocationCreateRequest
-from app.modules.funds.service import percentage_allocations
+from app.modules.funds.service import (
+    FundDistributionState,
+    complete_percentage_allocations,
+    dynamic_percentages,
+    percentage_allocations,
+)
 from app.modules.operations.schemas import OperationCreateRequest
 
 
@@ -105,6 +110,59 @@ def test_fund_percentage_rounding_is_exact_independent_and_reproducible() -> Non
     assert {item.fund_id: item.amount for item in reverse} == {
         item.fund_id: item.amount for item in forward
     }
+
+
+def test_dynamic_percentages_apply_minimum_weights_and_exclude_filled_funds() -> None:
+    ids = [UUID(f"10000000-0000-0000-0000-{index:012d}") for index in range(1, 8)]
+    states = [
+        FundDistributionState(ids[0], Decimal("80"), Decimal("100")),
+        FundDistributionState(ids[1], Decimal("84"), Decimal("100")),
+        FundDistributionState(ids[2], Decimal("84"), Decimal("100")),
+        FundDistributionState(ids[3], Decimal("84"), Decimal("100")),
+        FundDistributionState(ids[4], Decimal("84"), Decimal("100")),
+        FundDistributionState(ids[5], Decimal("84"), Decimal("100")),
+        FundDistributionState(ids[6], Decimal("100"), Decimal("100")),
+    ]
+
+    percentages = dict(dynamic_percentages(states))
+
+    assert percentages[ids[0]] == Decimal("19.0000")
+    assert ids[6] not in percentages
+    assert sum(percentages.values()) == Decimal("100.0000")
+    assert all(value >= Decimal("5") for value in percentages.values())
+
+
+@pytest.mark.parametrize("count", [1, 20, 21, 25])
+def test_dynamic_percentages_are_exact_for_any_active_count(count: int) -> None:
+    states = [
+        FundDistributionState(
+            UUID(f"20000000-0000-0000-0000-{index:012d}"), Decimal(0), Decimal(100)
+        )
+        for index in range(1, count + 1)
+    ]
+    percentages = dynamic_percentages(states)
+
+    assert len(percentages) == count
+    assert sum((percentage for _, percentage in percentages), Decimal(0)) == Decimal("100.0000")
+    if count == 20:
+        assert {percentage for _, percentage in percentages} == {Decimal("5.0000")}
+    if count == 25:
+        assert {percentage for _, percentage in percentages} == {Decimal("4.0000")}
+
+
+def test_dynamic_money_rounding_distributes_the_complete_incoming_amount() -> None:
+    ids = [
+        UUID("30000000-0000-0000-0000-000000000001"),
+        UUID("30000000-0000-0000-0000-000000000002"),
+        UUID("30000000-0000-0000-0000-000000000003"),
+    ]
+    allocations = complete_percentage_allocations(
+        Decimal("10.0000"),
+        [(ids[0], Decimal("33.3334")), (ids[1], Decimal("33.3333")), (ids[2], Decimal("33.3333"))],
+    )
+
+    assert sum((item.amount for item in allocations), Decimal(0)) == Decimal("10.0000")
+    assert {item.amount for item in allocations} == {Decimal("3.3333"), Decimal("3.3334")}
 
 
 @pytest.mark.parametrize(

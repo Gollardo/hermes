@@ -26,7 +26,12 @@
       </article>
       <div class="fund-summary-secondary">
         <div>
-          <span>Нераспределённая доля</span><strong>{{ remainingPercentage() | money }}%</strong>
+          <span>{{ dynamicMode() ? 'Активная доля' : 'Нераспределённая доля' }}</span
+          ><strong
+            >{{
+              dynamicMode() ? (data.active_percentage | money) : (remainingPercentage() | money)
+            }}%</strong
+          >
         </div>
         <div>
           <span>Общий прогресс целей</span
@@ -35,6 +40,21 @@
           }}</strong>
         </div>
       </div>
+    </section>
+
+    <section class="panel allocation-mode-note" aria-label="Режим распределения фондов">
+      <div>
+        <p class="section-label">Распределение новых сумм</p>
+        <strong>{{ dynamicMode() ? 'Динамически по целям' : 'Ручные проценты' }}</strong>
+      </div>
+      <p>
+        @if (dynamicMode()) {
+          Проценты рассчитаны по текущему остатку до целей. Заполненные и архивные фонды получают
+          0%; после следующего пополнения доли изменятся автоматически.
+        } @else {
+          Проценты задаются в каждом фонде, а нераспределённая часть остаётся свободной.
+        }
+      </p>
     </section>
 
     <section class="fund-primary-actions panel" aria-labelledby="fund-actions-title">
@@ -85,8 +105,16 @@
                 <div class="item-copy">
                   <h3>{{ fund.name }}</h3>
                   <span class="fund-allocation"
-                    >{{ fund.allocation_percentage | money }}% при распределении</span
+                    >{{ fund.allocation_percentage | money }}%
+                    {{ dynamicMode() ? 'сейчас' : 'при распределении' }}</span
                   >
+                  @if (fund.distribution_status === 'filled') {
+                    <small>Цель достигнута — фонд исключён из динамического распределения.</small>
+                  } @else if (fund.distribution_status === 'archived' && dynamicMode()) {
+                    <small>Архивный фонд не участвует в динамическом распределении.</small>
+                  } @else if (dynamicMode() && fund.remaining_amount) {
+                    <small>До цели {{ fund.remaining_amount | money }} {{ baseCurrency() }}</small>
+                  }
                   @if (fund.description || fund.archived) {
                     <p>{{ fund.description || 'Фонд находится в архиве' }}</p>
                   }
@@ -285,20 +313,28 @@
                 formControlName="description"
                 maxlength="2000"
               ></textarea>
-              <label for="fund-percentage">Процент при распределении новых сумм</label
-              ><input
-                appDecimalInput
-                id="fund-percentage"
-                formControlName="percentage"
-                inputmode="decimal"
-              />
-              <p class="hint">
-                Доступно: {{ availablePercentage() }}%. Процент не меняет уже назначенные деньги.
-              </p>
-              @if (fundForm.controls.percentage.touched && fundForm.controls.percentage.invalid) {
-                <p class="field-error">Введите процент от 0 до 100, не более четырёх знаков.</p>
-              } @else if (fundForm.controls.percentage.touched && percentageExceedsAvailable()) {
-                <p class="field-error">Сумма процентов активных фондов не может превышать 100%.</p>
+              @if (!dynamicMode()) {
+                <label for="fund-percentage">Процент при распределении новых сумм</label
+                ><input
+                  appDecimalInput
+                  id="fund-percentage"
+                  formControlName="percentage"
+                  inputmode="decimal"
+                />
+                <p class="hint">
+                  Доступно: {{ availablePercentage() }}%. Процент не меняет уже назначенные деньги.
+                </p>
+                @if (fundForm.controls.percentage.touched && fundForm.controls.percentage.invalid) {
+                  <p class="field-error">Введите процент от 0 до 100, не более четырёх знаков.</p>
+                } @else if (fundForm.controls.percentage.touched && percentageExceedsAvailable()) {
+                  <p class="field-error">
+                    Сумма процентов активных фондов не может превышать 100%.
+                  </p>
+                }
+              } @else {
+                <p class="modal-explanation">
+                  Процент вычисляется автоматически по остатку до цели и не редактируется вручную.
+                </p>
               }
               <label for="fund-target">Целевая сумма</label
               ><input
@@ -306,14 +342,21 @@
                 id="fund-target"
                 formControlName="targetAmount"
                 inputmode="decimal"
-                placeholder="Необязательно"
+                [placeholder]="dynamicMode() ? 'Обязательно' : 'Необязательно'"
               />
               @if (
                 fundForm.controls.targetAmount.touched &&
                 (fundForm.controls.targetAmount.invalid ||
+                  (dynamicMode() && !fundForm.controls.targetAmount.value) ||
                   optionalMoneyInvalid(fundForm.controls.targetAmount.value))
               ) {
-                <p class="field-error">Введите положительную целевую сумму.</p>
+                <p class="field-error">
+                  {{
+                    dynamicMode()
+                      ? 'Укажите положительную цель для динамического режима.'
+                      : 'Введите положительную целевую сумму.'
+                  }}
+                </p>
               }
               @if (!editingId()) {
                 <p class="modal-explanation">
@@ -410,9 +453,14 @@
                   <div formArrayName="allocations">
                     @for (control of allocationControls.controls; track $index) {
                       <div class="allocation-row" [formGroupName]="$index">
-                        <label [for]="'allocation-' + $index">{{
-                          fundName(control.value.fundId)
-                        }}</label
+                        <label [for]="'allocation-' + $index"
+                          >{{ fundName(control.value.fundId) }}
+                          @if (
+                            preview()?.allocations?.[$index]?.allocation_percentage;
+                            as percent
+                          ) {
+                            · {{ percent | money }}%
+                          }</label
                         ><input
                           appDecimalInput
                           [id]="'allocation-' + $index"

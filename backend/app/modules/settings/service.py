@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.modules.settings.models import ApplicationSettings
+from app.modules.settings.models import ApplicationSettings, FundAllocationMode
 
 
 class SettingsNotInitializedError(RuntimeError):
@@ -34,6 +34,7 @@ def initialize_settings(session: Session, *, base_currency: str, timezone: str) 
             id=1,
             base_currency=base_currency,
             timezone=timezone,
+            fund_allocation_mode=FundAllocationMode.MANUAL,
             default_account_id=None,
             base_currency_locked_at=None,
             created_at=now,
@@ -52,6 +53,28 @@ def get_application_settings(session: Session) -> ApplicationSettings:
 def application_timezone(session: Session) -> str:
     """Return the configured IANA timezone through the module's public contract."""
     return get_application_settings(session).timezone
+
+
+def fund_allocation_mode(session: Session) -> FundAllocationMode:
+    """Return the persisted global allocation policy through the public contract."""
+    return FundAllocationMode(get_application_settings(session).fund_allocation_mode)
+
+
+def lock_application_settings(session: Session) -> ApplicationSettings:
+    settings = session.scalar(
+        select(ApplicationSettings).where(ApplicationSettings.id == 1).with_for_update()
+    )
+    if settings is None:
+        raise SettingsNotInitializedError
+    return settings
+
+
+def set_fund_allocation_mode(
+    settings: ApplicationSettings, mode: FundAllocationMode
+) -> ApplicationSettings:
+    settings.fund_allocation_mode = mode
+    settings.updated_at = datetime.now(UTC)
+    return settings
 
 
 def update_application_settings(

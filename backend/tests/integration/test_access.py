@@ -576,6 +576,7 @@ def test_initialized_database_upgrades_from_0001_to_head(
             assert owner.password_hash.startswith("$argon2id$")
             assert settings is not None
             assert settings.base_currency == "RUB"
+            assert settings.fund_allocation_mode == "manual"
             assert stored_tokens
             assert raw_token not in stored_tokens
             assert hash_token(raw_token) in stored_tokens

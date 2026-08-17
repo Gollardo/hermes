@@ -141,6 +141,12 @@ creates its virtual event before the request transaction commits. A failure in
 either part rolls back both ledgers; this does not turn a fund into a transfer
 destination or introduce automatic income allocation.
 
+Funds reads the global allocation mode while holding its definition snapshot.
+Manual mode uses stored percentages. Dynamic mode derives percentages from
+current ledger balances and targets before each command; filled and archived
+funds are excluded. If no incomplete active fund exists, the whole composed
+transfer is rejected and rolled back.
+
 ## Expected occurrence to actual operation
 
 ```mermaid
@@ -201,6 +207,8 @@ read contract; total mode leaves physical balances unchanged.
 The fund perspective reuses the same horizon and coherent
 Scheduling → Accounts → Funds lock order. It starts from current virtual fund
 balances and applies only actionable transfers whose rules explicitly request
-percentage allocation, using the current locked active percentages and the
-Funds-owned round-down algorithm. It is an additional read model: failure to
+percentage allocation. Manual mode uses the locked configured percentages;
+dynamic mode recalculates before every ordered occurrence from projected fund
+balances, using the same exact Funds calculator as actual commands. It is an
+additional read model: failure to
 load it does not disguise or invalidate a successfully calculated cash forecast.

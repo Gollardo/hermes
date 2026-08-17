@@ -5,16 +5,35 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.modules.accounts.contracts import lock_account_references
+from app.modules.funds.contracts import (
+    snapshot_dynamic_percentages_as_manual,
+    validate_dynamic_targets,
+)
 from app.modules.scheduling.contracts import has_schedule_data
 from app.modules.settings.contracts import (
     ApplicationSettings,
+    FundAllocationMode,
+    lock_application_settings,
     lock_application_timezone,
+    set_fund_allocation_mode,
     update_application_settings,
 )
 
 
 class TimezoneLockedByScheduleError(RuntimeError):
     pass
+
+
+def replace_fund_allocation_mode(session: Session, mode: FundAllocationMode) -> ApplicationSettings:
+    settings = lock_application_settings(session)
+    current = FundAllocationMode(settings.fund_allocation_mode)
+    if current == mode:
+        return settings
+    if mode == FundAllocationMode.DYNAMIC:
+        validate_dynamic_targets(session)
+    else:
+        snapshot_dynamic_percentages_as_manual(session)
+    return set_fund_allocation_mode(settings, mode)
 
 
 def replace_application_settings(

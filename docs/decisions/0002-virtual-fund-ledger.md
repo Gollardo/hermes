@@ -55,9 +55,18 @@ free = physical balance - reserved
 Every individual fund/account balance must also remain non-negative. This keeps
 one fund from temporarily borrowing another fund's reservation.
 
-Active allocation percentages are exact `NUMERIC(7,4)` values in 0..100. Their
+Manual allocation percentages are exact `NUMERIC(7,4)` values in 0..100. Their
 sum may not exceed 100. Fund definition writes are serialized with one
 transaction-level advisory lock. Changing percentages does not move money.
+
+The global application setting selects manual or dynamic allocation. Dynamic
+percentages are derived, not persisted: incomplete non-archived funds receive a
+base `min(5%, 100% / N)` plus a share of the remaining pool proportional to the
+absolute amount still missing from their target. Exact four-decimal percentages
+sum to 100 through deterministic largest-remainder allocation. Filled and
+archived funds receive zero. Switching back to manual snapshots those effective
+values atomically; switching to dynamic is rejected while any non-archived fund
+lacks a positive target.
 
 Percentage preview computes each active fund independently as
 `amount * percentage / 100`, rounded down to four decimal places. The sum of
@@ -72,6 +81,8 @@ A fund may be archived only with a zero total balance. Restoration is explicit.
 Archived funds remain visible in history and may be retained while editing an
 existing financial operation only when the resulting archived-fund total stays
 zero. They cannot receive new allocations or be chosen for a new operation.
+They do not participate in dynamic percentage calculation; restoring a fund
+returns it to the next calculation when its balance is below its target.
 Definition edit, archive and restore commands carry an optimistic version.
 Allocation and redistribution events are immutable ledger facts in this alpha;
 editing and deletion apply to fund-linked financial operations, not these

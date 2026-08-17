@@ -92,12 +92,14 @@ interface FundForecastSeries {
   fund_id: string;
   fund_name: string;
   allocation_percentage: string;
+  ending_allocation_percentage: string;
   starting_balance: string;
   ending_balance: string;
   points: FundForecastPoint[];
 }
 
 interface FundForecast {
+  allocation_mode: 'manual' | 'dynamic';
   horizon: ForecastHorizon;
   granularity: 'day' | 'month';
   from_on: string;
@@ -105,6 +107,19 @@ interface FundForecast {
   planned_transfer_total: string;
   planned_allocation_total: string;
   unallocated_total: string;
+  blocked_allocation_count: number;
+  allocation_events: {
+    occurrence_id: string;
+    due_on: string;
+    incoming_amount: string;
+    allocated_amount: string;
+    executable: boolean;
+    allocations: {
+      fund_id: string;
+      allocation_percentage: string;
+      amount: string;
+    }[];
+  }[];
   series: FundForecastSeries[];
 }
 

@@ -6,13 +6,15 @@ from uuid import UUID
 import pytest
 from sqlalchemy.orm import Session
 
-from app.modules.accounts.contracts import AccountReferenceError
+from app.modules.accounts.contracts import AccountIdentity, AccountReferenceError
 from app.modules.forecasting.schemas import ForecastBalanceMode, ForecastHorizon, ForecastResponse
 from app.modules.forecasting.service import (
     ForecastInputEvent,
+    build_forecast,
     build_fund_forecast,
     calculate_forecast,
     horizon_end,
+    project_fund_allocations,
 )
 from app.modules.funds.schemas import FundResponse
 from app.modules.operations.contracts import OperationType
@@ -21,6 +23,7 @@ from app.modules.scheduling.contracts import (
     OccurrenceStatus,
     PlannedOccurrence,
 )
+from app.modules.settings.contracts import FundAllocationMode
 
 TODAY = date(2026, 8, 12)
 SOURCE = UUID("10000000-0000-0000-0000-000000000001")
@@ -112,8 +115,12 @@ def test_fund_forecast_applies_only_flagged_transfers_with_exact_rounding(
                 name="Резерв",
                 description=None,
                 allocation_percentage="33.3300",
+                manual_allocation_percentage="33.3300",
+                allocation_mode=FundAllocationMode.MANUAL,
                 target_amount=None,
                 total_balance="5.0000",
+                remaining_amount=None,
+                distribution_status="manual",
                 progress_percentage=None,
                 archived=False,
                 version=1,
@@ -121,6 +128,10 @@ def test_fund_forecast_applies_only_flagged_transfers_with_exact_rounding(
                 updated_at=datetime.now(UTC),
             )
         ],
+    )
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.fund_allocation_mode",
+        lambda *args, **kwargs: FundAllocationMode.MANUAL,
     )
 
     result = build_fund_forecast(
@@ -135,6 +146,159 @@ def test_fund_forecast_applies_only_flagged_transfers_with_exact_rounding(
     assert result.series[0].starting_balance == "5.0000"
     assert result.series[0].ending_balance == "8.3330"
     assert result.series[0].points[1].change == "3.3330"
+
+
+def test_dynamic_fund_forecast_recalculates_before_each_planned_replenishment() -> None:
+    first_id = UUID("40000000-0000-0000-0000-000000000001")
+    second_id = UUID("40000000-0000-0000-0000-000000000002")
+    now = datetime.now(UTC)
+    funds = [
+        FundResponse(
+            id=first_id,
+            name="Первый",
+            description=None,
+            allocation_percentage="65.0000",
+            manual_allocation_percentage="0",
+            allocation_mode=FundAllocationMode.DYNAMIC,
+            target_amount="100.0000",
+            total_balance="0",
+            remaining_amount="100.0000",
+            distribution_status="active",
+            progress_percentage="0.00",
+            archived=False,
+            version=1,
+            created_at=now,
+            updated_at=now,
+        ),
+        FundResponse(
+            id=second_id,
+            name="Второй",
+            description=None,
+            allocation_percentage="35.0000",
+            manual_allocation_percentage="0",
+            allocation_mode=FundAllocationMode.DYNAMIC,
+            target_amount="100.0000",
+            total_balance="50.0000",
+            remaining_amount="50.0000",
+            distribution_status="active",
+            progress_percentage="50.00",
+            archived=False,
+            version=1,
+            created_at=now,
+            updated_at=now,
+        ),
+    ]
+    occurrences = [
+        PlannedOccurrence(
+            id=UUID(f"50000000-0000-0000-0000-{index:012d}"),
+            rule_id=RULE,
+            due_on=date(2026, 8, 12 + index),
+            type=OperationType.TRANSFER,
+            amount=Decimal("100"),
+            description=None,
+            account_id=SOURCE,
+            destination_account_id=TARGET,
+            allocate_to_funds=True,
+            status=OccurrenceStatus.PENDING,
+        )
+        for index in (1, 2)
+    ]
+
+    projection = project_fund_allocations(funds, occurrences, FundAllocationMode.DYNAMIC)
+
+    assert projection.events[0].percentages == {
+        first_id: Decimal("65.0000"),
+        second_id: Decimal("35.0000"),
+    }
+    assert projection.events[1].percentages == {
+        first_id: Decimal("68.0000"),
+        second_id: Decimal("32.0000"),
+    }
+    assert projection.ending_balances == {
+        first_id: Decimal("133.0000"),
+        second_id: Decimal("117.0000"),
+    }
+    assert projection.ending_percentages == {}
+
+
+def test_selected_free_forecast_uses_one_global_schedule_lock_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = PlannedOccurrence(
+        id=UUID("30000000-0000-0000-0000-000000000001"),
+        rule_id=RULE,
+        due_on=date(2026, 8, 13),
+        type=OperationType.EXPENSE,
+        amount=Decimal("10"),
+        description=None,
+        account_id=SOURCE,
+        destination_account_id=None,
+        allocate_to_funds=False,
+        status=OccurrenceStatus.PENDING,
+    )
+    unrelated = PlannedOccurrence(
+        id=UUID("30000000-0000-0000-0000-000000000002"),
+        rule_id=RULE,
+        due_on=date(2026, 8, 13),
+        type=OperationType.EXPENSE,
+        amount=Decimal("50"),
+        description=None,
+        account_id=TARGET,
+        destination_account_id=None,
+        allocate_to_funds=False,
+        status=OccurrenceStatus.PENDING,
+    )
+    calls: list[UUID | None] = []
+
+    def schedule_snapshot(*args: object, **kwargs: object) -> ForecastScheduleSnapshot:
+        calls.append(cast(UUID | None, kwargs["account_id"]))
+        return ForecastScheduleSnapshot(
+            occurrences=[selected, unrelated],
+            overdue_count=3,
+            overdue_count_by_account={SOURCE: 2, TARGET: 1},
+        )
+
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.forecast_schedule_snapshot", schedule_snapshot
+    )
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.list_account_identities",
+        lambda *args, **kwargs: [
+            AccountIdentity(SOURCE, "Main", False),
+            AccountIdentity(TARGET, "Other", False),
+        ],
+    )
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.account_names",
+        lambda *args, **kwargs: {SOURCE: "Main", TARGET: "Other"},
+    )
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.account_balances",
+        lambda *args, **kwargs: {SOURCE: Decimal("100"), TARGET: Decimal("100")},
+    )
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.reserved_balances",
+        lambda *args, **kwargs: {SOURCE: Decimal(0), TARGET: Decimal(0)},
+    )
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.locked_active_funds", lambda *args, **kwargs: []
+    )
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.fund_allocation_mode",
+        lambda *args, **kwargs: FundAllocationMode.DYNAMIC,
+    )
+
+    result = build_forecast(
+        cast(Session, object()),
+        today=TODAY,
+        horizon=ForecastHorizon.TWO_WEEKS,
+        account_id=SOURCE,
+    )
+
+    assert calls == [None]
+    assert result.overdue_excluded_count == 2
+    assert result.ending_balance == "90"
+    assert sum(len(point.events) for point in result.points) == 1
 
 
 def test_account_forecast_is_exact_deterministic_and_explained() -> None:

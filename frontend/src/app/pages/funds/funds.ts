@@ -14,8 +14,12 @@ interface Fund {
   name: string;
   description: string | null;
   allocation_percentage: string;
+  manual_allocation_percentage: string;
+  allocation_mode: 'manual' | 'dynamic';
   target_amount: string | null;
   total_balance: string;
+  remaining_amount: string | null;
+  distribution_status: 'manual' | 'active' | 'filled' | 'archived';
   progress_percentage: string | null;
   archived: boolean;
   version: number;
@@ -43,6 +47,7 @@ interface Summary {
   positions: Position[];
   accounts: Coverage[];
   active_percentage: string;
+  allocation_mode: 'manual' | 'dynamic';
   total_reserved: string;
   total_free: string;
 }
@@ -50,6 +55,7 @@ interface Summary {
 interface AllocationItem {
   fund_id: string;
   amount: string;
+  allocation_percentage?: string | null;
 }
 
 interface Preview {
@@ -179,6 +185,10 @@ export class FundsPage implements OnInit {
     return this.summary()?.funds.filter((fund) => !fund.archived) ?? [];
   }
 
+  protected dynamicMode(): boolean {
+    return this.summary()?.allocation_mode === 'dynamic';
+  }
+
   protected fundIsEmpty(fund: Fund): boolean {
     return moneyUnits(fund.total_balance) === 0n;
   }
@@ -293,11 +303,11 @@ export class FundsPage implements OnInit {
     return (
       this.fundForm.valid &&
       initialAllocationComplete &&
-      (!targetAmount || positiveMoney(targetAmount)) &&
+      (this.dynamicMode()
+        ? positiveMoney(targetAmount)
+        : !targetAmount || positiveMoney(targetAmount)) &&
       (!initialAmount || positiveMoney(initialAmount)) &&
-      value !== null &&
-      available !== null &&
-      value <= available
+      (this.dynamicMode() || (value !== null && available !== null && value <= available))
     );
   }
 
@@ -324,7 +334,9 @@ export class FundsPage implements OnInit {
     const body = {
       name: value.name,
       description: value.description || null,
-      allocation_percentage: decimalPayload(value.percentage),
+      allocation_percentage: this.dynamicMode()
+        ? (existing?.manual_allocation_percentage ?? '0')
+        : decimalPayload(value.percentage),
       target_amount: value.targetAmount ? decimalPayload(value.targetAmount) : null,
       ...(!existing && value.initialAmount
         ? {
@@ -353,7 +365,7 @@ export class FundsPage implements OnInit {
     this.fundForm.setValue({
       name: fund.name,
       description: fund.description ?? '',
-      percentage: fund.allocation_percentage,
+      percentage: fund.manual_allocation_percentage,
       targetAmount: fund.target_amount ?? '',
       initialAccountId: '',
       initialAmount: '',

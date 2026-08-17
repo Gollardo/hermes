@@ -19,22 +19,29 @@ from app.modules.forecasting.schemas import (
     ForecastPointResponse,
     ForecastResponse,
     ForecastScope,
+    FundForecastAllocationEventResponse,
+    FundForecastAllocationItemResponse,
     FundForecastPointResponse,
     FundForecastResponse,
     FundForecastSeriesResponse,
 )
 from app.modules.funds.contracts import (
+    FundDistributionState,
+    FundResponse,
+    complete_percentage_allocations,
+    dynamic_percentages,
     locked_active_funds,
-    locked_percentage_definitions,
     percentage_allocations,
     reserved_balances,
 )
 from app.modules.operations.contracts import OperationType, account_balances
 from app.modules.scheduling.contracts import (
+    ForecastScheduleSnapshot,
     OccurrenceStatus,
     PlannedOccurrence,
     forecast_schedule_snapshot,
 )
+from app.modules.settings.contracts import FundAllocationMode, fund_allocation_mode
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +56,90 @@ class ForecastInputEvent:
     destination_account_id: UUID | None
     amount: Decimal
     allocated_to_funds: Decimal = Decimal(0)
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectedAllocation:
+    occurrence_id: UUID
+    due_on: date
+    incoming_amount: Decimal
+    percentages: dict[UUID, Decimal]
+    amounts: dict[UUID, Decimal]
+
+
+@dataclass(frozen=True, slots=True)
+class FundAllocationProjection:
+    mode: FundAllocationMode
+    starting_balances: dict[UUID, Decimal]
+    ending_balances: dict[UUID, Decimal]
+    starting_percentages: dict[UUID, Decimal]
+    ending_percentages: dict[UUID, Decimal]
+    events: list[ProjectedAllocation]
+
+
+def project_fund_allocations(
+    funds: list[FundResponse],
+    occurrences: list[PlannedOccurrence],
+    mode: FundAllocationMode,
+) -> FundAllocationProjection:
+    """Apply planned allocations sequentially without mutating actual fund state."""
+    balances = {fund.id: Decimal(fund.total_balance) for fund in funds}
+    starting_balances = dict(balances)
+    targets = {
+        fund.id: Decimal(fund.target_amount) if fund.target_amount is not None else None
+        for fund in funds
+    }
+    manual_percentages = [
+        (fund.id, Decimal(fund.manual_allocation_percentage))
+        for fund in funds
+        if Decimal(fund.manual_allocation_percentage) > 0
+    ]
+
+    def percentages() -> list[tuple[UUID, Decimal]]:
+        if mode == FundAllocationMode.MANUAL:
+            return manual_percentages
+        return dynamic_percentages(
+            [
+                FundDistributionState(
+                    fund_id=fund.id,
+                    balance=balances[fund.id],
+                    target_amount=targets[fund.id],
+                )
+                for fund in funds
+            ]
+        )
+
+    starting_percentages = dict(percentages())
+    events: list[ProjectedAllocation] = []
+    for occurrence in sorted(occurrences, key=lambda item: (item.due_on, item.id)):
+        if not occurrence.allocate_to_funds:
+            continue
+        current_percentages = percentages()
+        allocations = (
+            complete_percentage_allocations(occurrence.amount, current_percentages)
+            if mode == FundAllocationMode.DYNAMIC
+            else percentage_allocations(occurrence.amount, current_percentages)
+        )
+        amounts = {item.fund_id: item.amount for item in allocations if item.amount > 0}
+        for fund_id, amount in amounts.items():
+            balances[fund_id] += amount
+        events.append(
+            ProjectedAllocation(
+                occurrence_id=occurrence.id,
+                due_on=occurrence.due_on,
+                incoming_amount=occurrence.amount,
+                percentages=dict(current_percentages),
+                amounts=amounts,
+            )
+        )
+    return FundAllocationProjection(
+        mode=mode,
+        starting_balances=starting_balances,
+        ending_balances=balances,
+        starting_percentages=starting_percentages,
+        ending_percentages=dict(percentages()),
+        events=events,
+    )
 
 
 def horizon_end(today: date, horizon: ForecastHorizon) -> date:
@@ -205,12 +296,23 @@ def build_forecast(
     balance_mode: ForecastBalanceMode = ForecastBalanceMode.FREE,
 ) -> ForecastResponse:
     through_on = horizon_end(today, horizon)
-    schedule = forecast_schedule_snapshot(
+    schedule_account_id = None if balance_mode == ForecastBalanceMode.FREE else account_id
+    allocation_schedule = forecast_schedule_snapshot(
         session,
         today=today,
         due_to=through_on,
-        account_id=account_id,
+        account_id=schedule_account_id,
     )
+    schedule = allocation_schedule
+    if balance_mode == ForecastBalanceMode.FREE and account_id is not None:
+        schedule = ForecastScheduleSnapshot(
+            occurrences=[
+                item
+                for item in allocation_schedule.occurrences
+                if account_id in {item.account_id, item.destination_account_id}
+            ],
+            overdue_count=allocation_schedule.overdue_count_by_account.get(account_id, 0),
+        )
     # Preserve the Scheduling -> Accounts lock order used by confirmation and
     # rule replacement. Shared locks keep both the plan and actual ledger at one
     # coherent transaction point without introducing a reverse lock dependency.
@@ -220,20 +322,33 @@ def build_forecast(
         raise AccountReferenceError
     names = account_names(session, account_ids)
     balances = account_balances(session, account_ids)
-    percentages: list[tuple[UUID, Decimal]] = []
+    allocated_by_occurrence: dict[UUID, Decimal] = {}
     if balance_mode == ForecastBalanceMode.FREE:
-        percentages = locked_percentage_definitions(session)
         reserved_by_account = reserved_balances(session, account_ids)
         balances = {
             identity: balance - reserved_by_account[identity]
             for identity, balance in balances.items()
+        }
+        funds = locked_active_funds(session)
+        mode = fund_allocation_mode(session)
+        projection = project_fund_allocations(
+            funds,
+            allocation_schedule.occurrences,
+            mode,
+        )
+        allocated_by_occurrence = {
+            event.occurrence_id: sum(event.amounts.values(), Decimal(0))
+            for event in projection.events
         }
     return calculate_forecast(
         today=today,
         through_on=through_on,
         balances=balances,
         account_name_by_id=names,
-        events=[_input_event(item, percentages) for item in schedule.occurrences],
+        events=[
+            _input_event(item, allocated_by_occurrence.get(item.id, Decimal(0)))
+            for item in schedule.occurrences
+        ],
         account_id=account_id,
         horizon=horizon,
         overdue_excluded_count=schedule.overdue_count,
@@ -258,21 +373,16 @@ def build_fund_forecast(
     # forecast and prevents a posting from appearing in current and planned data.
     list_account_identities(session, shared_lock=True)
     funds = locked_active_funds(session)
-    percentages = [
-        (fund.id, Decimal(fund.allocation_percentage))
-        for fund in funds
-        if Decimal(fund.allocation_percentage) > 0
-    ]
+    mode = fund_allocation_mode(session)
+    projection = project_fund_allocations(funds, schedule.occurrences, mode)
     changes: dict[UUID, dict[date, Decimal]] = {fund.id: defaultdict(Decimal) for fund in funds}
     planned_transfer_total = Decimal(0)
     planned_allocation_total = Decimal(0)
-    for occurrence in schedule.occurrences:
-        if not occurrence.allocate_to_funds:
-            continue
-        planned_transfer_total += occurrence.amount
-        for allocation in percentage_allocations(occurrence.amount, percentages):
-            changes[allocation.fund_id][occurrence.due_on] += allocation.amount
-            planned_allocation_total += allocation.amount
+    for event in projection.events:
+        planned_transfer_total += event.incoming_amount
+        for fund_id, amount in event.amounts.items():
+            changes[fund_id][event.due_on] += amount
+            planned_allocation_total += amount
 
     granularity = (
         ForecastGranularity.MONTH if horizon == ForecastHorizon.YEAR else ForecastGranularity.DAY
@@ -304,13 +414,19 @@ def build_fund_forecast(
             FundForecastSeriesResponse(
                 fund_id=fund.id,
                 fund_name=fund.name,
-                allocation_percentage=fund.allocation_percentage,
+                allocation_percentage=_money(
+                    projection.starting_percentages.get(fund.id, Decimal(0))
+                ),
+                ending_allocation_percentage=_money(
+                    projection.ending_percentages.get(fund.id, Decimal(0))
+                ),
                 starting_balance=_money(starting),
                 ending_balance=_money(current),
                 points=points,
             )
         )
     return FundForecastResponse(
+        allocation_mode=mode,
         horizon=horizon,
         granularity=granularity,
         from_on=today,
@@ -318,6 +434,25 @@ def build_fund_forecast(
         planned_transfer_total=_money(planned_transfer_total),
         planned_allocation_total=_money(planned_allocation_total),
         unallocated_total=_money(planned_transfer_total - planned_allocation_total),
+        blocked_allocation_count=sum(not event.amounts for event in projection.events),
+        allocation_events=[
+            FundForecastAllocationEventResponse(
+                occurrence_id=event.occurrence_id,
+                due_on=event.due_on,
+                incoming_amount=_money(event.incoming_amount),
+                allocated_amount=_money(sum(event.amounts.values(), Decimal(0))),
+                executable=bool(event.amounts),
+                allocations=[
+                    FundForecastAllocationItemResponse(
+                        fund_id=fund_id,
+                        allocation_percentage=_money(event.percentages[fund_id]),
+                        amount=_money(amount),
+                    )
+                    for fund_id, amount in sorted(event.amounts.items())
+                ],
+            )
+            for event in projection.events
+        ],
         series=series,
     )
 
@@ -343,14 +478,8 @@ def _scope_effect(
 
 
 def _input_event(
-    item: PlannedOccurrence, percentages: list[tuple[UUID, Decimal]] | None = None
+    item: PlannedOccurrence, allocated_to_funds: Decimal = Decimal(0)
 ) -> ForecastInputEvent:
-    allocated_to_funds = Decimal(0)
-    if item.type == OperationType.TRANSFER and item.allocate_to_funds and percentages:
-        allocated_to_funds = sum(
-            (allocation.amount for allocation in percentage_allocations(item.amount, percentages)),
-            Decimal(0),
-        )
     return ForecastInputEvent(
         occurrence_id=item.id,
         rule_id=item.rule_id,

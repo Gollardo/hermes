@@ -1,7 +1,7 @@
 """Public scheduling references used by cross-module read/application use cases."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -70,6 +70,7 @@ class PlannedOccurrence:
 class ForecastScheduleSnapshot:
     occurrences: list[PlannedOccurrence]
     overdue_count: int
+    overdue_count_by_account: dict[UUID, int] = field(default_factory=dict)
 
 
 def forecast_schedule_snapshot(
@@ -126,9 +127,21 @@ def forecast_schedule_snapshot(
         ],
         key=lambda item: (item.due_on, item.id),
     )
+    overdue_count_by_account: dict[UUID, int] = {}
+    for item in occurrences:
+        if item.due_on >= today:
+            continue
+        affected = {item.account_id}
+        if item.destination_account_id is not None:
+            affected.add(item.destination_account_id)
+        for affected_account_id in affected:
+            overdue_count_by_account[affected_account_id] = (
+                overdue_count_by_account.get(affected_account_id, 0) + 1
+            )
     return ForecastScheduleSnapshot(
         occurrences=planned,
         overdue_count=sum(item.due_on < today for item in occurrences),
+        overdue_count_by_account=overdue_count_by_account,
     )
 
 
