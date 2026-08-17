@@ -24,11 +24,15 @@ has taken shared account locks, preserving the Accounts → Funds lock order use
 by coverage-dependent writes.
 
 Free mode starts from today's free balance and applies planned physical effects
-without guessing which future expense may consume a reserve. A separate fund
-projection applies only pending or postponed transfers explicitly marked for
-percentage allocation to the current active fund percentages. Confirmed and
-cancelled occurrences are excluded; current fund balances remain the starting
-point and every amount stays an exact decimal string.
+without guessing which future expense may consume a reserve. For a pending or
+postponed transfer explicitly marked for percentage allocation, it also
+subtracts the exact future allocation from free money: the source loses the
+full physical transfer, while the destination receives only its unallocated
+part as free money. The same transfer remains neutral across all accounts in
+total mode. A separate fund projection applies those allocations to current
+active fund percentages. Confirmed and cancelled occurrences are excluded;
+current fund balances remain the starting point and every amount stays an exact
+decimal string.
 
 ## Boundary and flow
 
@@ -58,8 +62,11 @@ post expected operations. See the [forecast diagram](../architecture/data-flow.m
   explanation. This lets the year view show the exact first cash-gap value even
   when its plotted point closes later in the month.
 - A single-account transfer is outgoing on its source and incoming on its
-  destination. An internal transfer has zero effect on the all-accounts balance,
-  but remains in the explanation for that date.
+  destination. An internal transfer has zero effect on the all-accounts total
+  balance. In free mode, an explicitly distributed transfer subtracts the
+  allocated amount from the destination and combined free balance, while the
+  source still shows the full physical outflow. The transfer remains in the
+  explanation for that date.
 - Two weeks ends at `today + 14 days`; month, quarter, half-year and year preserve the
   day of month where possible and clamp to the target month's last day.
 - All current account identities, including archived accounts, participate in

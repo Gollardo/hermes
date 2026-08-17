@@ -351,7 +351,7 @@
 }
 
 .chart-date-ticks {
-  bottom: 0.55rem;
+  bottom: 1.25rem;
   color: var(--muted);
   font-size: 0.65rem;
   inset-inline: 0;

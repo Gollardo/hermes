@@ -99,14 +99,12 @@
             <h2>{{ chart.title }}</h2>
           </div>
           @if (chartItems(chart.items).length) {
-            @if (chartItems(chart.items).length > 1) {
-              <div
-                class="donut"
-                [style.background]="donutStyle(chart.items)"
-                role="img"
-                [attr.aria-label]="chart.title"
-              ></div>
-            }
+            <div
+              class="donut"
+              [style.background]="donutStyle(chart.items)"
+              role="img"
+              [attr.aria-label]="chart.title"
+            ></div>
             <ul>
               @for (item of chartItems(chart.items); track item.category_id) {
                 <li>

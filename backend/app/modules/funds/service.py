@@ -242,6 +242,18 @@ def locked_active_funds(session: Session) -> list[FundResponse]:
     return [_fund_response(session, fund) for fund in funds]
 
 
+def locked_percentage_definitions(session: Session) -> list[tuple[UUID, Decimal]]:
+    """Return one locked active percentage snapshot without loading fund balances."""
+    _lock_definitions(session, shared=True)
+    rows = session.execute(
+        select(Fund.id, Fund.allocation_percentage)
+        .where(Fund.archived_at.is_(None), Fund.allocation_percentage > 0)
+        .order_by(Fund.id)
+        .with_for_update(read=True)
+    )
+    return [(fund_id, Decimal(percentage)) for fund_id, percentage in rows]
+
+
 def get_fund_response(session: Session, fund_id: UUID) -> FundResponse:
     return _fund_response(session, _get_fund(session, fund_id))
 

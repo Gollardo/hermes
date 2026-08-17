@@ -108,16 +108,6 @@ interface FundForecast {
   series: FundForecastSeries[];
 }
 
-interface FundPlotSeries extends FundForecastSeries {
-  color: string;
-  pointsAttribute: string;
-}
-
-interface FundAxisTick {
-  label: string;
-  y: number;
-}
-
 interface PlotSegment {
   key: string;
   x1: number;
@@ -179,60 +169,10 @@ export class ForecastPage implements OnInit {
   protected readonly timelineExpanded = signal(false);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly activeFundId = signal<string | null>(null);
 
   protected readonly viewModel = computed<ForecastViewModel | null>(() => {
     const value = this.forecast();
     return value ? buildForecastViewModel(value) : null;
-  });
-
-  protected readonly fundPlotMaximum = computed(() => {
-    const value = this.fundForecast();
-    if (!value?.series.length) return 1;
-    return Math.max(
-      1,
-      ...value.series.flatMap((series) => [
-        Number(series.starting_balance),
-        ...series.points.map((point) => Number(point.balance)),
-      ]),
-    );
-  });
-
-  protected readonly fundAxisTicks = computed<FundAxisTick[]>(() => {
-    const maximum = this.fundPlotMaximum();
-    return [
-      { y: 6, label: formatAxisMoney(maximum, maximum / 2) },
-      { y: 25, label: formatAxisMoney(maximum / 2, maximum / 2) },
-      { y: 44, label: '0' },
-    ];
-  });
-
-  protected readonly activeFundSeries = computed(() => {
-    const activeFundId = this.activeFundId();
-    return this.fundForecast()?.series.find((series) => series.fund_id === activeFundId) ?? null;
-  });
-
-  protected readonly fundPlot = computed<FundPlotSeries[]>(() => {
-    const value = this.fundForecast();
-    if (!value?.series.length) return [];
-    const maximum = this.fundPlotMaximum();
-    return value.series.map((series, seriesIndex) => {
-      const points = [
-        Number(series.starting_balance),
-        ...series.points.map((point) => Number(point.balance)),
-      ];
-      return {
-        ...series,
-        color: fundColor(seriesIndex),
-        pointsAttribute: points
-          .map((amount, index) => {
-            const x = 4 + (index / Math.max(points.length - 1, 1)) * 92;
-            const y = 44 - (amount / maximum) * 38;
-            return `${x},${y}`;
-          })
-          .join(' '),
-      };
-    });
   });
 
   protected readonly selectedPoint = computed(() => {
@@ -621,16 +561,6 @@ export class ForecastPage implements OnInit {
     return compareDecimal(value, '0') === 0;
   }
 
-  protected fundChartAriaLabel(forecast: FundForecast): string {
-    const series = forecast.series
-      .map(
-        (item) =>
-          `${item.fund_name}: с ${item.starting_balance} до ${item.ending_balance} ${this.baseCurrency()}`,
-      )
-      .join('. ');
-    return `Динамика прогнозируемых остатков фондов с ${formatTextDate(forecast.from_on)} по ${formatTextDate(forecast.through_on)}. ${series}`;
-  }
-
   protected retryFundForecast(): void {
     this.loadFundForecast();
   }
@@ -688,7 +618,7 @@ export class ForecastPage implements OnInit {
   }
 }
 
-const FUND_COLORS = ['#17734f', '#5d9e78', '#8a641f', '#607080', '#9b5f79', '#4f7c9b'];
+const FUND_COLORS = ['#086b4c', '#52a36f', '#d28a0c', '#526b82', '#a64872', '#6d4bb8'];
 
 function fundColor(index: number): string {
   return FUND_COLORS[index % FUND_COLORS.length];

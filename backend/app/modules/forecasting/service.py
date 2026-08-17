@@ -25,6 +25,7 @@ from app.modules.forecasting.schemas import (
 )
 from app.modules.funds.contracts import (
     locked_active_funds,
+    locked_percentage_definitions,
     percentage_allocations,
     reserved_balances,
 )
@@ -47,6 +48,7 @@ class ForecastInputEvent:
     account_id: UUID
     destination_account_id: UUID | None
     amount: Decimal
+    allocated_to_funds: Decimal = Decimal(0)
 
 
 def horizon_end(today: date, horizon: ForecastHorizon) -> date:
@@ -103,7 +105,7 @@ def calculate_forecast(
             event.destination_account_id,
         }:
             continue
-        effect = _scope_effect(event, account_id)
+        effect = _scope_effect(event, account_id, balance_mode)
         grouped[event.due_on].append((event, effect))
         if event.type == OperationType.INCOME and effect > 0:
             income += effect
@@ -218,7 +220,9 @@ def build_forecast(
         raise AccountReferenceError
     names = account_names(session, account_ids)
     balances = account_balances(session, account_ids)
+    percentages: list[tuple[UUID, Decimal]] = []
     if balance_mode == ForecastBalanceMode.FREE:
+        percentages = locked_percentage_definitions(session)
         reserved_by_account = reserved_balances(session, account_ids)
         balances = {
             identity: balance - reserved_by_account[identity]
@@ -229,7 +233,7 @@ def build_forecast(
         through_on=through_on,
         balances=balances,
         account_name_by_id=names,
-        events=[_input_event(item) for item in schedule.occurrences],
+        events=[_input_event(item, percentages) for item in schedule.occurrences],
         account_id=account_id,
         horizon=horizon,
         overdue_excluded_count=schedule.overdue_count,
@@ -318,21 +322,35 @@ def build_fund_forecast(
     )
 
 
-def _scope_effect(event: ForecastInputEvent, account_id: UUID | None) -> Decimal:
+def _scope_effect(
+    event: ForecastInputEvent,
+    account_id: UUID | None,
+    balance_mode: ForecastBalanceMode,
+) -> Decimal:
     if event.type == OperationType.INCOME:
         return event.amount if account_id in {None, event.account_id} else Decimal(0)
     if event.type == OperationType.EXPENSE:
         return -event.amount if account_id in {None, event.account_id} else Decimal(0)
     if account_id is None:
-        return Decimal(0)
+        return -event.allocated_to_funds if balance_mode == ForecastBalanceMode.FREE else Decimal(0)
     if account_id == event.account_id:
         return -event.amount
     if account_id == event.destination_account_id:
-        return event.amount
+        return event.amount - (
+            event.allocated_to_funds if balance_mode == ForecastBalanceMode.FREE else Decimal(0)
+        )
     return Decimal(0)
 
 
-def _input_event(item: PlannedOccurrence) -> ForecastInputEvent:
+def _input_event(
+    item: PlannedOccurrence, percentages: list[tuple[UUID, Decimal]] | None = None
+) -> ForecastInputEvent:
+    allocated_to_funds = Decimal(0)
+    if item.type == OperationType.TRANSFER and item.allocate_to_funds and percentages:
+        allocated_to_funds = sum(
+            (allocation.amount for allocation in percentage_allocations(item.amount, percentages)),
+            Decimal(0),
+        )
     return ForecastInputEvent(
         occurrence_id=item.id,
         rule_id=item.rule_id,
@@ -343,6 +361,7 @@ def _input_event(item: PlannedOccurrence) -> ForecastInputEvent:
         account_id=item.account_id,
         destination_account_id=item.destination_account_id,
         amount=item.amount,
+        allocated_to_funds=allocated_to_funds,
     )
 
 

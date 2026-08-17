@@ -163,6 +163,11 @@ def test_forecast_defaults_to_free_money_and_can_include_reserves(
             headers=headers,
             json={"type": "debit", "name": "Main", "initial_balance": "100"},
         ).json()["id"]
+        target = client.post(
+            "/api/v1/accounts",
+            headers=headers,
+            json={"type": "savings", "name": "Savings", "initial_balance": "0"},
+        ).json()["id"]
         fund = client.post(
             "/api/v1/funds",
             headers=headers,
@@ -180,14 +185,48 @@ def test_forecast_defaults_to_free_money_and_can_include_reserves(
         )
         assert allocation.status_code == 201
 
+        materialized = client.post("/api/v1/scheduling/materialize", headers=headers).json()
+        today = materialized["horizon_from"]
+        rule = client.post(
+            "/api/v1/scheduling/rules",
+            headers=headers,
+            json={
+                "frequency": "daily",
+                "start_on": today,
+                "end_on": today,
+                "type": "transfer",
+                "amount": "50",
+                "description": "Allocate savings",
+                "account_id": account,
+                "destination_account_id": target,
+                "allocate_to_funds": True,
+            },
+        )
+        assert rule.status_code == 201
+        assert client.post("/api/v1/scheduling/materialize", headers=headers).status_code == 200
+
         free = client.get("/api/v1/forecast?horizon=two_weeks")
         total = client.get("/api/v1/forecast?horizon=two_weeks&balance_mode=total")
+        source_free = client.get(f"/api/v1/forecast?horizon=two_weeks&account_id={account}")
+        target_free = client.get(f"/api/v1/forecast?horizon=two_weeks&account_id={target}")
 
-        assert free.status_code == total.status_code == 200
+        assert free.status_code == total.status_code == source_free.status_code == 200
+        assert target_free.status_code == 200
         assert free.json()["balance_mode"] == "free"
         assert free.json()["starting_balance"] == "70.0000"
+        assert free.json()["ending_balance"] == "60.0000"
+        assert any(
+            event["type"] == "transfer" and event["effect"] == "-10.0000"
+            for point in free.json()["points"]
+            for event in point["events"]
+        )
         assert total.json()["balance_mode"] == "total"
         assert total.json()["starting_balance"] == "100.0000"
+        assert total.json()["ending_balance"] == "100.0000"
+        assert source_free.json()["starting_balance"] == "70.0000"
+        assert source_free.json()["ending_balance"] == "20.0000"
+        assert target_free.json()["starting_balance"] == "0"
+        assert target_free.json()["ending_balance"] == "40.0000"
 
 
 def test_concurrent_confirmation_cannot_be_counted_as_actual_and_planned(

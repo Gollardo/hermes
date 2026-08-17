@@ -154,9 +154,9 @@
             <details class="model-note">
               <summary>Как учитываются фонды</summary>
               <p>
-                Старт исключает текущие резервы. Будущие правила пока не выбирают фонд, поэтому их
-                физический эффект применяется к свободному остатку без предположения об источнике
-                резерва.
+                Старт исключает текущие резервы. Запланированный перевод с распределением уменьшает
+                свободный остаток на сумму, которая будет назначена фондам; нераспределённая часть
+                остаётся свободной.
               </p>
             </details>
           }
@@ -392,7 +392,13 @@
                         </strong>
                         @if (event.type === 'transfer') {
                           @if (vm.dataset.scope === 'all') {
-                            <small>Нейтрально для общего остатка</small>
+                            <small>
+                              {{
+                                vm.dataset.balance_mode === 'free' && isNegative(event.effect)
+                                  ? 'Распределение уменьшает свободный остаток'
+                                  : 'Нейтрально для общего остатка'
+                              }}
+                            </small>
                           } @else {
                             <small>
                               Сумма операции: {{ event.amount | money }} {{ baseCurrency() }}
@@ -558,8 +564,7 @@
           </div>
         </div>
         @if (funds.series.length) {
-          <details class="fund-visuals">
-            <summary>Графики структуры и динамики</summary>
+          <div class="fund-visuals">
             <div class="fund-projection-layout">
               <div class="fund-share-summary">
                 <span>Структура к {{ funds.through_on | textDate }}</span>
@@ -572,45 +577,8 @@
                   "
                 ></div>
               </div>
-              <div class="fund-line-chart">
-                <div class="fund-y-axis" aria-hidden="true">
-                  @for (tick of fundAxisTicks(); track tick.y) {
-                    <span>{{ tick.label }} {{ baseCurrency() }}</span>
-                  }
-                </div>
-                <div class="fund-chart-stage">
-                  <svg
-                    viewBox="0 0 100 48"
-                    preserveAspectRatio="none"
-                    role="img"
-                    [attr.aria-label]="fundChartAriaLabel(funds)"
-                  >
-                    <line x1="4" y1="44" x2="96" y2="44" />
-                    <line x1="4" y1="25" x2="96" y2="25" />
-                    <line x1="4" y1="6" x2="96" y2="6" />
-                    @for (series of fundPlot(); track series.fund_id) {
-                      <polyline
-                        [attr.points]="series.pointsAttribute"
-                        [attr.stroke]="series.color"
-                        [class.active]="activeFundId() === series.fund_id"
-                        [class.muted]="activeFundId() && activeFundId() !== series.fund_id"
-                      />
-                    }
-                  </svg>
-                  @if (activeFundSeries(); as activeFund) {
-                    <p class="fund-active-series">
-                      <span>{{ activeFund.fund_name }}</span>
-                      <strong>{{ activeFund.ending_balance | money }} {{ baseCurrency() }}</strong>
-                    </p>
-                  }
-                </div>
-                <div class="fund-date-axis" aria-hidden="true">
-                  <span>{{ funds.from_on | textDate }}</span>
-                  <span>{{ funds.through_on | textDate }}</span>
-                </div>
-              </div>
             </div>
-          </details>
+          </div>
           <div class="fund-legend-header" aria-hidden="true">
             <span>Фонд и доля</span>
             <span>Сейчас</span>
@@ -619,13 +587,7 @@
           </div>
           <ul class="fund-legend">
             @for (series of funds.series; track series.fund_id; let index = $index) {
-              <li
-                tabindex="0"
-                (mouseenter)="activeFundId.set(series.fund_id)"
-                (mouseleave)="activeFundId.set(null)"
-                (focus)="activeFundId.set(series.fund_id)"
-                (blur)="activeFundId.set(null)"
-              >
+              <li>
                 <span class="fund-name">
                   <i [style.background]="fundColor(index)" aria-hidden="true"></i>
                   <span

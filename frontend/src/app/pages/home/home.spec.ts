@@ -80,7 +80,7 @@ describe('HomePage', () => {
     expect(cards[2].textContent).toContain('Текущее состояние');
     expect(cards[2].querySelector('li')?.textContent).toContain('Large');
     expect(cards[0].querySelectorAll('.chart-swatch')).toHaveLength(2);
-    expect(cards[1].querySelector('.donut')).toBeNull();
+    expect(cards[1].querySelector('.donut')).not.toBeNull();
     const expenseLink = cards[0].querySelector('li a') as HTMLAnchorElement;
     expect(expenseLink.getAttribute('href')).toContain('/operations');
     expect(expenseLink.getAttribute('href')).toContain('category_id=food');

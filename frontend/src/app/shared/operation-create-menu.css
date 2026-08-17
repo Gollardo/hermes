@@ -1,6 +1,14 @@
 :host {
   display: inline-block;
+  max-width: 100%;
   position: relative;
+}
+.create-menu,
+.create-menu-trigger {
+  max-width: 100%;
+}
+.create-menu-trigger {
+  white-space: nowrap;
 }
 .create-menu-trigger span {
   font-size: 0.7rem;
@@ -27,6 +35,7 @@
   min-height: 0;
   padding: 0.65rem 0.75rem;
   text-align: left;
+  width: 100%;
 }
 .create-menu-popover button:hover,
 .create-menu-popover button:focus-visible {
@@ -37,4 +46,19 @@
 .create-menu-popover span {
   color: var(--muted);
   font-size: 0.72rem;
+}
+
+@media (max-width: 38rem) {
+  :host,
+  .create-menu,
+  .create-menu-trigger {
+    width: 100%;
+  }
+
+  .create-menu-popover {
+    left: 0;
+    min-width: 0;
+    right: 0;
+    width: 100%;
+  }
 }

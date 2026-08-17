@@ -7,17 +7,27 @@ and the project intends to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-17
+
 ### Added
 
 - Quick-create operation menu with a preselected operation type.
 - Optional active default account for new income and expense operations.
 - Income/expense category report for monthly and custom periods.
 - Fund-balance perspective for planned transfers with percentage allocation.
+- Application-wide visual redesign with the confirmed light neutral direction.
 
 ### Changed
 
 - Scheduled transfer allocation text now uses the full form width.
-- Application version advanced to 0.2.0.
+- Free-money forecasts subtract future transfer allocations while total-money
+  forecasts keep transfers neutral.
+- Forecast insights no longer reduce chart width; chart date labels remain
+  visible, overview income charts render for a single category, and the fund
+  projection uses a larger, higher-contrast structure diagram without the
+  uninformative line chart.
+- Operation create menus stay within the available responsive width.
+- Application version advanced to 0.3.0.
 
 ## [0.1.2] - 2026-08-15
 

@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.modules.accounts.contracts import AccountReferenceError
-from app.modules.forecasting.schemas import ForecastHorizon, ForecastResponse
+from app.modules.forecasting.schemas import ForecastBalanceMode, ForecastHorizon, ForecastResponse
 from app.modules.forecasting.service import (
     ForecastInputEvent,
     build_fund_forecast,
@@ -37,6 +37,7 @@ def event(
     account_id: UUID = SOURCE,
     destination_account_id: UUID | None = None,
     status: OccurrenceStatus = OccurrenceStatus.PENDING,
+    allocated_to_funds: str = "0",
 ) -> ForecastInputEvent:
     return ForecastInputEvent(
         occurrence_id=UUID(f"30000000-0000-0000-0000-{suffix:012d}"),
@@ -48,6 +49,7 @@ def event(
         account_id=account_id,
         destination_account_id=destination_account_id,
         amount=Decimal(amount),
+        allocated_to_funds=Decimal(allocated_to_funds),
     )
 
 
@@ -208,6 +210,39 @@ def test_transfer_is_neutral_for_all_accounts_and_directional_for_one() -> None:
     assert combined.first_negative_balance is None
     assert source.ending_balance == "75.0000"
     assert target.ending_balance == "45.0000"
+
+
+def test_allocating_transfer_reduces_only_free_money_forecast() -> None:
+    transfer = event(
+        1,
+        due_on=date(2026, 8, 13),
+        type=OperationType.TRANSFER,
+        amount="100.0000",
+        destination_account_id=TARGET,
+        allocated_to_funds="60.0000",
+    )
+
+    def calculate(account_id: UUID | None, mode: ForecastBalanceMode) -> ForecastResponse:
+        return calculate_forecast(
+            today=TODAY,
+            through_on=date(2026, 8, 19),
+            balances={SOURCE: Decimal("100.0000"), TARGET: Decimal("20.0000")},
+            account_name_by_id={SOURCE: "Main", TARGET: "Savings"},
+            events=[transfer],
+            account_id=account_id,
+            horizon=ForecastHorizon.TWO_WEEKS,
+            balance_mode=mode,
+        )
+
+    free = calculate(None, ForecastBalanceMode.FREE)
+    total = calculate(None, ForecastBalanceMode.TOTAL)
+    free_target = calculate(TARGET, ForecastBalanceMode.FREE)
+
+    assert free.ending_balance == "60.0000"
+    assert free.points[1].events[0].effect == "-60.0000"
+    assert total.ending_balance == "120.0000"
+    assert total.points[1].events[0].effect == "0"
+    assert free_target.ending_balance == "60.0000"
 
 
 def test_account_forecast_omits_events_for_other_accounts() -> None:

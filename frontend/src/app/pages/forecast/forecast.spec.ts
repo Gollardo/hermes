@@ -139,13 +139,13 @@ describe('ForecastPage', () => {
     expect(calendarLink.getAttribute('href')).toContain('focus=occurrence-1');
   });
 
-  it('renders the fund allocation diagram, trajectory and exact values', () => {
+  it('renders the enlarged fund allocation diagram and exact values without a line chart', () => {
     flushInitial(POPULATED_FUND_FORECAST);
     http.expectOne('/api/v1/forecast?horizon=month&balance_mode=free').flush(FORECAST);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.fund-projection-donut')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.fund-line-chart polyline')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.fund-line-chart')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Резерв · 80%');
     expect(fixture.nativeElement.textContent).toContain('Сейчас');
     expect(fixture.nativeElement.textContent).toContain('20.00 ₽');

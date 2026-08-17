@@ -4,9 +4,8 @@ Hermes is an early-stage, single-owner, self-hosted web application for personal
 finance. It is intended for a home server or local computer and keeps its data
 independent of external cloud services.
 
-> **Current version:** `0.2.0` adds faster operation entry, a default account,
-> income/expense reports and fund-balance planning alongside safer idle sessions
-> and owner-confirmed presentation conventions for dates, currencies and planning balances.
+> **Current version:** `0.3.0` completes the visual redesign of the application
+> and refines daily operation entry, overview analytics and free-money planning.
 
 ## Project priorities and contributions
 

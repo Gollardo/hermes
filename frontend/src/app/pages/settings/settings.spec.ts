@@ -121,7 +121,7 @@ describe('SettingsPage', () => {
     const request = http.expectOne('/api/v1/backup/preview');
     expect(request.request.method).toBe('POST');
     request.flush({
-      app_version: '0.2.0',
+      app_version: '0.3.0',
       exported_at: '2026-08-12T00:00:00Z',
       base_currency: 'RUB',
       timezone: 'Europe/Moscow',
