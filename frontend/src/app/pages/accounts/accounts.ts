@@ -4,7 +4,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
-import { MoneyPipe } from '../../shared/money.pipe';
+import { currencySymbol, MoneyPipe } from '../../shared/money.pipe';
 import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
 
 type AccountType = 'cash' | 'debit' | 'savings';
@@ -35,6 +35,7 @@ export class AccountsPage implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly editingId = signal<string | null>(null);
   protected readonly formOpen = signal(false);
+  protected readonly baseCurrency = signal('₽');
   protected readonly form = this.builder.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
     type: this.builder.control<AccountType>('cash', Validators.required),
@@ -44,6 +45,11 @@ export class AccountsPage implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.http
+      .get<{ base_currency: string }>(`${environment.apiBaseUrl}/settings`)
+      .subscribe(({ base_currency: baseCurrency }) => {
+        this.baseCurrency.set(currencySymbol(baseCurrency));
+      });
   }
 
   protected submit(): void {

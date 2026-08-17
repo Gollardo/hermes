@@ -22,6 +22,7 @@ describe('AccountsPage', () => {
   it('creates an account with initial balance as a string', () => {
     fixture.detectChanges();
     http.expectOne('/api/v1/accounts').flush([]);
+    http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
     fixture.detectChanges();
     clickButton('Добавить счёт');
     const name = fixture.nativeElement.querySelector('#account-name') as HTMLInputElement;
@@ -41,6 +42,7 @@ describe('AccountsPage', () => {
   it('does not submit a negative initial balance', () => {
     fixture.detectChanges();
     http.expectOne('/api/v1/accounts').flush([]);
+    http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
     fixture.detectChanges();
     clickButton('Добавить счёт');
     const name = fixture.nativeElement.querySelector('#account-name') as HTMLInputElement;
@@ -56,6 +58,7 @@ describe('AccountsPage', () => {
   it('accepts a comma and normalizes the initial balance on blur', () => {
     fixture.detectChanges();
     http.expectOne('/api/v1/accounts').flush([]);
+    http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
     fixture.detectChanges();
     clickButton('Добавить счёт');
     const name = fixture.nativeElement.querySelector('#account-name') as HTMLInputElement;
@@ -74,6 +77,7 @@ describe('AccountsPage', () => {
   it('shows a validation error for malformed money after blur', () => {
     fixture.detectChanges();
     http.expectOne('/api/v1/accounts').flush([]);
+    http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
     fixture.detectChanges();
     clickButton('Добавить счёт');
     const balance = fixture.nativeElement.querySelector('#initial-balance') as HTMLInputElement;
