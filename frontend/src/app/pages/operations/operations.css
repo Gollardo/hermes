@@ -21,10 +21,6 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.entry-panel {
-  position: sticky;
-  top: 1rem;
-}
 .entry-panel.editing {
   border-color: #b7d4c0;
   box-shadow: 0 0 0 0.2rem rgb(23 115 79 / 7%);
@@ -280,9 +276,6 @@
 @media (max-width: 70rem) {
   .operation-layout {
     grid-template-columns: 1fr;
-  }
-  .entry-panel {
-    position: static;
   }
 }
 @media (max-width: 42rem) {

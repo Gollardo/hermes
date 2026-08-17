@@ -42,6 +42,7 @@ export class EntityCombobox implements ControlValueAccessor, OnChanges {
   @Input() recentKey = 'entities';
   @Input() emptyLabel = 'Ничего не найдено';
   @Input() allowEmpty = false;
+  @Input() matchMode: 'prefix' | 'contains' = 'prefix';
   protected readonly query = signal('');
   protected readonly open = signal(false);
   protected readonly disabled = signal(false);
@@ -51,9 +52,12 @@ export class EntityCombobox implements ControlValueAccessor, OnChanges {
   protected visibleOptions(): EntityOption[] {
     const query = normalize(this.query());
     if (query) {
-      return this.options.filter((option) =>
-        normalize(option.searchText ?? option.label).startsWith(query),
-      );
+      return this.options.filter((option) => {
+        const searchText = normalize(option.searchText ?? option.label);
+        return this.matchMode === 'contains'
+          ? searchText.includes(query)
+          : searchText.startsWith(query);
+      });
     }
     const recent = this.readRecent();
     return recent

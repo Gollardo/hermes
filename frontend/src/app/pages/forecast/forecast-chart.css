@@ -230,9 +230,9 @@
 
 .chart-point.event-point {
   background: var(--accent-soft);
-  height: 0.62rem;
-  opacity: 0.72;
-  width: 0.62rem;
+  height: 0.48rem;
+  opacity: 0.42;
+  width: 0.48rem;
 }
 
 .chart-point.selected-point {

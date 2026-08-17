@@ -52,6 +52,11 @@ export class SettingsPage implements OnInit {
 
   protected readonly currencies = CURRENCIES;
   protected readonly timezones = supportedTimezones();
+  protected readonly timezoneOptions: EntityOption[] = this.timezones.map((timezone) => ({
+    id: timezone,
+    label: timezone,
+    searchText: timezone.replaceAll('_', ' '),
+  }));
   protected readonly loading = signal(true);
   protected readonly savingSettings = signal(false);
   protected readonly changingPassword = signal(false);

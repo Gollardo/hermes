@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
@@ -16,6 +16,7 @@ import { EntityCombobox, EntityOption } from './entity-combobox';
   `,
 })
 class ComboboxHost {
+  @ViewChild(EntityCombobox) combobox!: EntityCombobox;
   readonly control = new FormControl('', { nonNullable: true });
   readonly options: EntityOption[] = [
     { id: 'housing', label: '🏠 Жильё' },
@@ -79,6 +80,17 @@ describe('EntityCombobox', () => {
     expect(option.textContent).toContain('Жильё');
     option.click();
     expect(fixture.componentInstance.control.value).toBe('housing');
+  });
+
+  it('supports contains matching when a dense directory opts in', () => {
+    fixture.componentInstance.combobox.matchMode = 'contains';
+    const input = focusInput();
+    input.value = 'животные';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const option = fixture.nativeElement.querySelector('[role="option"]') as HTMLButtonElement;
+    expect(option.textContent).toContain('Домашние животные');
   });
 
   it('selects an option with a pointer without losing the open list', () => {

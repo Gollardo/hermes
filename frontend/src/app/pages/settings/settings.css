@@ -2,7 +2,7 @@
   align-items: start;
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
 }
 
 .setting-heading {
@@ -17,17 +17,24 @@
   border-radius: 0.8rem;
   color: #fff;
   display: flex;
-  font-size: 1rem;
-  font-weight: 760;
   height: 2.75rem;
   justify-content: center;
   width: 2.75rem;
 }
 
+.setting-icon svg {
+  fill: none;
+  height: 1.15rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  width: 1.15rem;
+}
+
 .setting-icon.soft {
   background: var(--surface-soft);
   color: var(--accent-strong);
-  letter-spacing: 0.08em;
 }
 
 .settings-grid form {
@@ -45,6 +52,12 @@
   gap: 0.45rem;
   margin: 0.55rem 0;
   padding: 0.6rem 0.7rem;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin: 0.45rem 0 0;
 }
 
 .danger-zone {
@@ -65,10 +78,11 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .backup-actions > div {
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
-  border-radius: 0.85rem;
-  padding: 1rem;
+  padding: 0.15rem 0;
+}
+.backup-actions > div + div {
+  border-left: 1px solid var(--line);
+  padding-left: 1rem;
 }
 .backup-actions h3 {
   font-size: 0.95rem;
@@ -81,6 +95,21 @@
 }
 .backup-actions label {
   margin-top: 0;
+}
+#backup-file {
+  background: var(--surface-soft);
+  padding: 0.35rem;
+}
+#backup-file::file-selector-button {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 0.6rem;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 680;
+  margin-right: 0.65rem;
+  padding: 0.45rem 0.7rem;
 }
 .backup-summary {
   background: var(--surface-accent);
@@ -123,6 +152,13 @@
   .settings-grid,
   .backup-actions {
     grid-template-columns: 1fr;
+  }
+
+  .backup-actions > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding-left: 0;
+    padding-top: 1rem;
   }
 }
 

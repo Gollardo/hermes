@@ -1,51 +1,49 @@
-# Funds visual refinement — design QA
+# Design QA: operation modal forms
 
 ## Evidence
 
-- Source visual truth: `/private/tmp/hermes-funds-current-desktop.png`
-- Implementation desktop: `/private/tmp/hermes-funds-final-desktop.png`
-- Implementation mobile/menu: `/private/tmp/hermes-funds-final-mobile.png`
-- Desktop viewport and pixels: `1600 × 1000`, device scale factor `1`, no density normalization required.
-- Mobile viewport and pixels: `390 × 844`, device scale factor `1`, no density normalization required.
-- State: authenticated `/funds`, populated summary, six active funds, closed desktop menus; mobile capture includes the first fund's `Ещё` menu.
+- Source visual truth: `/var/folders/nw/xdxz9z097v3fyc6g6mqsjgjm0000gn/T/TemporaryItems/NSIRD_screencaptureui_elHYDE/Снимок экрана — 2026-08-17 в 19.59.19.png`
+- Source pixels: `1640 × 1750`; Safari capture supplied by the owner.
+- Implementation screenshot: `/private/tmp/hermes-operation-modal-final.png`
+- Implementation pixels and CSS viewport: `581 × 987`, device density `1x`.
+- Route and state: `/operations`, new expense composer, description collapsed, submit disabled.
+- Browser-rendered evidence: in-app browser; no console errors, only Angular/Vite development messages.
 
-## Full-view comparison
+The captures use different browser engines and viewport sizes. The comparison therefore treats the
+source as before-state evidence and checks control consistency, hierarchy, density, copy and
+responsive behavior rather than claiming pixel-identical fidelity.
 
-The source and final desktop captures were opened together at the same viewport. The final implementation preserves the page shell, content, values and primary actions while establishing a clearer reading order: two primary monetary totals, compact secondary percentages, one row of allocation actions and a single aligned fund list instead of nested cards.
+## Findings
 
-## Focused-region comparison
+- No actionable P0, P1 or P2 issue remains in the verified state.
+- Fonts and typography: the existing Hermes font stack and hierarchy are preserved; labels remain
+  readable and the optional section is visually secondary.
+- Spacing and layout rhythm: the narrow viewport stacks fields consistently, keeps the modal within
+  the viewport and keeps the action area visible. The source's permanently visible textarea no
+  longer dominates the form.
+- Colors and tokens: existing surface, border, accent and muted tokens are retained. Disabled
+  actions now use explicit token colors instead of a browser-dependent filter.
+- Image and icon fidelity: the form contains no raster imagery. Native select and date affordances
+  remain platform-owned; the existing close glyph is unchanged.
+- Copy and content: required financial fields and labels are unchanged. Only the optional disclosure
+  text `Добавить описание` was added.
+- Focused control comparison: type, category, amount, account, fund and date controls all render at
+  `48px` in the verified browser state. The optional description expands without hiding the footer.
 
-The fund list and mobile action menu were inspected separately because exact amounts, progress labels and the disabled archive explanation are too small to judge reliably in the full-page comparison. Comparable values retain tabular alignment and significant decimal places. The mobile menu remains within the viewport and exposes the archive condition as visible text.
+## Comparison history
 
-## Required fidelity surfaces
-
-- Fonts and typography: existing application family and weights preserved; names and balances are primary, allocation percentages are secondary and no longer uppercase badges.
-- Spacing and layout rhythm: nested fund cards and letter tiles removed; rows share aligned target, balance and action columns with separators. Mobile rows stack in the same semantic order.
-- Colors and tokens: only existing surface, line, ink, muted and accent tokens are used.
-- Image quality and assets: the screen contains no product imagery or new assets; existing shell icons and logo are unchanged.
-- Copy and content: financial values and domain labels are unchanged. Empty optional fund descriptions are omitted, count is labeled, and disabled archive state has visible explanatory copy.
-
-## Findings and comparison history
-
-### Iteration 1
-
-- P2: desktop allocation actions wrapped into an uneven second row. Fixed by keeping the three action groups on one line above the existing responsive breakpoint.
-- P2: the mobile fund menu extended beyond the left viewport edge. Fixed by anchoring its dropdown to the left of the trigger on narrow screens.
-
-### Final comparison
-
-No actionable P0, P1 or P2 findings remain. The compact list, summary hierarchy and progressive disclosure match the approved refinement intent without changing the existing financial workflow.
-
-## Primary interactions checked
-
-- `Создать фонд` opens the existing fund dialog.
-- `Выделить со счёта` opens the existing allocation dialog.
-- `Другие операции` exposes both existing transfer actions.
-- `Ещё` exposes archive/restore, and a non-empty fund explains why archive is disabled.
-- Browser console: no errors during the checked interactions.
+1. Before: Safari showed visibly different select/input heights, a long single-column form, an
+   always-visible large textarea and a heavy full-width disabled action.
+2. Fixes: explicit control geometry and disabled colors, responsive form grid, progressive
+   description disclosure, scrollable body and a separate action footer.
+3. After: the verified narrow state has uniform controls, a shorter reading path and a visible
+   action area. No P0/P1/P2 correction was required after the final capture.
 
 ## Follow-up polish
 
-- P3: the existing expanded narrow-screen navigation consumes substantial vertical space before page content. It is a shared shell decision and was intentionally left outside this funds-only change.
+- P3: repeat the same screenshot and keyboard-focus check in real Safari. The in-app browser cannot
+  verify Safari's native picker rendering directly.
+- P3: replace the existing text close glyph only if Hermes adopts a shared icon source; do not add an
+  isolated icon dependency for this modal.
 
 final result: passed

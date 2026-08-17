@@ -48,6 +48,16 @@
 .fund-projection-layout {
   align-items: flex-start;
 }
+.fund-visuals summary {
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  width: fit-content;
+}
+.fund-visuals[open] summary {
+  margin-bottom: 1rem;
+}
 .fund-share-summary {
   color: var(--muted);
   display: grid;

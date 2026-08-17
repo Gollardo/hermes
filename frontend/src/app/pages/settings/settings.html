@@ -5,16 +5,21 @@
       <h1>Настройки</h1>
       <p>Базовые финансовые параметры, локальная безопасность и активные сессии.</p>
     </div>
-    <span class="status-pill positive">Self-hosted</span>
   </header>
 
   @if (loading()) {
     <p class="empty-state" aria-live="polite">Загружаем настройки…</p>
   } @else {
     <div class="settings-grid">
-      <section class="panel" aria-labelledby="preferences-title">
+      <section class="panel preferences-panel" aria-labelledby="preferences-title">
         <div class="panel-heading setting-heading">
-          <span class="setting-icon" aria-hidden="true">¤</span>
+          <span class="setting-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5zM4 9h16m-4 4h2"
+              />
+            </svg>
+          </span>
           <div>
             <p class="section-label">Финансовая основа</p>
             <h2 id="preferences-title">Основные параметры</h2>
@@ -42,12 +47,18 @@
             </p>
           }
 
-          <label for="settings-timezone">Часовой пояс</label>
-          <select id="settings-timezone" formControlName="timezone">
-            @for (timezone of timezones; track timezone) {
-              <option [value]="timezone">{{ timezone }}</option>
-            }
-          </select>
+          <div class="control-label">
+            Часовой пояс
+            <app-entity-combobox
+              inputId="settings-timezone"
+              formControlName="timezone"
+              [options]="timezoneOptions"
+              recentKey="timezones"
+              matchMode="contains"
+              placeholder="Начните вводить город или регион"
+              emptyLabel="Часовой пояс не найден"
+            />
+          </div>
 
           <div class="control-label">
             Счёт по умолчанию
@@ -60,7 +71,7 @@
               [allowEmpty]="true"
             />
           </div>
-          <p class="locked-note">
+          <p class="field-hint">
             Подставляется только при создании дохода или расхода и всегда остаётся изменяемым.
           </p>
           @if (accountsError(); as message) {
@@ -81,7 +92,14 @@
 
       <section class="panel" aria-labelledby="password-title">
         <div class="panel-heading setting-heading">
-          <span class="setting-icon soft" aria-hidden="true">•••</span>
+          <span class="setting-icon soft" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 15 6l-.3-2.6h-4L10.4 6A8 8 0 0 0 8.8 7L6.5 6.1l-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a8 8 0 0 0 1.6 1l.3 2.6h4l.3-2.6a8 8 0 0 0 1.6-1l2.3 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z"
+              />
+            </svg>
+          </span>
           <div>
             <p class="section-label">Безопасность</p>
             <h2 id="password-title">Мастер-пароль</h2>
@@ -117,7 +135,7 @@
           @if (passwordSuccess(); as message) {
             <p class="form-success" role="status">{{ message }}</p>
           }
-          <button type="submit" [disabled]="changingPassword()">
+          <button type="submit" class="secondary" [disabled]="changingPassword()">
             {{ changingPassword() ? 'Изменяем…' : 'Изменить пароль' }}
           </button>
         </form>
@@ -126,7 +144,11 @@
 
     <section class="panel backup-panel" aria-labelledby="backup-title">
       <div class="panel-heading setting-heading">
-        <span class="setting-icon soft" aria-hidden="true">⇄</span>
+        <span class="setting-icon soft" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 7h12m0 0-3-3m3 3-3 3M19 17H7m0 0 3-3m-3 3 3 3" />
+          </svg>
+        </span>
         <div>
           <p class="section-label">Резервная копия</p>
           <h2 id="backup-title">Экспорт и восстановление</h2>
@@ -137,7 +159,12 @@
         <div>
           <h3>Создать копию</h3>
           <p>Скачайте полный проверенный снимок текущих данных.</p>
-          <button type="button" (click)="exportBackup()" [disabled]="backupBusy()">
+          <button
+            type="button"
+            class="secondary"
+            (click)="exportBackup()"
+            [disabled]="backupBusy()"
+          >
             Скачать backup
           </button>
         </div>

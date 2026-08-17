@@ -38,13 +38,18 @@
         <nav class="primary-nav" aria-label="Основная навигация">
           <div class="nav-group">
             <p>Пространство</p>
-            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            <a
+              routerLink="/"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              [routerLinkActiveOptions]="{ exact: true }"
+            >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />
               </svg>
               <span>Обзор</span>
             </a>
-            <a routerLink="/accounts" routerLinkActive="active">
+            <a routerLink="/accounts" routerLinkActive="active" ariaCurrentWhenActive="page">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5zM4 9h16m-4 4h2"
@@ -52,13 +57,13 @@
               </svg>
               <span>Счета</span>
             </a>
-            <a routerLink="/operations" routerLinkActive="active">
+            <a routerLink="/operations" routerLinkActive="active" ariaCurrentWhenActive="page">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 6h14M5 12h14M5 18h9M7 4v4M12 10v4M17 16v4" />
               </svg>
               <span>Операции</span>
             </a>
-            <a routerLink="/funds" routerLinkActive="active">
+            <a routerLink="/funds" routerLinkActive="active" ariaCurrentWhenActive="page">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 7h16v12H4zM7 7V5h10v2M8 11h8M8 15h5" />
               </svg>
@@ -68,13 +73,13 @@
 
           <div class="nav-group">
             <p class="plan-label">План</p>
-            <a routerLink="/calendar" routerLinkActive="active">
+            <a routerLink="/calendar" routerLinkActive="active" ariaCurrentWhenActive="page">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 5h14v14H5zM8 3v4M16 3v4M5 9h14M8 12h2M12 12h2M16 12h1M8 16h2M12 16h2" />
               </svg>
               <span>Календарь</span>
             </a>
-            <a routerLink="/forecast" routerLinkActive="active">
+            <a routerLink="/forecast" routerLinkActive="active" ariaCurrentWhenActive="page">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 18 9 12l4 3 7-9M4 20h16" />
               </svg>
@@ -84,23 +89,29 @@
 
           <div class="nav-group reports-nav-group">
             <p>Отчёты</p>
-            <a routerLink="/reports" routerLinkActive="active">
+            <a
+              routerLink="/reports"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              aria-label="Доходы и расходы"
+            >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 19V9M12 19V5M19 19v-7M3 19h18" />
               </svg>
-              <span>Доходы и расходы</span>
+              <span class="nav-label-full">Доходы и расходы</span>
+              <span class="nav-label-short" aria-hidden="true">Отчёты</span>
             </a>
           </div>
 
-          <div class="nav-group">
+          <div class="nav-group utility-nav-group">
             <p>Управление</p>
-            <a routerLink="/categories" routerLinkActive="active">
+            <a routerLink="/categories" routerLinkActive="active" ariaCurrentWhenActive="page">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 5h5v5H5zM14 5h5v5h-5zM5 14h5v5H5zM14 14h5v5h-5z" />
               </svg>
               <span>Категории</span>
             </a>
-            <a routerLink="/settings" routerLinkActive="active">
+            <a routerLink="/settings" routerLinkActive="active" ariaCurrentWhenActive="page">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="3" />
                 <path

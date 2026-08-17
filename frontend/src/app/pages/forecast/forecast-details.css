@@ -52,11 +52,17 @@
   text-align: left;
 }
 
-.timeline-event:hover,
-.timeline-event.active {
+.timeline-event:hover {
   background: var(--surface-accent);
   border-color: var(--accent);
   box-shadow: none;
+  transform: none;
+}
+
+.timeline-event.active {
+  background: var(--surface-accent);
+  border-color: #c9e2d1;
+  box-shadow: inset 0 0.16rem 0 var(--accent);
   transform: none;
 }
 
