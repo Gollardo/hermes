@@ -475,9 +475,7 @@ describe('OperationsPage', () => {
       version: 1,
     };
     flushInitial({ operations: [expense], total: 26, totalAmount: '-260.0000' });
-    ([...fixture.nativeElement.querySelectorAll('button')] as HTMLButtonElement[])
-      .find((button) => button.textContent.includes('Показать фильтры'))!
-      .click();
+    (fixture.nativeElement.querySelector('.filter-toggle') as HTMLButtonElement).click();
     fixture.detectChanges();
     setValue('.filters-panel select[formControlName="type"]', 'expense');
     fixture.nativeElement.querySelector('.filters-panel form').dispatchEvent(new Event('submit'));
@@ -495,7 +493,9 @@ describe('OperationsPage', () => {
       });
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.filter-chips').textContent).toContain('Расход');
-    expect(fixture.nativeElement.textContent).toContain('Чистое изменение выборки: -260.00 ₽');
+    const selectionTotal = fixture.nativeElement.querySelector('.selection-total').textContent;
+    expect(selectionTotal).toContain('По всей выборке');
+    expect(selectionTotal).toContain('-260.00 ₽');
 
     const buttons = fixture.nativeElement.querySelectorAll('.pagination button');
     buttons[1].click();

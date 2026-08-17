@@ -285,6 +285,15 @@ export class OperationsPage implements OnInit {
       : 'Направление недоступно';
   }
 
+  protected operationContext(operation: Operation): string {
+    if (operation.type === 'transfer') return this.transferDirection(operation);
+    const account = operation.movements[0]?.account_name;
+    const fund = operation.fund_movements[0]?.fund_name;
+    return [operation.category_name, account, fund ? `Фонд «${fund}»` : null]
+      .filter(Boolean)
+      .join(' · ');
+  }
+
   protected signedAmount(operation: Operation): string {
     if (operation.type === 'income') return `+${operation.amount}`;
     if (operation.type === 'expense') return `-${operation.amount}`;

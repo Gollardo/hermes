@@ -181,88 +181,84 @@
   }
 
   <div class="journal-column">
-    <section class="panel filters-panel" aria-labelledby="filters-title">
-      <div class="panel-heading compact-heading">
-        <div>
-          <p class="section-label">Выборка</p>
-          <h2 id="filters-title">Фильтры</h2>
-        </div>
-        <button
-          type="button"
-          class="secondary"
-          (click)="filtersOpen.set(!filtersOpen())"
-          [attr.aria-expanded]="filtersOpen()"
-          aria-controls="operation-filters"
-        >
-          {{ filtersOpen() ? 'Скрыть фильтры' : 'Показать фильтры' }}
-        </button>
-      </div>
-      @if (filtersOpen()) {
-        <form
-          id="operation-filters"
-          class="filter-grid"
-          [formGroup]="filters"
-          (ngSubmit)="applyFilters()"
-        >
-          <label>С даты <input type="date" formControlName="occurredFrom" /></label>
-          <label>По дату <input type="date" formControlName="occurredTo" /></label>
-          <div class="control-label">
-            Счёт
-            <app-entity-combobox
-              formControlName="accountId"
-              accessibleLabel="Счёт"
-              [options]="accountOptions()"
-              recentKey="accounts"
-              placeholder="Все счета"
-              [allowEmpty]="true"
-            />
-          </div>
-          <label
-            >Тип
-            <select formControlName="type">
-              <option value="">Все типы</option>
-              <option value="income">Доход</option>
-              <option value="expense">Расход</option>
-              <option value="transfer">Перевод</option>
-              <option value="balance_adjustment">Корректировка</option>
-            </select>
-          </label>
-          <div class="control-label">
-            Категория
-            <app-entity-combobox
-              formControlName="categoryId"
-              accessibleLabel="Категория"
-              [options]="categoryOptions()"
-              recentKey="categories"
-              placeholder="Все категории"
-              [allowEmpty]="true"
-            />
-          </div>
-          <div class="filter-actions">
-            <button type="submit">Применить</button
-            ><button type="button" class="secondary" (click)="clearFilters()">Сбросить</button>
-          </div>
-        </form>
-      }
-      @if (filterChips().length > 0) {
-        <div class="filter-chips" aria-label="Активные фильтры">
-          @for (chip of filterChips(); track chip) {
-            <span>{{ chip }}</span>
-          }
-          <button type="button" class="secondary" (click)="clearFilters()">Сбросить все</button>
-        </div>
-      }
-    </section>
-
     <section class="panel journal-panel" aria-labelledby="journal-title">
-      <div class="panel-heading compact-heading">
-        <div>
-          <p class="section-label">Фактические записи</p>
-          <h2 id="journal-title">Операции · {{ total() }}</h2>
-          <p class="selection-total">
-            Чистое изменение выборки: {{ totalAmount() | money }} {{ baseCurrency() }}
-          </p>
+      <div class="journal-heading">
+        <div class="journal-title">
+          <h2 id="journal-title">Операции</h2>
+          <span class="count-pill">{{ total() }}</span>
         </div>
+        <div class="journal-tools">
+          <div class="selection-total">
+            <span>По всей выборке</span>
+            <strong>{{ totalAmount() | money }} {{ baseCurrency() }}</strong>
+          </div>
+          <button
+            type="button"
+            class="secondary filter-toggle"
+            (click)="filtersOpen.set(!filtersOpen())"
+            [attr.aria-expanded]="filtersOpen()"
+            aria-controls="operation-filters"
+          >
+            {{ filtersOpen() ? 'Скрыть фильтры' : 'Фильтры' }}
+          </button>
+        </div>
+      </div>
+      <div class="filters-panel" aria-label="Фильтры операций">
+        @if (filtersOpen()) {
+          <form
+            id="operation-filters"
+            class="filter-grid"
+            [formGroup]="filters"
+            (ngSubmit)="applyFilters()"
+          >
+            <label>С даты <input type="date" formControlName="occurredFrom" /></label>
+            <label>По дату <input type="date" formControlName="occurredTo" /></label>
+            <div class="control-label">
+              Счёт
+              <app-entity-combobox
+                formControlName="accountId"
+                accessibleLabel="Счёт"
+                [options]="accountOptions()"
+                recentKey="accounts"
+                placeholder="Все счета"
+                [allowEmpty]="true"
+              />
+            </div>
+            <label
+              >Тип
+              <select formControlName="type">
+                <option value="">Все типы</option>
+                <option value="income">Доход</option>
+                <option value="expense">Расход</option>
+                <option value="transfer">Перевод</option>
+                <option value="balance_adjustment">Корректировка</option>
+              </select>
+            </label>
+            <div class="control-label">
+              Категория
+              <app-entity-combobox
+                formControlName="categoryId"
+                accessibleLabel="Категория"
+                [options]="categoryOptions()"
+                recentKey="categories"
+                placeholder="Все категории"
+                [allowEmpty]="true"
+              />
+            </div>
+            <div class="filter-actions">
+              <button type="submit">Применить</button
+              ><button type="button" class="secondary" (click)="clearFilters()">Сбросить</button>
+            </div>
+          </form>
+        }
+        @if (filterChips().length > 0) {
+          <div class="filter-chips" aria-label="Активные фильтры">
+            @for (chip of filterChips(); track chip) {
+              <span>{{ chip }}</span>
+            }
+            <button type="button" class="secondary" (click)="clearFilters()">Сбросить все</button>
+          </div>
+        }
       </div>
       @if (loading() && operations().length === 0) {
         <p class="empty-state">Загружаем журнал…</p>
@@ -274,7 +270,10 @@
           <p class="empty-state">Операций по выбранным условиям нет.</p>
         } @else {
           <div class="operation-list">
-            @for (operation of operations(); track operation.id) {
+            @for (operation of operations(); track operation.id; let index = $index) {
+              @if (index === 0 || operations()[index - 1].occurred_on !== operation.occurred_on) {
+                <h3 class="operation-day">{{ operation.occurred_on | textDate }}</h3>
+              }
               <article
                 class="operation-row"
                 [class.income]="operation.type === 'income'"
@@ -286,7 +285,6 @@
                   (click)="toggleDetails(operation)"
                   [attr.aria-expanded]="expandedId() === operation.id"
                 >
-                  <span class="operation-date">{{ operation.occurred_on | textDate }}</span>
                   <span class="operation-copy"
                     ><strong>{{
                       operation.description ||
@@ -296,44 +294,63 @@
                     }}</strong
                     ><small
                       >{{ operationTypeLabel(operation.type) }} ·
-                      {{ transferDirection(operation) }}</small
+                      {{ operationContext(operation) }}</small
                     ></span
                   >
-                  <span class="operation-amount">{{ signedAmount(operation) | money }}</span>
+                  <span class="operation-amount"
+                    >{{ signedAmount(operation) | money }} {{ baseCurrency() }}</span
+                  >
+                  <span
+                    class="operation-disclosure"
+                    [class.expanded]="expandedId() === operation.id"
+                    aria-hidden="true"
+                    >›</span
+                  >
+                  <span class="visually-hidden">
+                    {{ expandedId() === operation.id ? 'Свернуть детали' : 'Показать детали' }}
+                  </span>
                 </button>
                 @if (expandedId() === operation.id) {
                   <div class="operation-details">
-                    <dl>
+                    <dl class="detail-type">
                       <div>
                         <dt>Тип</dt>
                         <dd>{{ operationTypeLabel(operation.type) }}</dd>
                       </div>
-                      <div>
-                        <dt>Версия</dt>
-                        <dd>{{ operation.version }}</dd>
-                      </div>
                     </dl>
-                    <div class="movement-list">
-                      @for (movement of operation.movements; track movement.account_id) {
-                        <span
-                          >{{ movement.account_name }}
-                          <strong>{{ movement.amount | money }}</strong></span
-                        >
+                    <div class="detail-effects">
+                      <div class="detail-effect">
+                        <p class="detail-label">Физическое движение</p>
+                        <div class="movement-list">
+                          @for (movement of operation.movements; track movement.account_id) {
+                            <span
+                              >{{ movement.account_name }}
+                              <strong
+                                >{{ movement.amount | money }} {{ baseCurrency() }}</strong
+                              ></span
+                            >
+                          }
+                        </div>
+                      </div>
+                      @if (operation.fund_movements.length > 0) {
+                        <div class="detail-effect">
+                          <p class="detail-label">Движение фонда</p>
+                          <div class="movement-list fund-movement-list">
+                            @for (
+                              movement of operation.fund_movements;
+                              track movement.fund_id + movement.account_id
+                            ) {
+                              <span
+                                >Фонд «{{ movement.fund_name }}» · {{ movement.account_name }}
+                                <strong
+                                  >{{ movement.amount | money }} {{ baseCurrency() }}</strong
+                                ></span
+                              >
+                            }
+                          </div>
+                        </div>
                       }
                     </div>
-                    @if (operation.fund_movements.length > 0) {
-                      <div class="movement-list fund-movement-list">
-                        @for (
-                          movement of operation.fund_movements;
-                          track movement.fund_id + movement.account_id
-                        ) {
-                          <span
-                            >Фонд «{{ movement.fund_name }}» · {{ movement.account_name }}
-                            <strong>{{ movement.amount | money }}</strong></span
-                          >
-                        }
-                      </div>
-                    }
                     <div class="row-actions">
                       <button type="button" class="secondary" (click)="edit(operation)">
                         Изменить</button
@@ -346,25 +363,27 @@
               </article>
             }
           </div>
-          <nav class="pagination" aria-label="Страницы журнала">
-            <button
-              type="button"
-              class="secondary"
-              (click)="previousPage()"
-              [disabled]="page() === 1"
-            >
-              Назад
-            </button>
-            <span>Страница {{ page() }} из {{ Math.max(1, Math.ceil(total() / pageSize)) }}</span>
-            <button
-              type="button"
-              class="secondary"
-              (click)="nextPage()"
-              [disabled]="page() * pageSize >= total()"
-            >
-              Далее
-            </button>
-          </nav>
+          @if (total() > pageSize || page() > 1) {
+            <nav class="pagination" aria-label="Страницы журнала">
+              <button
+                type="button"
+                class="secondary"
+                (click)="previousPage()"
+                [disabled]="page() === 1"
+              >
+                Назад
+              </button>
+              <span>Страница {{ page() }} из {{ Math.max(1, Math.ceil(total() / pageSize)) }}</span>
+              <button
+                type="button"
+                class="secondary"
+                (click)="nextPage()"
+                [disabled]="page() * pageSize >= total()"
+              >
+                Далее
+              </button>
+            </nav>
+          }
         }
       }
     </section>
