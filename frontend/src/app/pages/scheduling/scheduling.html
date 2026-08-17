@@ -7,9 +7,9 @@
         Ожидаемые операции не меняют фактический остаток. Деньги проводятся только после
         подтверждения.
       </p>
+      <span class="planning-horizon">Горизонт планирования · 1 год</span>
     </div>
     <div class="page-actions">
-      <span class="status-pill">Горизонт планирования · 1 год</span>
       <button type="button" (click)="openRule()">Добавить правило</button>
     </div>
   </header>
@@ -63,6 +63,7 @@
       </label>
     </form>
 
+    <p class="calendar-scroll-hint">Проведите в сторону, чтобы увидеть остальные дни.</p>
     <div class="calendar-scroll" tabindex="0" aria-label="Календарная сетка">
       <div class="calendar-weekdays" aria-hidden="true">
         <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span
@@ -88,6 +89,7 @@
                     [queryParams]="{ focus: occurrence.actual_operation_id }"
                     title="Открыть связанную фактическую операцию"
                   >
+                    <strong class="calendar-event-title">{{ occurrenceTitle(occurrence) }}</strong>
                     <span
                       >{{ typeLabel(occurrence.type) }} · {{ statusLabel(occurrence.status) }}</span
                     >
@@ -102,6 +104,7 @@
                     [class.overdue]="occurrence.overdue"
                     [title]="occurrenceTitle(occurrence)"
                   >
+                    <strong class="calendar-event-title">{{ occurrenceTitle(occurrence) }}</strong>
                     <span>
                       {{ typeLabel(occurrence.type) }} ·
                       {{ occurrence.overdue ? 'Просрочено' : statusLabel(occurrence.status) }}
@@ -161,7 +164,7 @@
             >
             @if (actionable(occurrence)) {
               <div class="quick-actions">
-                <div class="postpone-action">
+                <div class="confirmation-action">
                   <label [for]="'confirm-amount-' + occurrence.id">
                     Сумма подтверждения, {{ baseCurrency() }}
                   </label>
@@ -178,49 +181,54 @@
                     "
                     (input)="setConfirmationAmount(occurrence.id, $any($event.target).value)"
                   />
-                </div>
-                @if (!validConfirmationAmount(occurrence)) {
-                  <span class="field-error" [id]="'confirm-error-' + occurrence.id">
-                    Введите положительную сумму, не более четырёх знаков дроби.
-                  </span>
-                }
-                <button
-                  type="button"
-                  (click)="confirm(occurrence)"
-                  [disabled]="
-                    busyOccurrenceId() === occurrence.id || !validConfirmationAmount(occurrence)
-                  "
-                >
-                  {{ occurrence.allocate_to_funds ? 'Перевести и распределить' : 'Подтвердить' }}
-                </button>
-                <div class="postpone-action">
-                  <label [for]="'postpone-' + occurrence.id">Новая дата</label>
-                  <input
-                    [id]="'postpone-' + occurrence.id"
-                    type="date"
-                    [value]="postponeDate(occurrence)"
-                    (input)="setPostponeDate(occurrence.id, $any($event.target).value)"
-                  />
                   <button
                     type="button"
-                    class="secondary"
-                    (click)="postpone(occurrence)"
+                    (click)="confirm(occurrence)"
                     [disabled]="
-                      busyOccurrenceId() === occurrence.id ||
-                      postponeDate(occurrence) === occurrence.due_on
+                      busyOccurrenceId() === occurrence.id || !validConfirmationAmount(occurrence)
                     "
                   >
-                    Перенести
+                    {{ occurrence.allocate_to_funds ? 'Перевести и распределить' : 'Подтвердить' }}
                   </button>
+                  @if (!validConfirmationAmount(occurrence)) {
+                    <span class="field-error" [id]="'confirm-error-' + occurrence.id">
+                      Введите положительную сумму, не более четырёх знаков дроби.
+                    </span>
+                  }
                 </div>
-                <button
-                  type="button"
-                  class="danger"
-                  (click)="cancel(occurrence)"
-                  [disabled]="busyOccurrenceId() === occurrence.id"
-                >
-                  Отменить
-                </button>
+                <details class="secondary-actions">
+                  <summary>Перенести или отменить</summary>
+                  <div class="secondary-actions-body">
+                    <div class="postpone-action">
+                      <label [for]="'postpone-' + occurrence.id">Новая дата</label>
+                      <input
+                        [id]="'postpone-' + occurrence.id"
+                        type="date"
+                        [value]="postponeDate(occurrence)"
+                        (input)="setPostponeDate(occurrence.id, $any($event.target).value)"
+                      />
+                      <button
+                        type="button"
+                        class="secondary"
+                        (click)="postpone(occurrence)"
+                        [disabled]="
+                          busyOccurrenceId() === occurrence.id ||
+                          postponeDate(occurrence) === occurrence.due_on
+                        "
+                      >
+                        Перенести
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      class="danger cancel-action"
+                      (click)="cancel(occurrence)"
+                      [disabled]="busyOccurrenceId() === occurrence.id"
+                    >
+                      Отменить
+                    </button>
+                  </div>
+                </details>
               </div>
             }
           </article>
