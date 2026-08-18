@@ -68,9 +68,9 @@ describe('FundsPage', () => {
   it('shows exact progress above 100 percent while capping only the progress bar', () => {
     flushInitial();
     const progress = fixture.nativeElement.querySelector('.fund-progress') as HTMLElement;
-    expect(progress.textContent).toContain('125.00%');
+    expect(progress.textContent).toContain('125,00%');
     expect((progress.querySelector('progress') as HTMLProgressElement).value).toBe(100);
-    expect(fixture.nativeElement.textContent).toContain('125.00%');
+    expect(fixture.nativeElement.textContent).toContain('125,00%');
   });
 
   it('explains dynamic percentages and removes manual percentage editing', () => {
@@ -120,7 +120,7 @@ describe('FundsPage', () => {
     target.dispatchEvent(new Event('input'));
     target.dispatchEvent(new FocusEvent('blur'));
     fixture.detectChanges();
-    expect(target.value).toBe('1 000.50');
+    expect(target.value).toBe('1 000,50');
 
     fixture.nativeElement.querySelector('.modal-card form').dispatchEvent(new Event('submit'));
     const request = http.expectOne('/api/v1/funds');
@@ -137,7 +137,7 @@ describe('FundsPage', () => {
   it('permits editing a fund definition and keeps physical coverage visible', () => {
     flushInitial();
     expect(fixture.nativeElement.textContent).toContain('Физический остаток = в фондах + свободно');
-    expect(fixture.nativeElement.textContent).toContain('75.00');
+    expect(fixture.nativeElement.textContent).toContain('75,00');
     clickButton('Изменить');
     expect((fixture.nativeElement.querySelector('#fund-name') as HTMLInputElement).value).toBe(
       'Reserve',
@@ -187,7 +187,7 @@ describe('FundsPage', () => {
       '.modal-card button[type="submit"]',
     ) as HTMLButtonElement;
     expect(fundSubmit.disabled).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Доступно: 90.0000%');
+    expect(fixture.nativeElement.textContent).toContain('Доступно: 90,00%');
 
     clickButton('Закрыть');
     clickButton('Выделить со счёта');

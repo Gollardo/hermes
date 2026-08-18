@@ -15,8 +15,12 @@ import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { DateTextPipe, formatTextDate } from '../../shared/date-text.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
-import { currencySymbol } from '../../shared/money.pipe';
-import { MoneyPipe } from '../../shared/money.pipe';
+import {
+  currencySymbol,
+  formatMoney,
+  formatPercentageBreakdown,
+  MoneyPipe,
+} from '../../shared/money.pipe';
 import {
   ForecastBalanceMode,
   ForecastDataset,
@@ -167,6 +171,16 @@ export class ForecastPage implements OnInit {
   protected readonly baseCurrency = signal('RUB');
   protected readonly forecast = signal<ForecastDataset | null>(null);
   protected readonly fundForecast = signal<FundForecast | null>(null);
+  protected readonly displayedStartingPercentages = computed(() =>
+    formatPercentageBreakdown(
+      this.fundForecast()?.series.map((series) => series.allocation_percentage) ?? [],
+    ),
+  );
+  protected readonly displayedEndingPercentages = computed(() =>
+    formatPercentageBreakdown(
+      this.fundForecast()?.series.map((series) => series.ending_allocation_percentage) ?? [],
+    ),
+  );
   protected readonly fundError = signal<string | null>(null);
   protected readonly accountOptions = computed<EntityOption[]>(() =>
     this.accounts().map((account) => ({
@@ -261,7 +275,7 @@ export class ForecastPage implements OnInit {
       return {
         ...point,
         numericBalance,
-        ariaLabel: `${formatPointPeriod(point, value.granularity)}: баланс ${point.closing_balance} ${currency}, изменение ${signedDecimal(point.change)}${eventText}`,
+        ariaLabel: `${formatPointPeriod(point, value.granularity)}: баланс ${formatMoney(point.closing_balance)} ${currency}, изменение ${formatMoney(signedDecimal(point.change))}${eventText}`,
         x: plotXForDate(point.on, value),
         y: plotY(numericBalance, scale),
       };
@@ -373,7 +387,7 @@ export class ForecastPage implements OnInit {
     const scale = this.chartScale();
     const ticks: AxisTick[] = [];
     for (let value = scale.low; value <= scale.high + scale.step / 2; value += scale.step) {
-      ticks.push({ y: plotY(value, scale), label: formatAxisMoney(value, scale.step) });
+      ticks.push({ y: plotY(value, scale), label: formatAxisMoney(value) });
     }
     return ticks.reverse();
   });
@@ -565,13 +579,6 @@ export class ForecastPage implements OnInit {
     return fundColor(index);
   }
 
-  protected formatPercentage(value: string): string {
-    const match = /^([+-]?\d+)(?:\.(\d+))?$/.exec(value.trim());
-    if (!match) return value;
-    const fraction = (match[2] ?? '').replace(/0+$/, '');
-    return fraction ? `${match[1]}.${fraction}` : match[1];
-  }
-
   protected isZero(value: string): boolean {
     return compareDecimal(value, '0') === 0;
   }
@@ -685,13 +692,14 @@ function niceStep(rawStep: number): number {
   return niceFraction * 10 ** exponent;
 }
 
-function formatAxisMoney(value: number, step: number): string {
+function formatAxisMoney(value: number): string {
   const normalized = Math.abs(value) < 0.005 ? 0 : value;
-  const fractionDigits = step >= 1 ? 0 : Math.min(2, Math.ceil(-Math.log10(step)));
   return new Intl.NumberFormat('ru-RU', {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  }).format(normalized);
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+    .format(normalized)
+    .replace(/\u00a0/g, ' ');
 }
 
 function compactDate(value: string, monthOnly = false): string {

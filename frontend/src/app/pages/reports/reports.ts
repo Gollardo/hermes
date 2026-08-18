@@ -1,12 +1,24 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { DateTextPipe } from '../../shared/date-text.pipe';
-import { currencySymbol, MoneyPipe } from '../../shared/money.pipe';
+import {
+  currencySymbol,
+  formatPercentageBreakdown,
+  formatPercentageBreakdownFromAmounts,
+  MoneyPipe,
+} from '../../shared/money.pipe';
 
 type ReportType = 'expense' | 'income';
 type PeriodMode = 'month' | 'custom';
@@ -57,6 +69,16 @@ export class ReportsPage implements OnInit {
   protected readonly throughOn = signal('');
   protected readonly reportType = signal<ReportType>('expense');
   protected readonly report = signal<IncomeExpenseReport | null>(null);
+  protected readonly displayedShares = computed(() => {
+    const report = this.report();
+    if (!report) return [];
+    return (
+      formatPercentageBreakdownFromAmounts(
+        report.categories.map((category) => category.amount),
+        report.total_amount,
+      ) ?? formatPercentageBreakdown(report.categories.map((category) => category.share))
+    );
+  });
   protected readonly baseCurrency = signal('RUB');
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);

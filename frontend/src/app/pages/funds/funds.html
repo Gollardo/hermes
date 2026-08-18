@@ -34,10 +34,14 @@
           >
         </div>
         <div>
-          <span>Общий прогресс целей</span
-          ><strong>{{
-            overallTargetProgress() === null ? 'Цели не заданы' : overallTargetProgress() + '%'
-          }}</strong>
+          <span>Общий прогресс целей</span>
+          <strong>
+            @if (overallTargetProgress(); as progress) {
+              {{ progress | money }}%
+            } @else {
+              Цели не заданы
+            }
+          </strong>
         </div>
       </div>
     </section>
@@ -50,7 +54,7 @@
       <p>
         @if (dynamicMode()) {
           Проценты рассчитаны по текущему остатку до целей. Заполненные и архивные фонды получают
-          0%; после следующего пополнения доли изменятся автоматически.
+          0,00%; после следующего пополнения доли изменятся автоматически.
         } @else {
           Проценты задаются в каждом фонде, а нераспределённая часть остаётся свободной.
         }
@@ -105,7 +109,7 @@
                 <div class="item-copy">
                   <h3>{{ fund.name }}</h3>
                   <span class="fund-allocation"
-                    >{{ fund.allocation_percentage | money }}%
+                    >{{ displayedFundPercentages()[$index] }}%
                     {{ dynamicMode() ? 'сейчас' : 'при распределении' }}</span
                   >
                   @if (fund.distribution_status === 'filled') {
@@ -131,7 +135,7 @@
                   <div class="fund-progress">
                     <div>
                       <span>Цель {{ fund.target_amount | money }} {{ baseCurrency() }}</span>
-                      <strong>{{ fund.progress_percentage }}%</strong>
+                      <strong>{{ fund.progress_percentage | money }}%</strong>
                     </div>
                     <progress
                       [value]="Math.min(100, +(fund.progress_percentage || 0))"
@@ -322,13 +326,14 @@
                   inputmode="decimal"
                 />
                 <p class="hint">
-                  Доступно: {{ availablePercentage() }}%. Процент не меняет уже назначенные деньги.
+                  Доступно: {{ availablePercentage() | money }}%. Процент не меняет уже назначенные
+                  деньги.
                 </p>
                 @if (fundForm.controls.percentage.touched && fundForm.controls.percentage.invalid) {
                   <p class="field-error">Введите процент от 0 до 100, не более четырёх знаков.</p>
                 } @else if (fundForm.controls.percentage.touched && percentageExceedsAvailable()) {
                   <p class="field-error">
-                    Сумма процентов активных фондов не может превышать 100%.
+                    Сумма процентов активных фондов не может превышать 100,00%.
                   </p>
                 }
               } @else {
@@ -455,11 +460,8 @@
                       <div class="allocation-row" [formGroupName]="$index">
                         <label [for]="'allocation-' + $index"
                           >{{ fundName(control.value.fundId) }}
-                          @if (
-                            preview()?.allocations?.[$index]?.allocation_percentage;
-                            as percent
-                          ) {
-                            · {{ percent | money }}%
+                          @if (preview()?.allocations?.[$index]?.allocation_percentage) {
+                            · {{ displayedPreviewPercentages()[$index] }}%
                           }</label
                         ><input
                           appDecimalInput

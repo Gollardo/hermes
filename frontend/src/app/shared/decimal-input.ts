@@ -1,5 +1,15 @@
-import { Directive, HostListener, inject } from '@angular/core';
+import {
+  AfterViewInit,
+  Directive,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  inject,
+} from '@angular/core';
 import { NgControl } from '@angular/forms';
+import { Subscription } from 'rxjs';
+
+import { formatMoney } from './money.pipe';
 
 const DECIMAL = /^-?\d{1,16}(?:[.,]\d{1,4})?$/;
 
@@ -8,20 +18,48 @@ export function decimalPayload(value: string): string {
 }
 
 @Directive({ selector: 'input[appDecimalInput]' })
-export class DecimalInput {
+export class DecimalInput implements AfterViewInit, OnDestroy {
   private readonly ngControl = inject(NgControl, { optional: true });
+  private readonly element = inject<ElementRef<HTMLInputElement>>(ElementRef);
+  private readonly subscriptions = new Subscription();
+  private focused = false;
+
+  ngAfterViewInit(): void {
+    const input = this.element.nativeElement;
+    const markEditing = (): void => {
+      this.focused = true;
+    };
+    input.addEventListener('input', markEditing, { capture: true });
+    this.subscriptions.add(() =>
+      input.removeEventListener('input', markEditing, { capture: true }),
+    );
+    this.render(this.ngControl?.control?.value);
+    const values = this.ngControl?.control?.valueChanges;
+    if (values) {
+      this.subscriptions.add(values.subscribe((value) => this.render(value)));
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
 
   @HostListener('focus', ['$event'])
   ungroupForEditing(event: FocusEvent): void {
+    this.focused = true;
     const input = event.target as HTMLInputElement;
-    if (!input.value.includes(' ')) return;
-    const editable = decimalPayload(input.value);
+    const controlValue = this.ngControl?.control?.value;
+    const editable =
+      typeof controlValue === 'string' && controlValue.trim()
+        ? decimalPayload(controlValue)
+        : decimalPayload(input.value);
     this.ngControl?.control?.setValue(editable);
     input.value = editable;
   }
 
   @HostListener('blur', ['$event'])
   normalize(event: FocusEvent): void {
+    this.focused = false;
     const input = event.target as HTMLInputElement;
     const raw = input.value.trim().replace(/\s/g, '');
     if (!raw) {
@@ -50,6 +88,11 @@ export class DecimalInput {
     this.ngControl?.control?.setValue(normalized);
     this.ngControl?.control?.markAsTouched();
     this.ngControl?.control?.updateValueAndValidity();
-    input.value = `${normalizedInteger.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}.${normalizedFraction}`;
+    input.value = formatMoney(normalized);
+  }
+
+  private render(value: unknown): void {
+    if (this.focused || typeof value !== 'string' || !value.trim()) return;
+    this.element.nativeElement.value = formatMoney(value);
   }
 }

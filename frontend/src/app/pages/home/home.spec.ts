@@ -87,7 +87,7 @@ describe('HomePage', () => {
     expect(expenseLink.getAttribute('href')).toContain('occurred_from=2026-08-01');
     expect(fixture.nativeElement.querySelectorAll('.overview-balances article')).toHaveLength(3);
     expect(fixture.nativeElement.querySelector('.forecast-ending').textContent).toContain(
-      '140.00 ₽',
+      '140,00 ₽',
     );
   });
 
@@ -95,7 +95,7 @@ describe('HomePage', () => {
     flushOverview({ analyticsFailure: true });
 
     expect(fixture.nativeElement.querySelector('.overview-balances').textContent).toContain(
-      '100.00 ₽',
+      '100,00 ₽',
     );
     expect(fixture.nativeElement.querySelector('.analytics-error').textContent).toContain(
       'Не удалось загрузить распределение по категориям',

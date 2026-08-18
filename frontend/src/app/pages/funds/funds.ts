@@ -1,5 +1,12 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormArray, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { environment } from '../../../environments/environment';
@@ -7,7 +14,12 @@ import { apiErrorMessage } from '../../core/auth.service';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
 import { DateTextPipe } from '../../shared/date-text.pipe';
-import { currencySymbol, formatMoney, MoneyPipe } from '../../shared/money.pipe';
+import {
+  currencySymbol,
+  formatMoney,
+  formatPercentageBreakdown,
+  MoneyPipe,
+} from '../../shared/money.pipe';
 
 interface Fund {
   id: string;
@@ -112,11 +124,22 @@ export class FundsPage implements OnInit {
   private historyRequestId = 0;
 
   protected readonly summary = signal<Summary | null>(null);
+  protected readonly displayedFundPercentages = computed(() =>
+    formatPercentageBreakdown(
+      this.summary()?.funds.map((fund) => fund.allocation_percentage) ?? [],
+    ),
+  );
   protected readonly history = signal<FundEvent[]>([]);
   protected readonly historyPage = signal(1);
   protected readonly historyTotal = signal(0);
   protected readonly historyPageSize = 25;
   protected readonly preview = signal<Preview | null>(null);
+  protected readonly displayedPreviewPercentages = computed(() =>
+    formatPercentageBreakdown(
+      this.preview()?.allocations.map((allocation) => allocation.allocation_percentage ?? '0') ??
+        [],
+    ),
+  );
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -204,8 +227,11 @@ export class FundsPage implements OnInit {
       (total, fund) => total + (moneyUnits(fund.target_amount ?? '0') ?? 0n),
       0n,
     );
-    const percent = target > 0n ? (balance * 10_000n) / target : 0n;
-    return target > 0n ? `${percent / 100n}.${String(percent % 100n).padStart(2, '0')}` : null;
+    if (target === 0n) return null;
+    const numerator = balance * 10_000n;
+    let hundredths = numerator / target;
+    if ((numerator % target) * 2n >= target) hundredths += 1n;
+    return `${hundredths / 100n}.${String(hundredths % 100n).padStart(2, '0')}`;
   }
 
   protected positionsFor(fundId: string): Position[] {

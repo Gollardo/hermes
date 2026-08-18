@@ -14,7 +14,7 @@ import { EMPTY, Observable, expand, forkJoin, reduce } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
 import { DateTextPipe } from '../../shared/date-text.pipe';
-import { currencySymbol, MoneyPipe } from '../../shared/money.pipe';
+import { currencySymbol, formatMoney, MoneyPipe } from '../../shared/money.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
 
@@ -420,7 +420,7 @@ export class SchedulingPage implements OnInit {
   }
 
   protected ruleTitle(rule: RecurringRule): string {
-    return rule.description || `${this.typeLabel(rule.type)} · ${rule.amount}`;
+    return rule.description || `${this.typeLabel(rule.type)} · ${formatMoney(rule.amount)}`;
   }
 
   protected typeLabel(type: OperationType): string {

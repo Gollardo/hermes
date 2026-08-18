@@ -81,6 +81,11 @@ CSS values into a permanent design system or approve unimplemented screens.
 - MUST treat this as presentation only. Stored values, calculations, API
   decimal strings and domain comparisons retain their full exact precision;
   the UI must not feed its two-digit rendered value back as authoritative data.
+- MUST round an independently displayed value with exact decimal
+  `ROUND_HALF_UP`, including negative values. For a percentage breakdown whose
+  exact server values total 100%, MUST assign visible hundredths by a stable
+  largest-remainder pass so the displayed parts also total `100,00%`. This
+  smoothing changes presentation only.
 - MUST use the familiar currency symbol when mapped; use the ISO code as the
   fallback.
 - MUST display text dates outside inputs as `20 января 2025`; native date inputs

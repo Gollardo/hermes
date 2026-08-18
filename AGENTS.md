@@ -20,6 +20,10 @@
   a comma in the canonical rendered form: `100 000,00` and `12,50%`. This is a
   presentation rule only; never reduce the precision of stored, calculated or
   transferred domain values to satisfy it.
+- Round individual displayed values with exact decimal `ROUND_HALF_UP`. When a
+  displayed percentage breakdown is exactly 100% on the server, distribute
+  visible hundredths by deterministic largest remainder so the displayed parts
+  also total `100,00%`; do not mutate the server values.
 - Numeric amount and percentage inputs must accept both comma and dot as
   equivalent decimal separators (`1000,50` and `1000.50`) and normalize them to
   the exact decimal representation expected by the API without using `float`.

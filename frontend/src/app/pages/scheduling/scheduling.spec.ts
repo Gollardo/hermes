@@ -224,7 +224,7 @@ describe('SchedulingPage recurrence editor', () => {
     ) as HTMLInputElement;
     amountInput.dispatchEvent(new Event('blur'));
     fixture.detectChanges();
-    expect(amountInput.value).toBe('12 345.75');
+    expect(amountInput.value).toBe('12 345,75');
     clickButton('Подтвердить');
     const request = http.expectOne('/api/v1/scheduling/occurrences/occurrence-1/confirm');
     expect(request.request.body).toEqual({ version: 1, amount: '12345.75' });

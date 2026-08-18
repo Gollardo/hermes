@@ -127,15 +127,15 @@ describe('ForecastPage', () => {
     expect(text).toContain('Можно потратить сейчас');
     expect(text).toContain('Сначала закройте прогнозируемый дефицит');
     expect(text).toContain('Кассовый разрыв');
-    expect(text).toContain('-20.00 ₽');
+    expect(text).toContain('-20,00 ₽');
     expect(text).toContain('Аренда');
     expect(text).toContain('Просроченные события не включены: 1');
     expect(fixture.nativeElement.querySelector('.forecast-chart')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.negative-zone')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.risk-segment')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.zero-caption').textContent).toContain('0 ₽');
+    expect(fixture.nativeElement.querySelector('.zero-caption').textContent).toContain('0,00 ₽');
     expect(fixture.nativeElement.querySelector('.safe-spend-card strong').textContent.trim()).toBe(
-      '0.00 ₽',
+      '0,00 ₽',
     );
 
     const calendarLink = fixture.nativeElement.querySelector('.event-link') as HTMLAnchorElement;
@@ -150,12 +150,12 @@ describe('ForecastPage', () => {
 
     expect(fixture.nativeElement.querySelector('.fund-projection-donut')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.fund-line-chart')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Резерв · 80%');
+    expect(fixture.nativeElement.textContent).toContain('Резерв · 80,00%');
     expect(fixture.nativeElement.textContent).toContain('Сейчас');
-    expect(fixture.nativeElement.textContent).toContain('20.00 ₽');
-    expect(fixture.nativeElement.textContent).toContain('100.00 ₽');
+    expect(fixture.nativeElement.textContent).toContain('20,00 ₽');
+    expect(fixture.nativeElement.textContent).toContain('100,00 ₽');
     expect(fixture.nativeElement.textContent).toContain('Останется свободно:');
-    expect(fixture.nativeElement.textContent).toContain('20.00 ₽');
+    expect(fixture.nativeElement.textContent).toContain('20,00 ₽');
   });
 
   it('shows blocked dynamic replenishments even when no fund series exists', () => {
@@ -284,7 +284,7 @@ describe('ForecastPage', () => {
     fixture.detectChanges();
     const tooltip = fixture.nativeElement.querySelector('.chart-tooltip');
     expect(tooltip.textContent).toContain('20 августа 2026');
-    expect(tooltip.textContent).toContain('-20.00 ₽');
+    expect(tooltip.textContent).toContain('-20,00 ₽');
     expect(tooltip.textContent).toContain('Посмотреть операции →');
 
     const timelineEvent = fixture.nativeElement.querySelector(
@@ -393,7 +393,7 @@ describe('ForecastPage', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.zero-line')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.zero-caption').textContent).toContain('0 ₽');
+    expect(fixture.nativeElement.querySelector('.zero-caption').textContent).toContain('0,00 ₽');
     expect(fixture.nativeElement.querySelector('.negative-zone')).toBeNull();
   });
 

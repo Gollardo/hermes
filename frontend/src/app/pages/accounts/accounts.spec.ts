@@ -69,7 +69,7 @@ describe('AccountsPage', () => {
     balance.dispatchEvent(new Event('input'));
     balance.dispatchEvent(new FocusEvent('blur'));
     fixture.detectChanges();
-    expect(balance.value).toBe('1 000.50');
+    expect(balance.value).toBe('1 000,50');
     fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit'));
     expect(http.expectOne('/api/v1/accounts').request.body.initial_balance).toBe('1000.50');
   });

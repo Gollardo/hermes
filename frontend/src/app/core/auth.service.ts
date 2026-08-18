@@ -167,7 +167,7 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
       fund_not_found: 'Фонд не найден или находится в архиве.',
       invalid_fund_reference: 'Выбранный фонд недоступен для новой операции.',
       fund_conflict: 'Фонд уже изменён в другой вкладке. Обновите страницу.',
-      fund_percentage_limit: 'Сумма процентов активных фондов не может превышать 100%.',
+      fund_percentage_limit: 'Сумма процентов активных фондов не может превышать 100,00%.',
       fund_allocation_unavailable:
         'Распределение не выполнено: задайте положительный процент хотя бы одному активному фонду.',
       dynamic_fund_targets_required:

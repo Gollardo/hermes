@@ -33,16 +33,26 @@ describe('DecimalInput', () => {
     expect(decimalPayload(' 100 000,25 ')).toBe('100000.25');
   });
 
-  it('groups a formatted value on blur and ungroups it for valid editing', () => {
+  it('formats a programmatic exact value but restores it for editing', () => {
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
-    input.value = '1000,5';
-    input.dispatchEvent(new Event('input'));
-    input.dispatchEvent(new FocusEvent('blur'));
-    expect(input.value).toBe('1 000.50');
-    expect(fixture.componentInstance.control.value).toBe('1000.50');
+    fixture.componentInstance.control.setValue('1234.5678');
+    fixture.detectChanges();
+    expect(input.value).toBe('1 234,57');
 
     input.dispatchEvent(new FocusEvent('focus'));
-    expect(input.value).toBe('1000.50');
+    expect(input.value).toBe('1234.5678');
+  });
+
+  it('groups and rounds display on blur while restoring exact input on focus', () => {
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    input.value = '1000,565';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new FocusEvent('blur'));
+    expect(input.value).toBe('1 000,57');
+    expect(fixture.componentInstance.control.value).toBe('1000.565');
+
+    input.dispatchEvent(new FocusEvent('focus'));
+    expect(input.value).toBe('1000.565');
     expect(fixture.componentInstance.control.valid).toBe(true);
   });
 });

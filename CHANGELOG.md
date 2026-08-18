@@ -12,6 +12,16 @@ assigned.
 
 ## [Unreleased]
 
+### Changed
+
+- All UI monetary amounts and percentages now use spaces between thousand
+  groups, a decimal comma and exactly two fractional digits with exact
+  `ROUND_HALF_UP` presentation rounding.
+- Amount and percentage inputs accept either comma or dot as the decimal
+  separator while preserving exact decimal API payloads. Exact 100% percentage
+  breakdowns use a display-only largest-remainder adjustment so visible shares
+  also total `100,00%`.
+
 ## [0.4.0] - 2026-08-17
 
 ### Added

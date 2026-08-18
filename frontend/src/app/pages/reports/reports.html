@@ -108,7 +108,7 @@
               </div>
               <div class="chart-value">
                 <strong>{{ category.amount | money }} {{ baseCurrency() }}</strong>
-                <small>{{ category.share }}%</small>
+                <small>{{ displayedShares()[$index] }}%</small>
               </div>
             </div>
           }

@@ -64,7 +64,7 @@ describe('ReportsPage', () => {
     expect(text).toContain('Жильё');
     expect(text).toContain('Аренда');
     expect(text).toContain('Операций: 1');
-    expect(text).toContain('1 200.00 ₽');
+    expect(text).toContain('1 200,00 ₽');
     expect(text).toContain('10 августа 2026');
     expect(fixture.nativeElement.querySelector('.category-chart').getAttribute('role')).toBe(
       'list',
@@ -135,7 +135,36 @@ describe('ReportsPage', () => {
     });
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('10.00 ₽');
-    expect(fixture.nativeElement.textContent).not.toContain('99.00 ₽');
+    expect(fixture.nativeElement.textContent).toContain('10,00 ₽');
+    expect(fixture.nativeElement.textContent).not.toContain('99,00 ₽');
+  });
+
+  it('closes displayed shares from exact amounts when API shares are already rounded', () => {
+    fixture.detectChanges();
+    http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB', timezone: 'Europe/Moscow' });
+    http
+      .expectOne((request) => request.url === '/api/v1/reports/income-expense')
+      .flush({
+        type: 'expense',
+        from_on: '2026-08-01',
+        through_on: '2026-08-31',
+        total_amount: '3.0000',
+        operation_count: 3,
+        categories: [1, 2, 3].map((index) => ({
+          category_id: `category-${index}`,
+          category_name: `Категория ${index}`,
+          root_category_id: `category-${index}`,
+          root_category_name: `Категория ${index}`,
+          amount: '1.0000',
+          share: '33.33',
+          operations: [],
+        })),
+      });
+    fixture.detectChanges();
+
+    const shares = Array.from(fixture.nativeElement.querySelectorAll('.chart-value small')).map(
+      (element) => (element as HTMLElement).textContent?.trim(),
+    );
+    expect(shares).toEqual(['33,34%', '33,33%', '33,33%']);
   });
 });
