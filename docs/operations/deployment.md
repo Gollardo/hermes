@@ -1,7 +1,9 @@
 # Deployment runbook
 
-This is the deployment path for the alpha release, not a complete
-security-hardening guarantee.
+This is the deployment path for the current pre-1.0 release line, not a complete
+security-hardening guarantee. Its owner-confirmed support boundary is a
+protected environment: loopback or a trusted network, with VPN or an HTTPS
+reverse proxy for remote access. Direct public-internet exposure is unsupported.
 
 ## Prepare
 

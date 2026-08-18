@@ -13,14 +13,15 @@
 
 ## Release 0.1.0-alpha.1 behavior
 
-An **uninitialized instance** has no owner credential. `GET /setup/status`
-reports that state without exposing settings. `POST /setup` atomically creates
-the owner credential, application settings, persistent login-throttle state and
-the first session. Fresh setup may create owner-selected category templates
-through the application coordinator. First-run restore validates a versioned
-backup and creates the destination credential, session, restored settings and
-financial data in one transaction. A repeated setup returns a conflict and
-cannot replace the credential or preferences.
+An **uninitialized instance** has no owner credential.
+`GET /api/v1/setup/status` reports that state without exposing settings.
+`POST /api/v1/setup` atomically creates the owner credential, application
+settings, persistent login-throttle state and the first session. Fresh setup may
+create owner-selected category templates through the application coordinator.
+First-run restore validates a versioned backup and creates the destination
+credential, session, restored settings and financial data in one transaction. A
+repeated setup returns a conflict and cannot replace the credential or
+preferences.
 
 An uninitialized deployment is bound to loopback by default and must be claimed
 locally before it is exposed to another network. The public setup endpoint has no

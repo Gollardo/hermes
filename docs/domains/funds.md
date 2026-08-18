@@ -44,8 +44,6 @@ posting model is recorded in [ADR 0002](../decisions/0002-virtual-fund-ledger.md
 
 Manual mode preserves the original policy. For every active fund independently:
 
-For every active fund independently:
-
 ```text
 allocation = round_down(amount * percentage / 100, 4 decimal places)
 ```
@@ -77,6 +75,20 @@ affect the next calculation without a stored percentage cache.
 Switching dynamic to manual copies the current effective percentages into the
 manual percentage fields atomically; filled and archived funds are stored as
 zero. Switching manual to dynamic validates all non-archived targets first.
+
+### Plain-language release behavior
+
+- In manual mode each fund amount is rounded down independently to four decimal
+  places. For example, distributing `100.0000` between three funds at
+  `33.3333%` gives `33.3333` to each and leaves `0.0001` free; Hermes never
+  hides or assigns that remainder implicitly.
+- In dynamic mode the deterministic largest-remainder calculation distributes
+  every `0.0001`, so the effective percentages and allocated amount total
+  exactly 100% of the input while eligible funds exist.
+- A fund can be archived only after its total balance reaches zero. Reserved
+  money must first be spent or moved explicitly; archival never releases or
+  relocates it silently. An archived fund remains readable in history and does
+  not receive new allocations until explicitly restored.
 
 ## Concurrency and lifecycle
 

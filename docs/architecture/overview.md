@@ -8,6 +8,11 @@ database, with explicit domain ownership inside the codebase. It has no
 microservices, broker, background job system, Redis, Kubernetes or plugin
 platform.
 
+The owner-confirmed deployment boundary for the current release is a protected
+environment: loopback or a trusted network, with VPN or an HTTPS reverse proxy
+for remote access. Direct public-internet exposure is not a supported first-
+release configuration.
+
 The production Angular build and `/api` share one HTTP entrypoint. Development
 may use a separate Angular dev server. Data must not depend on external cloud
 services.
@@ -45,9 +50,9 @@ flowchart LR
 - Angular CLI's persistent LMDB build cache is disabled after a reproducible
   native crash on the initialization macOS/Node combination. Clean local and
   container builds remain deterministic without it.
-- Temporary npm overrides keep Angular CLI's transitive MCP/Hono development
-  tooling on compatible patched versions; remove them once Angular CLI includes
-  those versions directly.
+- Temporary npm overrides pin Angular CLI's transitive MCP SDK, Hono and Nano ID
+  development tooling. Re-evaluate them with each Angular upgrade and current
+  dependency audit instead of assuming that an older pin remains patched.
 
 ## Layering principle
 

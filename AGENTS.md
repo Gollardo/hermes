@@ -15,6 +15,14 @@
   import its private internals.
 - Never store financial values in `float`; use `Decimal`/`NUMERIC` and precise
   JSON representations.
+- In every user-facing interface, display all monetary amounts and percentages
+  with spaces between thousand groups and exactly two fractional digits, using
+  a comma in the canonical rendered form: `100 000,00` and `12,50%`. This is a
+  presentation rule only; never reduce the precision of stored, calculated or
+  transferred domain values to satisfy it.
+- Numeric amount and percentage inputs must accept both comma and dot as
+  equivalent decimal separators (`1000,50` and `1000.50`) and normalize them to
+  the exact decimal representation expected by the API without using `float`.
 - Changes to one financial operation must be atomic in one database transaction.
 - Cover domain invariants with tests.
 - Do not rewrite migrations after they have shipped in a public release.

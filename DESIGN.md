@@ -12,6 +12,12 @@ This contract is not a final design system. It does not define an approved
 component library, type scale, spacing scale, breakpoint set, or complete
 palette.
 
+The project owner approved the currently implemented `0.4.0` interface on
+2026-08-18 as the first-public-release baseline. Preserve its established
+navigation, modal composers, visual hierarchy and responsive behavior unless a
+later owner decision changes them. This approval does not promote incidental
+CSS values into a permanent design system or approve unimplemented screens.
+
 ## Authority and Scope
 
 - MUST preserve confirmed domain invariants. Domain documentation takes
@@ -67,10 +73,14 @@ palette.
 - MUST preserve a clear hierarchy between headings, primary answers,
   explanations, and metadata.
 - MUST use tabular figures in comparable columns, totals, and time series.
-- MUST group displayed thousands with spaces.
-- MUST display at least two decimal places for financial amounts and preserve
-  significant third and fourth decimal places without changing the exact
-  domain value.
+- MUST display every monetary amount and percentage with spaces between
+  thousand groups and exactly two fractional digits. The canonical rendered
+  form uses a comma as the decimal separator: `100 000,00` and `12,50%`. This
+  applies to forms after formatting, lists, totals, chart axes and tooltips,
+  progress labels, previews and confirmation text.
+- MUST treat this as presentation only. Stored values, calculations, API
+  decimal strings and domain comparisons retain their full exact precision;
+  the UI must not feed its two-digit rendered value back as authoritative data.
 - MUST use the familiar currency symbol when mapped; use the ISO code as the
   fallback.
 - MUST display text dates outside inputs as `20 января 2025`; native date inputs
@@ -131,6 +141,11 @@ palette.
 
 - MUST represent money as an exact decimal value; UI formatting must not alter
   the submitted decimal string.
+- MUST accept both comma and dot as equivalent decimal separators in amount and
+  percentage inputs, then normalize the value to the API's exact decimal-string
+  contract without binary floating-point conversion. Formatting spaces between
+  thousand groups are not part of the value and must not make a displayed value
+  impossible to edit or submit.
 - MUST make operation type explicit instead of encoding it only through the sign
   of the amount.
 - MUST ask for the required category before the amount for ordinary income and

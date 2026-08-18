@@ -1,9 +1,8 @@
 # ADR 0002: Virtual fund ledger and allocation policy
 
-- Status: accepted alpha implementation decision
-- Date: 2026-08-11
-- Decision owner: implementation scope requested by the project owner; detailed
-  policies below remain alpha assumptions pending usage review
+- Status: accepted for the current release
+- Date: 2026-08-11; owner confirmation 2026-08-18
+- Decision owner: project owner
 
 ## Context
 

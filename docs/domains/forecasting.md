@@ -2,12 +2,16 @@
 
 ## Owner-confirmed behavior
 
-Forecast horizons are two weeks, month, quarter, half-year and year. A forecast can
-target one account or all accounts combined and includes:
+Forecast horizons are two weeks, month, quarter, half-year and year. A forecast
+can target one account or all accounts combined. The implemented `0.4.0` inputs
+are:
 
 - current actual balance;
 - expected income and expense;
-- planned transfers;
+- planned transfers.
+
+Owner-confirmed future inputs, not implemented yet, are:
+
 - credit/installment payments;
 - debt repayments.
 
@@ -43,7 +47,7 @@ balances with public planned-occurrence and obligation contracts, orders their
 effects on a timeline and applies exact decimal arithmetic. It cannot confirm or
 post expected operations. See the [forecast diagram](../architecture/data-flow.md).
 
-## Implemented beta.2 policy
+## Implemented policy (beta.2 baseline, extended through 0.4.0)
 
 - The series starts with today's ledger-derived actual balance. It includes
   actionable `pending` and `postponed` occurrences from today through the

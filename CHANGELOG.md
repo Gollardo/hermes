@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project intends to follow [Semantic Versioning](https://semver.org/).
 
+Entries through `0.4.0` describe internal development milestones. They were not
+published as GitHub Releases or public git tags. After the first public release,
+ongoing changes belong under `Unreleased` until a release version and date are
+assigned.
+
 ## [Unreleased]
 
 ## [0.4.0] - 2026-08-17

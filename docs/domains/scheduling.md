@@ -22,6 +22,13 @@ a transactional cross-module use case. The flow appears in
 
 ## Confirmed recurrence and materialization policy
 
+In plain language, the first-release recurrence editor intentionally supports a
+small predictable subset: every day; selected weekdays every one to three
+weeks; the same date every one to three months, limited to dates 1–28; or once
+per year except 29 February. It prepares instances only one year ahead when the
+calendar/materialization command runs, not through a background service. An
+unbounded rule itself continues beyond that stored one-year window.
+
 - Supported frequencies are `daily`, `weekly`, `monthly` and `yearly`.
 - Weekly rules select one or more ISO weekdays and repeat every 1–3 weeks.
   Monthly rules repeat every 1–3 months on the `start_on` day. Yearly rules
@@ -55,6 +62,10 @@ confirm, postpone or cancel action.
 
 Re-enabling or another edit may restore an automatically cancelled occurrence,
 but never one cancelled manually.
+
+In practical terms, changing a rule updates only untouched current and future
+instances. Anything already confirmed, postponed or manually cancelled keeps
+the exact decision the owner made.
 
 ## Financial invariants
 

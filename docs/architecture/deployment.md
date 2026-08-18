@@ -34,8 +34,9 @@ uses separate named volumes for PostgreSQL and frontend dependencies.
 
 ## Security boundary
 
-The deployment assumes a trusted network. For remote access, put the single app
-entrypoint behind a VPN or HTTPS reverse proxy. Never publish PostgreSQL merely
+The owner-confirmed current-release boundary is a protected environment. For
+remote access, put the single app entrypoint behind a VPN or HTTPS reverse
+proxy; direct public-internet exposure is unsupported. Never publish PostgreSQL merely
 for convenience; use an explicit local override and loopback binding if an
 administrator genuinely needs host database access.
 
@@ -53,6 +54,6 @@ claim the single owner credential first.
 
 - Supported reverse proxies and forwarded-header configuration.
 - Container image publishing, signing and supported CPU architectures.
-- Migration failure recovery before the first public schema release.
+- Migration failure recovery and rollback policy for the pre-1.0 release line.
 - Whether health should later expose separate liveness and database-readiness
   endpoints without leaking operational detail.

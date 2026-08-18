@@ -1,6 +1,7 @@
 # Reports screen
 
-The owner-confirmed 0.2.0 navigation exposes a top-level «Отчёты» destination.
+The report developed on the intermediate `0.2.0` line and is recorded under
+`0.3.0` in the current changelog. It exposes a top-level «Отчёты» destination.
 Its first report answers how income or expense is distributed over a selected
 month or custom inclusive date range.
 

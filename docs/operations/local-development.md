@@ -69,8 +69,10 @@ existing environment containing `pip-tools`:
 
 For frontend dependencies, use npm and commit both `package.json` and
 `package-lock.json`. Use `npm ci`, not an unlocked install, in verification and
-containers. The `overrides` for MCP SDK and Hono address a development-only
-Angular CLI advisory and must be rechecked during Angular upgrades.
+containers. The `overrides` pin transitive MCP SDK, Hono and Nano ID versions in
+Angular build tooling. Recheck both their compatibility and current audit status
+during Angular upgrades; the latest verified result is recorded in
+`docs/project-status.md`.
 
 ## Migrations
 
@@ -78,7 +80,9 @@ Run Alembic from `backend` through the Make targets. Revision
 `0001_first_run_access` is the first public schema,
 `0002_harden_access_invariants` adds database checks, and
 `0003_accounts_categories` adds the first financial directories and ledger
-foundation. Do not rewrite a shipped revision; correct it with a later revision.
+foundation. The current single head is `0011_dynamic_fund_allocation`; the full
+chain is summarized in `backend/migrations/README.md`. Do not rewrite a shipped
+revision; correct it with a later revision.
 
 `make test-backend` keeps PostgreSQL scenarios opt-in so an isolated backend unit
 run does not create or drop databases. The aggregate `make test` and explicit

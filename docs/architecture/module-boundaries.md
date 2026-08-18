@@ -18,6 +18,11 @@
 | `imports` | parse, map, preview, duplicate candidates | owning modules' validation/write commands |
 | `backup` | versioned export and restore orchestration | module-owned export/import contracts |
 
+`liabilities`, `debts` and `imports` are planned ownership reservations with
+placeholder packages only; they do not expose runtime routes, tables or use
+cases in `0.4.0`. Their arrows below describe intended dependency direction,
+not current Python imports. All other rows are implemented boundaries.
+
 `app.core` owns technical configuration and database lifecycle, not business
 rules. `app.api` composes HTTP routes and cross-cutting concerns. Cross-module
 commands that share a transaction belong to `app.application`; it owns no tables
@@ -89,9 +94,10 @@ The application setup use case calls Auth, Categories and Backup only through
 their public contracts. Fresh setup commits credential, preferences, optional
 category templates and the first session atomically. First-run restore validates
 the document and replaces the new settings/data in that same transaction, so a
-failed restore cannot leave a partially initialized instance. A future module
-creating the first financial record must call settings' public currency-lock
-command in that write transaction.
+failed restore cannot leave a partially initialized instance. Any module that
+can create the first monetary/account record must call settings' public
+currency-lock command in that write transaction; the current Accounts
+application use case already does so.
 These Python-level commands and validators are exported by
 `app.modules.settings.contracts`; HTTP authentication and CSRF dependencies are
 composed by `app.api`, so the settings module does not depend on auth internals.

@@ -4,8 +4,10 @@ Hermes is an early-stage, single-owner, self-hosted web application for personal
 finance. It is intended for a home server or local computer and keeps its data
 independent of external cloud services.
 
-> **Current version:** `0.4.0` adds manual/dynamic fund allocation and
-> recalculates planned allocations from projected fund balances.
+> **Current internal version:** `0.4.0` adds manual/dynamic fund allocation and
+> recalculates planned allocations from projected fund balances. Versions
+> through `0.4.0` are development milestones; no public GitHub release has been
+> published yet.
 
 ## Project priorities and contributions
 
@@ -26,24 +28,28 @@ and the maintainer's available time.
 - base settings and master-password changes;
 - cash, debit and savings accounts with derived balances and archive/restore;
 - exact initial-balance adjustments stored in the operation ledger;
-- income/expense category trees with archive-safe lifecycle rules.
+- income/expense category trees with archive-safe lifecycle rules;
 - income, expense, transfer and balance-adjustment CRUD with exact movements;
-- collapsible journal filters, details and pagination with optimistic edit protection.
+- collapsible journal filters, details and pagination with optimistic edit protection;
 - virtual funds, physical/free coverage, manual or target-aware dynamic
-  percentage allocation, redistribution between accounts and funds, and progress.
+  percentage allocation, redistribution between accounts and funds, and progress;
 - recurring income, expense and transfer rules with selectable weekly weekdays,
   weekly/monthly intervals and exact dated snapshots;
 - monthly calendar, upcoming/overdue list and confirm/postpone/cancel actions;
-- idempotent confirmation that atomically links one posted financial operation.
+- idempotent confirmation that atomically links one posted financial operation;
 - per-account and combined balance forecasts with five horizons, risk warnings
-  and exact explanations for every changing date.
+  and exact explanations for every changing date;
+- income/expense reports for a month or custom period, with category drill-down;
+- an optional default account for new income and expense operations;
 - full versioned JSON export, preview and transactional restore.
 
-## Planned financial capabilities
+## Planned directions
 
 - simplified loans, installment plans and two-way debts;
-- reports, staged CSV/Excel import and versioned JSON backup/restore;
-- one local owner authenticated by an Argon2id password and server-side session.
+- staged CSV/Excel import with preview and duplicate review;
+- operation templates, improved search and saved filters;
+- automatic, rotated and optionally encrypted local backups;
+- release hardening for upgrades, reverse proxies and published container images.
 
 ## Stack
 
@@ -68,7 +74,9 @@ backend on `http://localhost:8000`.
 
 ## Production-like Compose run
 
-Review and replace the example database password in `.env`, then run:
+Review and replace the example database password in `.env`. For a loopback-only
+plain-HTTP run, also set `HERMES_COOKIE_SECURE=false`; keep it `true` when the
+browser reaches Hermes through HTTPS. Then run:
 
 ```bash
 make up

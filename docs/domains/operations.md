@@ -1,9 +1,14 @@
 # Financial operations
 
-## Owner-confirmed types
+## Domain vocabulary and implemented types
 
 `income`, `expense`, `transfer`, `balance_adjustment`, `loan_disbursement`,
 `loan_payment`, `debt_issuance` and `debt_repayment`.
+
+The current `0.4.0` operation schema and API implement only `income`, `expense`,
+`transfer` and `balance_adjustment`. The loan/debt names are owner-confirmed
+future vocabulary; they are not accepted enum values until those domains and
+their posting rules are designed.
 
 Operations may be edited and deleted unless another accepted domain fact must
 retain its identity. In beta.1, an operation linked from a confirmed expected
@@ -48,9 +53,12 @@ named foreign key protects the confirmed link on deletion. Only violation of
 that exact constraint is translated to the linked-operation domain conflict;
 unrelated integrity failures are not hidden behind it.
 
-The ability to edit/delete is owner-confirmed, but the audit representation is
-not. Soft deletion, immutable revision history and direct replacement are still
-alternatives.
+The ability to edit/delete is owner-confirmed. The current implementation keeps
+only the latest operation version: an edit replaces its movements and a delete
+removes the operation. The owner confirmed on 2026-08-18 that a separate
+immutable history of before/after values and deletions is not required for the
+current single-owner product. It may be reconsidered only if the product scope
+or reconciliation requirements change.
 
 ## Release 0.1.0-alpha.2 foundation
 
@@ -86,13 +94,13 @@ up to their root, separates income from expense, uses absolute category amounts
 and orders roots by amount before name. This read model powers dashboard
 drill-down without giving the dashboard access to private ledger tables.
 
-For this alpha, an operation mutation may not leave any affected physical
+For the current release, an operation mutation may not leave any affected physical
 account below zero. Affected accounts are locked in deterministic order before
-the ledger-derived post-mutation balances are checked. This conservative rule
-is an alpha assumption, not a final overdraft decision.
+the ledger-derived post-mutation balances are checked. The owner confirmed this
+rule on 2026-08-18. Overdraft remains a separately designed future capability.
 
 ## Remaining open questions
 
-- Whether reconciliation or an optional immutable audit trail is required.
+- Reconciliation requirements if future integrations change the product scope.
 - Rounding policy once currency precision is chosen.
-- Account-specific overdraft policy beyond the alpha-wide non-negative rule.
+- Account-specific overdraft policy beyond the current non-negative rule.

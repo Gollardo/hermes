@@ -8,14 +8,14 @@ accepted without an explicit project-owner decision.
 ## Release implementation decisions
 
 - [ADR 0001: Financial posting model for 0.1.0-alpha.3](0001-financial-posting-model.md)
-  records the separately reviewed alpha model and explicitly labels the
-  remaining owner-confirmation assumptions.
+  records the posting model and the owner-confirmed non-negative balance policy
+  for the current release; overdraft remains a separate future design.
 - [ADR 0002: Virtual fund ledger and allocation policy](0002-virtual-fund-ledger.md)
-  records the separately reviewed alpha.4 virtual posting, coverage, rounding
-  and archive model.
+  records the owner-confirmed virtual posting, coverage, rounding and archive
+  model for the current release.
 - [ADR 0003: Recurring rules and expected occurrences](0003-recurring-rules-and-occurrences.md)
-  records the beta.1 recurrence, materialization, rule-edit and confirmation
-  policies.
+  records the owner-confirmed recurrence limits, materialization, rule-edit and
+  confirmation policies for the current release.
 
 ## Template for a future ADR
 
@@ -50,9 +50,13 @@ Anything intentionally deferred.
 
 ## Candidate register
 
-The entries below are candidates, not retroactively accepted ADRs. Their status
-is `proposed` even where the owner has already supplied a strong direction;
-formal consequences and unresolved details still require review.
+The entries below are candidates, not retroactively accepted ADRs. Unless a
+candidate is explicitly linked to an implementation decision below, its status
+is `proposed` even where the owner has supplied a strong direction; formal
+consequences and unresolved details still require review.
+Candidates ADR-003, ADR-004 and ADR-006 predate the numbered implementation
+decisions above. They are retained as discovery history, but ADR 0001, 0002 and
+0003 are the authoritative records of the implemented baselines.
 
 ### ADR-001 Modular monolith
 
@@ -83,7 +87,8 @@ formal consequences and unresolved details still require review.
 
 ### ADR-003 Ledger-derived account balances
 
-- **Status:** proposed
+- **Status:** implemented baseline recorded by ADR 0001; immutable change
+  history is explicitly not required for the current product
 - **Context:** freely editable balance fields can drift from operation history.
   The owner confirmed operation history as source of truth and initial balance
   as an adjustment operation.
@@ -91,20 +96,20 @@ formal consequences and unresolved details still require review.
   movements; never expose direct balance mutation.
 - **Known alternatives:** mutable balance column; cached balance projection with
   reconciliation; full accounting double-entry ledger.
-- **Questions:** exact movement/balancing model; whether and how to cache; audit
-  semantics for freely edited/deleted operations; concurrency controls.
+- **Questions:** whether and how to cache; future reconciliation requirements
+  if the product scope changes.
 
 ### ADR-004 Virtual fund allocation model
 
-- **Status:** proposed
+- **Status:** accepted current-release policy recorded by ADR 0002
 - **Context:** funds earmark real account money, can span accounts and must move
   atomically with relevant physical operations.
 - **Proposed choice:** represent per-account virtual fund movements and derive
   fund positions; enforce percentage and physical-coverage invariants.
 - **Known alternatives:** funds as accounts; a mutable allocation snapshot;
   envelope-only totals without account placement.
-- **Questions:** rounding and remainder rules; fund-transfer command ownership;
-  negative balances; concurrent invariant enforcement.
+- **Questions:** future lifecycle of explicit allocation events beyond the
+  accepted rounding, remainder, ownership and coverage rules.
 
 ### ADR-005 Single-user server-side authentication
 
@@ -116,23 +121,23 @@ formal consequences and unresolved details still require review.
 - **Known alternatives:** JWT bearer tokens; HTTP Basic authentication; reverse
   proxy authentication; multi-user identity model.
 - **Implemented alpha baseline:** seven-day database sessions, hashed opaque
-  tokens, SameSite cookies, double-submit CSRF and persistent instance-wide
-  throttling. These are documented release assumptions, not a retroactively
-  accepted ADR.
-- **Questions:** recovery flow, idle expiry, reverse-proxy cookie behavior and
-  whether the alpha defaults should become long-term policy.
+  tokens, SameSite cookies, double-submit CSRF, 30-minute idle expiry and
+  persistent instance-wide throttling. These are documented release
+  assumptions, not a retroactively accepted ADR.
+- **Questions:** recovery flow, reverse-proxy cookie behavior and whether the
+  current lifetime/idle/throttle defaults should become long-term policy.
 
 ### ADR-006 Expected occurrence materialization
 
-- **Status:** proposed
+- **Status:** accepted current-release policy recorded by ADR 0003
 - **Context:** recurring intent must be visible and adjustable without changing
   actual balances until confirmation.
 - **Proposed choice:** materialize dated expected occurrences with lifecycle
   states; confirmation atomically creates and links one posted operation.
 - **Known alternatives:** calculate recurrences only on read; post future
   operations immediately; use an external scheduler/queue.
-- **Questions:** generation horizon and trigger, recurrence expression, timezones,
-  idempotency key and rule-edit behavior.
+- **Questions:** future richer recurrence expressions, background
+  materialization and timezone migration.
 
 ### ADR-007 Angular production build delivery
 
@@ -154,7 +159,10 @@ formal consequences and unresolved details still require review.
 - **Proposed choice:** module-coordinated JSON document with `format`,
   `schema_version`, `app_version`, `exported_at`, exact decimal strings and a
   transactional restore.
+- **Implemented baseline:** `hermes-json-backup` schema 1, canonical SHA-256
+  integrity, a 50 MiB pre-parse limit, destination-owner re-authentication and
+  transactional restore through module-owned persistence contracts.
 - **Known alternatives:** PostgreSQL-only dumps; per-domain files; unversioned
   JSON; archive containing JSON plus attachments.
-- **Questions:** credential inclusion, compatibility window, validation schema,
-  archive/encryption support and large-dataset streaming.
+- **Questions:** compatibility beyond schema 1, archive/encryption support,
+  authenticity/signing and large-dataset streaming.

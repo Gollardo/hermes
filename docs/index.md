@@ -10,6 +10,10 @@ DTO and table catalogues.
   state, active milestone, known limitations, risks and next recommended action.
 - [Roadmap](roadmap.md) records the intended sequence and scope of milestones. It
   is not a calendar commitment or a substitute for detailed domain design.
+- [Changelog](../CHANGELOG.md) records the versioned change history.
+- [Project overview](../README.md), [security policy](../SECURITY.md) and
+  [contribution guide](../CONTRIBUTING.md) are the public release-facing entry
+  points.
 
 Start development work by comparing the requested change with both documents.
 When a meaningful change alters implemented capabilities, verification results,

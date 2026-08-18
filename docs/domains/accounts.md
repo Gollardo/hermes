@@ -13,8 +13,9 @@ its available physical balance.
 ## Terms and invariants
 
 - **Physical balance**: sum of posted physical money movements for an account.
-- **Available physical balance**: physical amount eligible to cover funds; its
-  exact overdraft/pending definition remains open.
+- **Available physical balance**: in the current release, the non-negative
+  physical balance eligible to cover funds. Pending transactions and overdraft
+  may refine this definition only through a later explicit design.
 - **Free money**: available physical balance not virtually assigned to funds.
 
 Balances are calculated with exact decimal values: Python `Decimal`, PostgreSQL
@@ -28,9 +29,14 @@ lose precision. Binary `float` is forbidden.
 - Creating the first account locks the singleton base currency in the same transaction.
 - A non-zero initial balance creates one `balance_adjustment` and one account movement.
 - A zero initial balance creates no synthetic zero movement.
-- Initial balances are non-negative until overdraft semantics are explicitly designed.
+- Initial and resulting physical balances are non-negative in the current
+  release. Overdraft semantics require a later explicit design.
 - Edit does not accept a balance field. Balance is always the sum of movements.
 - Archive and restore preserve ledger history. Physical deletion is allowed only without movements.
+- Archiving is allowed while physical history or fund positions exist. Archived
+  accounts remain readable and participate in combined balances/forecasting,
+  but new operations require active references; an edit may retain its existing
+  archived account reference.
 - Physical deletion locks the account before checking history, so a concurrent
   posting either observes a deleted account or commits first and makes deletion
   return the normal history conflict.
@@ -46,6 +52,8 @@ caller to overwrite the derived balance.
 ## Open questions
 
 - Currency-specific precision and rounding beyond the alpha-wide four-decimal envelope.
-- Whether later operations may produce negative physical balances or debit overdrafts.
-- Account archive/close behavior when the ledger or fund allocations exist.
+- A future account-specific overdraft model; it is not enabled by the current
+  non-negative policy.
+- Whether the implemented archive-while-preserving ledger/fund positions policy
+  should become the long-term account-closing model.
 - Treatment of pending bank transactions, which are not in current scope.

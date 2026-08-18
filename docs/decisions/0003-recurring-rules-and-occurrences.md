@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted for `0.1.0-beta.1`; revisit after real calendar use.
+Accepted for the current release; recurrence and materialization limits
+confirmed by the project owner on 2026-08-18. Richer recurrence remains a
+separate future capability rather than an unresolved release policy.
 
 ## Context
 

@@ -1,9 +1,8 @@
 # ADR 0001: Financial posting model for 0.1.0-alpha.3
 
-- **Status:** implementation decision for alpha review
-- **Date:** 2026-08-02
-- **Decision owner:** not yet owner-confirmed; conservative assumptions below
-  are adopted only to implement the requested release scope.
+- **Status:** accepted for the current release
+- **Date:** 2026-08-02; owner confirmation 2026-08-18
+- **Decision owner:** project owner
 
 ## Context
 
@@ -48,11 +47,12 @@ prevents a silent lost update. The database owns referential integrity and
 cascades movement deletion with the header; the operations service owns the
 cross-row shape rules that SQL row checks cannot express safely.
 
-For this alpha, every account type has the same conservative availability
+For the current release, every account type has the same availability
 policy: the ledger-derived balance may not become negative after a create, edit
 or delete. The check is performed while affected accounts are locked. This is
-an alpha assumption rather than a permanent product decision; overdrafts
-require a separate account-level policy and UI before they can be enabled.
+an owner-confirmed current policy rather than a promise that overdraft will
+never exist; overdrafts require a separate account-level policy and UI before
+they can be enabled.
 
 Historical reads retain archived account and category names. New references
 must be active. An edit may retain its existing archived references, but cannot
@@ -77,6 +77,7 @@ reparenting and archival remain separate lifecycle changes.
 
 Balances need no mutable cache and are fully recoverable from movements.
 Income/expense are intentionally not double-entry accounting because their
-external counterparty is outside the current account universe. A future audit
-trail can preserve revisions, but this release replaces movements in place and
-records only the current version.
+external counterparty is outside the current account universe. The current
+single-owner product intentionally replaces movements in place and records only
+the current version; the owner confirmed that a separate immutable change
+history is not required for this scope.
