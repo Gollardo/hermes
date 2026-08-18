@@ -15,6 +15,11 @@ Owner-confirmed future inputs, not implemented yet, are:
 - credit/installment payments;
 - debt repayments.
 
+Owner-confirmed future use is scenario comparison: one coherent baseline can be
+recalculated with structured hypothetical changes to answer “What if?”. The
+hypothesis is read-only and cannot become an actual or expected operation
+without a separate explicit command. See [Financial scenarios](scenarios.md).
+
 It reports the future balance series, minimum future balance, a possible first
 negative-balance date and its exact balance, and the operations influencing
 changes. If the starting snapshot is already negative, that current balance is
@@ -46,6 +51,11 @@ Forecasting is a read-side calculation. It combines ledger-derived current
 balances with public planned-occurrence and obligation contracts, orders their
 effects on a timeline and applies exact decimal arithmetic. It cannot confirm or
 post expected operations. See the [forecast diagram](../architecture/data-flow.md).
+
+A future Scenarios boundary may reuse a pure projection calculation with extra
+structured events, but an AI adapter cannot supply authoritative balances or
+bypass Forecasting's exact arithmetic. Baseline and alternative must share the
+same snapshot, scope, horizon, currency and ordering rules.
 
 ## Implemented policy (beta.2 baseline, extended through 0.4.0)
 
@@ -111,3 +121,5 @@ post expected operations. See the [forecast diagram](../architecture/data-flow.m
 - Whether future multi-currency accounts require separate series or explicit FX
   scenarios; implicit conversion remains prohibited.
 - Whether liabilities and debts join the projection after those domains exist.
+- Which pure projection contract permits hypothetical events without allowing a
+  read-side scenario to mutate Scheduling or Operations.

@@ -4,6 +4,12 @@ Hermes is an early-stage, single-owner, self-hosted web application for personal
 finance. It is intended for a home server or local computer and keeps its data
 independent of external cloud services.
 
+Its long-term north star is decision-first planning: not only showing where
+money went, but helping the owner understand what will happen if they make a
+financial decision. The future **Oracle · What if?** capability will compare
+hypothetical scenarios with the deterministic baseline forecast; it is planned,
+not part of the current release.
+
 > **Current internal version:** `0.4.0` adds manual/dynamic fund allocation and
 > recalculates planned allocations from projected fund balances. Versions
 > through `0.4.0` are development milestones; no public GitHub release has been
@@ -45,6 +51,8 @@ and the maintainer's available time.
 
 ## Planned directions
 
+- deterministic “What if?” decision scenarios with optional local-language
+  assistance that never replaces exact financial calculation;
 - simplified loans, installment plans and two-way debts;
 - staged CSV/Excel import with preview and duplicate review;
 - operation templates, improved search and saved filters;

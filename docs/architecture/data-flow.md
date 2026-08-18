@@ -212,3 +212,28 @@ dynamic mode recalculates before every ordered occurrence from projected fund
 balances, using the same exact Funds calculator as actual commands. It is an
 additional read model: failure to
 load it does not disguise or invalidate a successfully calculated cash forecast.
+
+## Future what-if scenario
+
+This flow records confirmed direction, not implemented runtime components:
+
+```mermaid
+flowchart LR
+    Input["Text or structured input"] --> Adapter["Optional local AI adapter"]
+    Input --> Draft["Structured scenario draft"]
+    Adapter --> Draft
+    Draft --> Review["User reviews material fields"]
+    Review --> Scenario["Deterministic scenario calculation"]
+    Baseline["Coherent baseline forecast"] --> Scenario
+    Scenario --> Compare["Baseline vs alternative"]
+    Compare --> Answer["Answer, risks, assumptions and sources"]
+    Answer --> Discard["Discard by default"]
+    Answer --> Save["Optional saved scenario"]
+    Answer --> PlanDraft["Explicit plan draft"]
+```
+
+The adapter never supplies authoritative arithmetic. Scenario calculation uses
+exact structured values and the same snapshot, ordering and scope as the
+baseline. `PlanDraft` opens the owning composer; it does not write an expected
+or actual operation. Any vector or semantic index is derived and rebuildable,
+not part of financial truth.

@@ -42,6 +42,7 @@ question by itself.
 - [Virtual funds](domains/funds.md)
 - [Scheduling](domains/scheduling.md)
 - [Forecasting](domains/forecasting.md)
+- [Financial scenarios](domains/scenarios.md)
 - [Reports](domains/reports.md)
 - [Liabilities and debts](domains/liabilities-and-debts.md)
 - [Import and export](domains/import-export.md)
@@ -58,6 +59,7 @@ question by itself.
   [funds](ui-ux/screens/funds.md),
   [calendar](ui-ux/screens/calendar.md),
   [forecast](ui-ux/screens/forecast.md),
+  [Oracle · What if?](ui-ux/screens/scenarios.md),
   [reports](ui-ux/screens/reports.md),
   [transactions](ui-ux/screens/transactions.md)
 - [Open UI/UX questions](ui-ux/open-questions.md)

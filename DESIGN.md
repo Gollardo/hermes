@@ -48,6 +48,33 @@ CSS values into a permanent design system or approve unimplemented screens.
    administrative noise.
 10. Use human financial language; do not expose accounting internals as the
     primary interface vocabulary.
+11. Treat a forecast as a tool for comparing decisions, not as a chart to
+    observe in isolation.
+12. Keep deterministic financial calculation authoritative; AI may translate
+    intent and explain results but must never become the source of financial
+    truth.
+
+### Decision scenarios and AI
+
+- MUST distinguish actual facts, confirmed plans, hypothetical scenarios and
+  model-derived estimates without relying on color alone.
+- MUST compare a what-if result with the same-scope baseline and show the
+  changed assumptions, horizon, minimum balance, risk windows and material
+  effects.
+- MUST keep a scenario read-only until the user separately chooses to save it
+  or create a plan draft. A chat or natural-language request never posts an
+  operation directly.
+- MUST show the structured amount, date, account/fund scope and action inferred
+  from natural language before calculation or saving. Missing material inputs
+  require clarification and must not be silently invented.
+- MUST allow the complete scenario workflow without AI through ordinary
+  structured controls.
+- MUST treat local AI as an optional adapter between user intent and public
+  application contracts. Financial arithmetic, invariants and scenario
+  comparison remain exact and deterministic.
+- MUST NOT describe an AI-generated estimate as a fact or guaranteed future.
+- SHOULD show both the user's configured stop-loss and an explainable
+  system-suggested risk boundary when they differ.
 
 ## Mandatory Rules
 

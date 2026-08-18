@@ -148,6 +148,33 @@ decisions above. They are retained as discovery history, but ADR 0001, 0002 and
   FastAPI application image, which serves them after `/api` routes.
 - **Known alternatives:** Nginx/Caddy sidecar; separately exposed frontend;
   server-side rendering.
+
+### ADR-008 Deterministic what-if scenario boundary
+
+- **Status:** proposed candidate; product direction confirmed, detailed design
+  not accepted
+- **Context:** Hermes should compare the consequences of a hypothetical
+  financial decision without changing actual facts or confirmed plans.
+- **Proposed choice:** apply structured hypothetical changes to the same coherent
+  snapshot and exact projection rules as the baseline; keep scenarios read-only
+  and require a separate explicit plan-draft flow.
+- **Known alternatives:** mutate and roll back a temporary plan; clone financial
+  tables; let an AI model calculate the answer.
+- **Questions:** initial command set, snapshot/version strategy, persistence and
+  the exact Forecasting/Scenarios ownership split.
+
+### ADR-009 Optional local assistant boundary
+
+- **Status:** proposed candidate; owner-confirmed safety and fallback direction
+- **Context:** natural language can simplify scenario construction, but model
+  output is probabilistic and personal financial data should remain local.
+- **Proposed choice:** an optional local adapter produces a reviewable structured
+  draft and grounded explanation; deterministic services calculate outcomes,
+  and the complete workflow remains available without AI.
+- **Known alternatives:** mandatory bundled model; external AI API; direct
+  model-to-ledger tools; structured UI only.
+- **Questions:** runtime and model packaging, resource budget, update policy,
+  evaluation corpus and whether semantic retrieval is justified.
 - **Questions:** cache headers and compression; reverse-proxy guidance; CSP;
   whether FastAPI static serving remains adequate under measured load.
 

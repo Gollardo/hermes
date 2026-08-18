@@ -12,16 +12,19 @@
 | `funds` | fund definitions, percentages, virtual movements | fund posting contracts and application coordination with physical ledger reads |
 | `scheduling` | recurrence rules and expected occurrences | application-coordinated confirmation through operations and optional funds contracts |
 | `forecasting` | future-balance calculations | read contracts from ledger, funds and plans |
+| `scenarios` | hypothetical decision drafts, comparisons and optional saved scenarios | forecasting projection and owning modules' public reads |
+| `assistant` | optional local intent extraction and grounded explanation | scenarios public contract only; no financial writes |
 | `liabilities` | credits and installment plans | planned/payment integration contracts |
 | `debts` | `i_owe` and `owed_to_me` obligations | repayment posting contract |
 | `reports` | reporting read models | public read contracts only |
 | `imports` | parse, map, preview, duplicate candidates | owning modules' validation/write commands |
 | `backup` | versioned export and restore orchestration | module-owned export/import contracts |
 
-`liabilities`, `debts` and `imports` are planned ownership reservations with
-placeholder packages only; they do not expose runtime routes, tables or use
-cases in `0.4.0`. Their arrows below describe intended dependency direction,
-not current Python imports. All other rows are implemented boundaries.
+`scenarios`, `assistant`, `liabilities`, `debts` and `imports` are planned
+ownership reservations. Only the last three currently have placeholder
+packages; none exposes runtime routes, tables or use cases in `0.4.0`. Their
+arrows below describe intended dependency direction, not current Python
+imports. All other rows are implemented boundaries.
 
 `app.core` owns technical configuration and database lifecycle, not business
 rules. `app.api` composes HTTP routes and cross-cutting concerns. Cross-module
@@ -67,6 +70,8 @@ flowchart TB
     Forecasting --> Scheduling
     Forecasting --> Liabilities
     Forecasting --> Debts
+    Scenarios --> Forecasting
+    Assistant --> Scenarios
     Reports --> Operations
     Reports --> Categories
     Imports --> Operations
@@ -121,3 +126,7 @@ composed by `app.api`, so the settings module does not depend on auth internals.
 - Whether liabilities and debts remain separate modules once detailed lifecycle
   use cases are designed.
 - Which stable public read contracts reporting and forecasting need.
+- Whether scenario calculation becomes a separate module or remains an
+  application/read-side use case around a pure Forecasting projection.
+- How the optional local assistant is packaged without making model runtime,
+  vector storage or external infrastructure mandatory for core operation.

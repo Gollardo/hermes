@@ -15,7 +15,8 @@ release configuration.
 
 The production Angular build and `/api` share one HTTP entrypoint. Development
 may use a separate Angular dev server. Data must not depend on external cloud
-services.
+services. A future local AI adapter is optional: disabling or failing it cannot
+remove structured forecasting or scenario capabilities.
 
 ```mermaid
 flowchart LR
@@ -77,3 +78,5 @@ private tables or mutable implementation objects.
 - Whether the account-then-fund row locking convention adopted for `alpha.4`
   remains sufficient at materially higher write concurrency.
 - What compatibility window will backup restore support across app versions?
+- Which local-model runtimes and resource limits can be supported without
+  changing the one-deployment modular-monolith boundary?
