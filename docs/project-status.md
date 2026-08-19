@@ -499,10 +499,11 @@ access. Direct public-internet exposure is unsupported.
 - Production Angular build on 2026-08-18 and the previously checked production
   Docker image build pass; `npm ci` inside the image reported zero
   vulnerabilities. Angular warns that `forecast.css` 5.71 KiB, `funds.css`
-  6.86 KiB, `scheduling.css` 5.92 KiB, `forecast-chart.css` 5.65 KiB,
-  `app.css` 4.89 KiB, and compiled `directory.css` uses of 6.86/4.35 KiB exceed
-  the 4 KiB `anyComponentStyle` warning budget. This is non-blocking but needs
-  later shared-style decomposition.
+  6.86 KiB, `forecast-chart.css` 5.65 KiB, `app.css` 4.89 KiB, and compiled
+  `directory.css` uses of 6.86/4.35 KiB exceed the 4 KiB `anyComponentStyle`
+  warning budget. Scheduling's calendar and action/rule styles are now separate
+  scoped files below that budget, so its former `scheduling.css` warning is
+  resolved without raising the threshold or moving selectors into global CSS.
 - Production-like Compose e2e on a separate clean volume passed setup →
   authenticated shell → settings update → logout → login with no browser-console
   errors.
@@ -555,7 +556,7 @@ access. Direct public-internet exposure is unsupported.
   audit, compatible dependency update, and full recheck are required without
   expanding this release's functional diff.
 - Style-budget warnings remain for `funds.css`, `forecast.css`,
-  `forecast-chart.css`, `scheduling.css`, `directory.css`, and `app.css`.
+  `forecast-chart.css`, shared `directory.css`, and `app.css`.
 - Session lifetime, password policy, and throttle are documented alpha defaults,
   not approved long-term policy.
 - Password recovery is absent; losing the master password must not reopen normal

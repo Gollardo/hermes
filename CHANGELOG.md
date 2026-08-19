@@ -34,6 +34,9 @@ assigned.
 - Series shifting locks only the selected occurrence and mutable later
   candidates; confirmed and manual exceptions no longer receive unnecessary row
   locks.
+- Calendar and occurrence-action styles are split into separate scoped component
+  files so Scheduling-owned styles stay below the component-style warning
+  budget without changing its layout or interaction patterns.
 - Application version advanced to 0.4.5.
 
 - All UI monetary amounts and percentages now use spaces between thousand

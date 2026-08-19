@@ -564,6 +564,8 @@ gate.**
   series-shift preservation marker instead of an offset comparison.
 - [x] Narrow series-shift row locks to the selected occurrence and mutable later
   candidates without weakening atomicity or preserved-exception semantics.
+- [x] Decompose Scheduling's scoped calendar and action styles so its owned CSS
+  stays within the component-style budget without changing established UX.
 - [x] Cover validation, API/UI behavior, domain invariants and error paths.
 - [x] Advance the internal application version to `0.4.5`.
 

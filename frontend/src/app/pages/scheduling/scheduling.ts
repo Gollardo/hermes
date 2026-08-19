@@ -126,7 +126,7 @@ interface CalendarDay {
   selector: 'app-scheduling-page',
   imports: [ReactiveFormsModule, RouterLink, MoneyPipe, DateTextPipe, EntityCombobox, DecimalInput],
   templateUrl: './scheduling.html',
-  styleUrls: ['../directory.css', './scheduling.css'],
+  styleUrls: ['../directory.css', './scheduling.css', './scheduling-actions.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SchedulingPage implements OnInit {
