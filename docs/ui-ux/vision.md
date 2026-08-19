@@ -3,8 +3,8 @@
 ## Document status
 
 This document combines the owner-confirmed product direction from 2026-08-02,
-the current `0.4.0` interface approved on 2026-08-18, and hypotheses for future
-development. The current implementation is the baseline for the first public
+the `0.4.0` interface baseline approved on 2026-08-18, current `0.4.5`
+extensions within it, and hypotheses for future development. The current implementation is the baseline for the first public
 release, but this document does not define a final design system or approve
 screens that have not yet been implemented.
 

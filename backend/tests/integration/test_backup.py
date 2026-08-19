@@ -1,4 +1,5 @@
 from copy import deepcopy
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -120,7 +121,7 @@ def test_export_preview_and_transactional_restore_on_initialized_database(
         document = exported.json()
         assert document["format"] == "hermes-json-backup"
         assert document["schema_version"] == 1
-        assert document["app_version"] == "0.4.0"
+        assert document["app_version"] == "0.4.5"
         assert document["data"]["account_movements"][0]["amount"] == "125.5000"
         assert "password" not in exported.text
         assert "sessions" not in document["data"]
@@ -232,10 +233,37 @@ def test_restore_complete_backup_into_clean_initialized_target(
                 "description": "Food",
                 "account_id": account["id"],
                 "category_id": category["id"],
+                "shift_future_on_postpone": True,
             },
         )
         assert rule.status_code == 201
+        rule_data = rule.json()
+        occurrence = next(
+            item
+            for item in client.get("/api/v1/scheduling/occurrences?page_size=367").json()["items"]
+            if item["rule_id"] == rule_data["id"]
+        )
+        shifted_due_on = date.fromisoformat(occurrence["due_on"]) + timedelta(days=4)
+        postponed = client.post(
+            f"/api/v1/scheduling/occurrences/{occurrence['id']}/postpone",
+            headers=headers,
+            json={
+                "version": occurrence["version"],
+                "rule_version": rule_data["version"],
+                "due_on": shifted_due_on.isoformat(),
+            },
+        )
+        assert postponed.status_code == 200
         document = client.get("/api/v1/backup/export").json()
+        preserved_record = next(
+            item
+            for item in document["data"]["expected_occurrences"]
+            if item["id"] != occurrence["id"]
+        )
+        preserved_record["status"] = "cancelled"
+        preserved_record["preserve_from_series_shift"] = True
+        preserved_id = preserved_record["id"]
+        document = seal_backup(BackupDocument.model_validate(document)).model_dump(mode="json")
 
         factory = app.state.session_factory
         with factory.begin() as session:
@@ -278,7 +306,23 @@ def test_restore_complete_backup_into_clean_initialized_target(
         assert restored.json()["counts"]["fund_movements"] == 1
         assert restored.json()["counts"]["recurring_rules"] == 1
         assert client.get("/api/v1/funds/summary").json()["total_reserved"] == "10.0000"
-        assert len(client.get("/api/v1/scheduling/rules").json()) == 1
+        restored_rule = client.get("/api/v1/scheduling/rules").json()[0]
+        assert restored_rule["shift_future_on_postpone"] is True
+        assert restored_rule["series_shift_days"] == 4
+        restored_occurrence = next(
+            item
+            for item in client.get("/api/v1/scheduling/occurrences?page_size=367").json()["items"]
+            if item["rule_id"] == restored_rule["id"]
+        )
+        assert restored_occurrence["series_shift_days"] == 4
+        assert restored_occurrence["due_on"] == shifted_due_on.isoformat()
+        restored_preserved = next(
+            item
+            for item in client.get("/api/v1/scheduling/occurrences?page_size=367").json()["items"]
+            if item["id"] == preserved_id
+        )
+        assert restored_preserved["status"] == "cancelled"
+        assert restored_preserved["preserve_from_series_shift"] is True
 
 
 def test_backup_round_trips_dynamic_fund_allocation_mode(

@@ -80,7 +80,7 @@ Run Alembic from `backend` through the Make targets. Revision
 `0001_first_run_access` is the first public schema,
 `0002_harden_access_invariants` adds database checks, and
 `0003_accounts_categories` adds the first financial directories and ledger
-foundation. The current single head is `0011_dynamic_fund_allocation`; the full
+foundation. The current single head is `0012_recurring_series_shift`; the full
 chain is summarized in `backend/migrations/README.md`. Do not rewrite a shipped
 revision; correct it with a later revision.
 

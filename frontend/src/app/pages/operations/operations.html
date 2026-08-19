@@ -89,11 +89,14 @@
                 </label>
                 <input
                   id="operation-amount"
-                  appDecimalInput
+                  appDecimalInput="expression"
                   formControlName="amount"
-                  inputmode="decimal"
+                  inputmode="text"
                   placeholder="0.00"
                 />
+                <p class="hint" id="operation-amount-hint">
+                  Можно сложить или вычесть: 354,23 + 234,54 − 23,32.
+                </p>
               </div>
               <div class="form-field">
                 <label for="operation-account">
@@ -158,9 +161,9 @@
                     <label for="operation-fund-amount">Виртуальная часть перевода</label>
                     <input
                       id="operation-fund-amount"
-                      appDecimalInput
+                      appDecimalInput="expression"
                       formControlName="fundAmount"
-                      inputmode="decimal"
+                      inputmode="text"
                       placeholder="0.00"
                     />
                   </div>

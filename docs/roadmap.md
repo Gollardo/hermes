@@ -12,7 +12,7 @@ in [index.md](./index.md). The actual version history is in
 [CHANGELOG.md](../CHANGELOG.md): the roadmap must not assign an already-used
 version number to a new future scope.
 
-Versions through `0.4.0` are the owner's internal development milestones, not
+Versions through `0.4.5` are the owner's internal development milestones, not
 published GitHub Releases. The first public tag starts the normal release
 process; its version is selected separately after the current release gate is
 closed.
@@ -551,7 +551,23 @@ gate.**
 
 ---
 
-# Proposed global plan after 0.4.0
+# 0.4.5 — amount expressions and recurring-series shifts
+
+**Status: implemented on 2026-08-19; owner acceptance on real data remains.**
+
+- [x] Evaluate addition and subtraction exactly in monetary operation and
+  scheduling inputs without binary floating point.
+- [x] Add an opt-in rule policy that propagates a postpone delta to untouched
+  later occurrences while preserving confirmed and manual decisions.
+- [x] Persist the policy and accumulated offset through migration and backups.
+- [x] Model automatically cancelled dated exceptions with an explicit
+  series-shift preservation marker instead of an offset comparison.
+- [x] Cover validation, API/UI behavior, domain invariants and error paths.
+- [x] Advance the internal application version to `0.4.5`.
+
+---
+
+# Proposed global plan after 0.4.5
 
 This plan is a product hypothesis for discussion, not an approved detailed
 design or calendar commitment. A version number marks a convenient boundary of
@@ -575,7 +591,7 @@ An unfinished item is never moved silently into the next release.
 
 ## Before 1.0.0 — trial use and stable self-hosted core preparation
 
-- [ ] Perform owner acceptance of `0.4.0` on a restored copy of real data.
+- [ ] Perform owner acceptance of `0.4.5` on a restored copy of real data.
 - [ ] Define supported PostgreSQL, Python, Node, Docker, and browser versions.
 - [ ] Verify upgrades and backup/restore between public versions.
 - [ ] Add automated local backups, validation, and limited rotation.
@@ -794,7 +810,7 @@ prematurely on multi-tenant or cloud infrastructure.
 
 # Version and release policy
 
-- The entire `0.x` series is for internal trial use. Versions `0.1.0`–`0.4.0`
+- The entire `0.x` series is for internal trial use. Versions `0.1.0`–`0.4.5`
   and subsequent numbers before a separate owner decision are not stable public
   releases.
 - The first stable public release will be `1.0.0`. The owner announces its

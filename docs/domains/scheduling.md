@@ -7,7 +7,8 @@ occurrences. A user may `confirm`, `postpone` or `cancel` an occurrence. Interna
 status candidates are `pending`, `confirmed`, `postponed` and `cancelled`.
 
 Only confirmation creates an actual financial operation that affects balance.
-Postponing one occurrence need not modify its source recurrence rule.
+Postponing one occurrence changes only that occurrence by default. A rule may
+explicitly opt into shifting its untouched later occurrences by the same delta.
 
 ## Terms and boundary
 
@@ -46,6 +47,13 @@ unbounded rule itself continues beyond that stored one-year window.
   concurrent materialization cannot create duplicates.
 - `scheduled_on` remains the source identity. Postponing changes only `due_on`
   and keeps persistent status `postponed`.
+- A rule-level accumulated day offset controls newly materialized occurrences
+  after a series shift. Each occurrence stores its applied offset snapshot.
+- An automatically cancelled occurrence preserved by a later series shift has
+  an explicit preservation marker. The marker is valid only while the
+  occurrence remains automatically cancelled and is mutually exclusive with a
+  manual modification; its offset snapshot continues to describe the date
+  actually applied to that occurrence.
 
 ## Rule editing policy
 
@@ -61,7 +69,10 @@ Past pending occurrences are preserved as overdue and require an explicit
 confirm, postpone or cancel action.
 
 Re-enabling or another edit may restore an automatically cancelled occurrence,
-but never one cancelled manually.
+but never one cancelled manually. If a later series shift preserves an
+automatically cancelled occurrence as a dated exception, subsequent
+materialization does not restore it. This protection is represented by the
+explicit preservation marker rather than inferred from offset differences.
 
 In practical terms, changing a rule updates only untouched current and future
 instances. Anything already confirmed, postponed or manually cancelled keeps
@@ -79,7 +90,17 @@ the exact decision the owner made.
   snapshot at confirmation time; missing positive percentages fail explicitly.
 - A failed posting leaves the occurrence actionable and unlinked.
 - Confirming an already confirmed occurrence is idempotent.
-- Postponing one occurrence never changes its rule or siblings.
+- With series shifting disabled, postponing changes neither the rule nor its
+  siblings and depends only on the occurrence version. With it enabled, the
+  request also carries the rule version; the rule offset and later non-confirmed,
+  non-manually-modified occurrences move by the same exact calendar-day delta
+  in one transaction. Earlier, confirmed and manually changed occurrences are
+  preserved.
+- Disabling the option later stops future propagation but does not undo shifts
+  already applied.
+- Rule synchronization also revisits already materialized future occurrences
+  whose shifted due dates lie beyond the current creation horizon. Disabling or
+  shortening a rule therefore cannot leave those occurrences actionable.
 - A concurrent rule edit either precedes confirmation and invalidates its stale
   optimistic version, or follows it and preserves the confirmed snapshot.
 

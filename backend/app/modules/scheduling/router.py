@@ -21,6 +21,7 @@ from app.modules.scheduling.schemas import (
     OccurrenceConfirmRequest,
     OccurrencePageResponse,
     OccurrencePostponeRequest,
+    OccurrencePostponeResponse,
     OccurrenceVersionRequest,
     RecurringRuleCreateRequest,
     RecurringRuleResponse,
@@ -193,17 +194,18 @@ def confirm(
 
 
 @write_router.post(
-    "/occurrences/{occurrence_id}/postpone", response_model=ExpectedOccurrenceResponse
+    "/occurrences/{occurrence_id}/postpone", response_model=OccurrencePostponeResponse
 )
 def postpone(
     occurrence_id: UUID, payload: OccurrencePostponeRequest, session: DatabaseSession
-) -> ExpectedOccurrenceResponse:
+) -> OccurrencePostponeResponse:
     try:
         return postpone_occurrence(
             session,
             occurrence_id,
             due_on=payload.due_on,
             expected_version=payload.version,
+            expected_rule_version=payload.rule_version,
         )
     except (
         ExpectedOccurrenceNotFoundError,

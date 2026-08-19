@@ -6,16 +6,16 @@ map lives in [index.md](./index.md).
 
 ## Last updated
 
-2026-08-18
+2026-08-19
 
 ## Current phase
 
-**Internal application version `0.4.0` is implemented, but the public release
+**Internal application version `0.4.5` is implemented, but the public release
 gate remains open.** Previous version numbers were owner development milestones
 and were not published as GitHub Releases or public git tags.
 
-The next action is owner acceptance of `0.4.0` dynamic allocation and sequential
-forecasting on real data, followed by a decision on the first public tag.
+The next action is owner acceptance of `0.4.5` on restored real data, followed
+by a decision on the first public tag.
 
 The owner confirmed the version policy on 2026-08-18: the current `0.x` series
 remains internal testing, the first stable public release will be `1.0.0` only
@@ -27,7 +27,7 @@ Hermes Online feasibility program is outside the current release gate.
 The owner also changed the long-term north star on 2026-08-18. Hermes should
 primarily answer: “What will happen if I make this financial decision now?”. The
 future capability is named Oracle, and its primary scenario mode is What if?.
-The direction is confirmed but not implemented in `0.4.0` and does not expand
+The direction is confirmed but not implemented in `0.4.5` and does not expand
 the current release gate.
 
 The owner confirmed the ADR 0001 no-negative-balance policy, ADR 0002 fund
@@ -83,6 +83,10 @@ access. Direct public-internet exposure is unsupported.
   dot as equivalent decimal separators. Shared frontend utilities implement the
   contract with exact `ROUND_HALF_UP`; exact server-side 100% breakdowns close
   visually by largest remainder without changing source data.
+- Version `0.4.5` lets monetary operation and scheduling fields evaluate exact
+  addition/subtraction expressions on blur and before submission. Recurring
+  rules may also opt into shifting untouched later occurrences when one event
+  is postponed; confirmed and manually changed occurrences remain fixed.
 - The owner decision from 2026-08-18 confirms the decision-first “Oracle · What
   if?” direction. Temporary alternatives compare with a baseline, change neither
   ledger nor plan, and persist only by choice. The owner may set a stop-loss,
@@ -320,6 +324,9 @@ access. Direct public-internet exposure is unsupported.
 - Editing or disabling a rule affects only untouched current and future
   occurrences. Confirmed, postponed, manually cancelled, and overdue
   occurrences remain.
+- Automatically cancelled future occurrences preserved during a series shift
+  carry an explicit database-constrained marker. Their applied offset remains a
+  date snapshot, and Calendar identifies the preservation state directly.
 - Confirmation creates exactly one actual operation and records the link in the
   same transaction. Postponement and cancellation create no physical movement.
 - Calendar shows one month, account and type filters, and quick confirm,
@@ -395,6 +402,17 @@ access. Direct public-internet exposure is unsupported.
 
 ## Verification snapshot
 
+- For the current `0.4.5` worktree, 72 non-PostgreSQL backend tests, 57/57
+  PostgreSQL integration tests and 114/114 frontend tests pass. The PostgreSQL
+  run covers migration to head, the explicit cancelled-occurrence constraint,
+  backup round trip, rollback on calendar overflow, and cancellation of shifted
+  boundary events beyond the creation horizon. Ruff, Python formatting,
+  Angular lint, Prettier, mypy, TypeScript, documentation checks and the
+  production Angular and Docker Compose builds pass. The containerized coverage
+  report emits source-path warnings because coverage metadata uses the host
+  workspace path; test execution itself completes successfully. npm reports the
+  already tracked high-severity advisory in the development dependency graph
+  during image construction.
 - Documentation audit and subsequent numeric UI implementation on 2026-08-18
   confirmed 70 passed backend tests with 53 PostgreSQL scenarios skipped without
   opt-in, 109/109 frontend tests across 20 files, `make lint`, `make typecheck`,
@@ -411,8 +429,9 @@ access. Direct public-internet exposure is unsupported.
   production Docker Compose build passed. Review hardening separately covers one
   global schedule snapshot for account free forecast and restoration of a
   dynamic backup whose unused manual percentages exceed 100%.
-- A temporary clean PostgreSQL database passed `upgrade head`, `alembic check`,
-  `downgrade 0011 → 0010`, and re-upgrade `0010 → 0011`, then was removed.
+- The integration suite creates disposable databases and verifies upgrades to
+  the current `0012_recurring_series_shift` head. A dedicated manual
+  upgrade/check/downgrade cycle was not added to this pass.
 - Latest successful network audit on 2026-08-17: `npm audit --omit=dev` reported
   zero production vulnerabilities; the full development graph had a high
   advisory for build-only `nanoid 3.3.17`, pinned by an existing override. The
@@ -424,7 +443,7 @@ access. Direct public-internet exposure is unsupported.
   the updated series contract. Frontend 63/63 passed; lint, format, typecheck,
   and docs passed.
 - A historical full `npm audit` after prior overrides reported zero advisories;
-  the current `0.4.0` state is described above.
+  the current `0.4.5` state is described above.
 - Searching backend financial code for `float` found only the input rejection
   guard and a docstring prohibiting float arithmetic.
 - PostgreSQL scenarios cover clean migration and setup, protected API,
@@ -585,6 +604,10 @@ access. Direct public-internet exposure is unsupported.
   policy is deferred.
 - Schedule timezone migration is absent. Timezone change is rejected after the
   first rule; an explicit migration flow is deferred.
+- Series shifting locks the rule and all materialized occurrences in one
+  transaction. This is intentionally simple for a single owner; very large
+  numbers of daily rules may eventually need a narrower persisted-offset read
+  model without weakening manual-occurrence protection.
 - Annual forecast returns every explaining event and holds shared locks on
   selected occurrences/accounts for the request. Measured growth may require a
   consistent read projection, but explanations must never be silently truncated.

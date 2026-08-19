@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -126,6 +126,8 @@ class RecurringRuleRecord(BackupModel):
     destination_account_id: UUID | None
     category_id: UUID | None
     allocate_to_funds: bool = False
+    shift_future_on_postpone: bool = False
+    series_shift_days: int = Field(default=0, ge=-(2**31), le=2**31 - 1)
     active: bool
     version: int = Field(ge=1)
     created_at: AwareDatetime
@@ -133,6 +135,10 @@ class RecurringRuleRecord(BackupModel):
 
     @model_validator(mode="after")
     def validate_recurrence(self) -> "RecurringRuleRecord":
+        try:
+            self.start_on + timedelta(days=self.series_shift_days)
+        except OverflowError as error:
+            raise ValueError("series shift exceeds the calendar range") from error
         if self.allocate_to_funds and self.type != OperationType.TRANSFER:
             raise ValueError("only transfers can allocate to funds")
         if self.frequency == RecurrenceFrequency.WEEKLY and self.weekdays is None:
@@ -162,6 +168,8 @@ class ExpectedOccurrenceRecord(BackupModel):
     due_on: date
     status: OccurrenceStatus
     manually_modified: bool
+    series_shift_days: int = Field(default=0, ge=-(2**31), le=2**31 - 1)
+    preserve_from_series_shift: bool = False
     type: OperationType
     amount: Money
     description: str | None = Field(max_length=2000)
@@ -176,8 +184,18 @@ class ExpectedOccurrenceRecord(BackupModel):
 
     @model_validator(mode="after")
     def validate_fund_allocation(self) -> "ExpectedOccurrenceRecord":
+        try:
+            self.scheduled_on + timedelta(days=self.series_shift_days)
+        except OverflowError as error:
+            raise ValueError("series shift exceeds the calendar range") from error
         if self.allocate_to_funds and self.type != OperationType.TRANSFER:
             raise ValueError("only transfers can allocate to funds")
+        if self.preserve_from_series_shift and (
+            self.status != OccurrenceStatus.CANCELLED or self.manually_modified
+        ):
+            raise ValueError(
+                "only automatically cancelled occurrences can be preserved from a series shift"
+            )
         return self
 
 

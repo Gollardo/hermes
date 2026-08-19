@@ -13,6 +13,8 @@ const OCCURRENCE = {
   due_on: '2026-08-10',
   status: 'pending',
   manually_modified: false,
+  series_shift_days: 0,
+  preserve_from_series_shift: false,
   overdue: true,
   type: 'expense',
   amount: '12.5000',
@@ -26,6 +28,29 @@ const OCCURRENCE = {
   allocate_to_funds: false,
   actual_operation_id: null,
   version: 1,
+};
+
+const RULE = {
+  id: 'rule-1',
+  type: 'expense',
+  frequency: 'monthly',
+  interval: 1,
+  weekdays: null,
+  start_on: '2026-08-10',
+  end_on: null,
+  amount: '12.5000',
+  description: 'Интернет',
+  account_id: 'account-1',
+  account_name: 'Основной',
+  destination_account_id: null,
+  destination_account_name: null,
+  category_id: 'category-1',
+  category_name: 'Связь',
+  allocate_to_funds: false,
+  shift_future_on_postpone: true,
+  series_shift_days: 0,
+  active: true,
+  version: 3,
 };
 
 interface SchedulingHarness {
@@ -92,12 +117,13 @@ describe('SchedulingPage recurrence editor', () => {
       sunday: false,
       startOn: '2026-08-17',
       endOn: '2026-12-31',
-      amount: '10,5',
+      amount: '10,5 + 2.25',
       description: '',
       accountId: 'account-1',
       destinationAccountId: '',
       categoryId: 'category-1',
       allocateToFunds: false,
+      shiftFutureOnPostpone: false,
     });
     expect(page.canSaveRule()).toBe(true);
 
@@ -105,7 +131,7 @@ describe('SchedulingPage recurrence editor', () => {
     const request = http.expectOne('/api/v1/scheduling/rules');
     expect(request.request.body.interval).toBe(2);
     expect(request.request.body.weekdays).toEqual([1, 5]);
-    expect(request.request.body.amount).toBe('10.5');
+    expect(request.request.body.amount).toBe('12.75');
     request.flush({});
     http.expectOne('/api/v1/scheduling/rules').flush([]);
   });
@@ -218,7 +244,7 @@ describe('SchedulingPage recurrence editor', () => {
 
   it('allows correcting only the confirmed occurrence amount', () => {
     flushInitial([OCCURRENCE]);
-    setValue('#confirm-amount-occurrence-1', '12345,75');
+    setValue('#confirm-amount-occurrence-1', '12000 + 345,75');
     const amountInput = fixture.nativeElement.querySelector(
       '#confirm-amount-occurrence-1',
     ) as HTMLInputElement;
@@ -230,6 +256,78 @@ describe('SchedulingPage recurrence editor', () => {
     expect(request.request.body).toEqual({ version: 1, amount: '12345.75' });
     request.flush({ ...OCCURRENCE, amount: '12345.7500', status: 'confirmed' });
     flushOccurrenceRequests([]);
+  });
+
+  it('explains and submits an enabled series shift with the rule version', () => {
+    flushInitial([OCCURRENCE], [RULE]);
+    setValue('#postpone-occurrence-1', '2026-08-14');
+    expect(fixture.nativeElement.textContent).toContain(
+      'следующие нетронутые события сдвинутся на +4 дн.',
+    );
+    clickButton('Перенести серию');
+    const request = http.expectOne('/api/v1/scheduling/occurrences/occurrence-1/postpone');
+    expect(request.request.body).toEqual({
+      version: 1,
+      due_on: '2026-08-14',
+      rule_version: 3,
+    });
+    request.flush({
+      ...OCCURRENCE,
+      due_on: '2026-08-14',
+      status: 'postponed',
+      manually_modified: true,
+      series_shift_days: 4,
+      version: 2,
+      series_shift_applied: true,
+      shift_days: 4,
+      shifted_occurrences: 2,
+      preserved_occurrences: 1,
+      rule_version: 4,
+    });
+    http
+      .expectOne('/api/v1/scheduling/rules')
+      .flush([{ ...RULE, series_shift_days: 4, version: 4 }]);
+    flushOccurrenceRequests([]);
+    expect(fixture.nativeElement.textContent).toContain('Обновлено следующих событий: 2');
+    expect(fixture.nativeElement.textContent).toContain('сохранено исключений: 1');
+  });
+
+  it('does not couple a single-occurrence postpone to the rule version', () => {
+    flushInitial([OCCURRENCE], [{ ...RULE, shift_future_on_postpone: false }]);
+    setValue('#postpone-occurrence-1', '2026-08-14');
+    clickButton('Перенести');
+    const request = http.expectOne('/api/v1/scheduling/occurrences/occurrence-1/postpone');
+    expect(request.request.body).toEqual({ version: 1, due_on: '2026-08-14' });
+    request.flush({
+      ...OCCURRENCE,
+      due_on: '2026-08-14',
+      status: 'postponed',
+      manually_modified: true,
+      series_shift_days: 4,
+      version: 2,
+      series_shift_applied: false,
+      shift_days: 4,
+      shifted_occurrences: 0,
+      preserved_occurrences: 0,
+      rule_version: 3,
+    });
+    http
+      .expectOne('/api/v1/scheduling/rules')
+      .flush([{ ...RULE, shift_future_on_postpone: false }]);
+    flushOccurrenceRequests([]);
+  });
+
+  it('labels an automatically cancelled occurrence preserved by a series shift', () => {
+    flushInitial([
+      {
+        ...OCCURRENCE,
+        status: 'cancelled',
+        overdue: false,
+        preserve_from_series_shift: true,
+      },
+    ]);
+
+    expect(fixture.nativeElement.textContent).toContain('Сохранено при сдвиге серии');
   });
 
   it('makes automatic fund allocation explicit at confirmation', () => {
@@ -389,13 +487,13 @@ describe('SchedulingPage recurrence editor', () => {
     );
   });
 
-  function flushInitial(occurrences: object[]): void {
+  function flushInitial(occurrences: object[], rules: object[] = []): void {
     fixture.detectChanges();
-    flushMaterializationAndReferences();
+    flushMaterializationAndReferences(rules);
     flushOccurrenceRequests(occurrences);
   }
 
-  function flushMaterializationAndReferences(): void {
+  function flushMaterializationAndReferences(rules: object[] = []): void {
     http.expectOne('/api/v1/scheduling/materialize').flush({
       horizon_from: '2026-08-11',
       horizon_to: '2027-08-11',
@@ -424,7 +522,7 @@ describe('SchedulingPage recurrence editor', () => {
       },
     ]);
     http.expectOne('/api/v1/settings').flush({ base_currency: 'RUB' });
-    http.expectOne('/api/v1/scheduling/rules').flush([]);
+    http.expectOne('/api/v1/scheduling/rules').flush(rules);
   }
 
   function flushOccurrenceRequests(occurrences: object[]): void {

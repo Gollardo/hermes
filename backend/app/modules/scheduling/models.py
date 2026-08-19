@@ -10,6 +10,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Index,
+    Integer,
     Numeric,
     SmallInteger,
     Text,
@@ -122,6 +123,8 @@ class RecurringRule(Base):
         PostgreSQLUUID(as_uuid=True), ForeignKey("categories.id", ondelete="RESTRICT"), index=True
     )
     allocate_to_funds: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    shift_future_on_postpone: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    series_shift_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     version: Mapped[int] = mapped_column(default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -159,8 +162,12 @@ class ExpectedOccurrence(Base):
             name="ck_expected_occurrences_pending_automatic",
         ),
         CheckConstraint(
-            "status IN ('postponed', 'confirmed') OR due_on = scheduled_on",
+            "status IN ('postponed', 'confirmed') OR due_on = scheduled_on + series_shift_days",
             name="ck_expected_occurrences_due_date",
+        ),
+        CheckConstraint(
+            "NOT preserve_from_series_shift OR (status = 'cancelled' AND NOT manually_modified)",
+            name="ck_expected_occurrences_series_shift_preservation",
         ),
         UniqueConstraint("rule_id", "scheduled_on", name="uq_expected_occurrences_rule_date"),
         Index("ix_expected_occurrences_calendar", "due_on", "status", "id"),
@@ -183,6 +190,8 @@ class ExpectedOccurrence(Base):
         )
     )
     manually_modified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    series_shift_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    preserve_from_series_shift: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     type: Mapped[OperationType] = mapped_column(_operation_type_column())
     amount: Mapped[Decimal] = mapped_column(Numeric(20, 4), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)

@@ -1,6 +1,6 @@
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -410,8 +410,15 @@ def validate_document(data: BackupData) -> None:
             )
             or (occurrence.status == OccurrenceStatus.PENDING and occurrence.manually_modified)
             or (
+                occurrence.preserve_from_series_shift
+                and (
+                    occurrence.status != OccurrenceStatus.CANCELLED or occurrence.manually_modified
+                )
+            )
+            or (
                 occurrence.status not in {OccurrenceStatus.POSTPONED, OccurrenceStatus.CONFIRMED}
-                and occurrence.due_on != occurrence.scheduled_on
+                and occurrence.due_on
+                != occurrence.scheduled_on + timedelta(days=occurrence.series_shift_days)
             )
         ):
             raise BackupInvariantError("Expected occurrence state is invalid")

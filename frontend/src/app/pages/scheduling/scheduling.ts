@@ -16,7 +16,11 @@ import { apiErrorMessage } from '../../core/auth.service';
 import { DateTextPipe } from '../../shared/date-text.pipe';
 import { currencySymbol, formatMoney, MoneyPipe } from '../../shared/money.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
-import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
+import {
+  DecimalInput,
+  moneyExpressionPayload,
+  moneyExpressionValidator,
+} from '../../shared/decimal-input';
 
 type OperationType = 'income' | 'expense' | 'transfer';
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -57,6 +61,8 @@ interface RecurringRule {
   category_id: string | null;
   category_name: string | null;
   allocate_to_funds: boolean;
+  shift_future_on_postpone: boolean;
+  series_shift_days: number;
   active: boolean;
   version: number;
 }
@@ -68,6 +74,8 @@ interface ExpectedOccurrence {
   due_on: string;
   status: OccurrenceStatus;
   manually_modified: boolean;
+  series_shift_days: number;
+  preserve_from_series_shift: boolean;
   overdue: boolean;
   type: OperationType;
   amount: string;
@@ -96,6 +104,14 @@ interface Materialization {
   created: number;
   updated: number;
   cancelled: number;
+}
+
+interface PostponeResult extends ExpectedOccurrence {
+  series_shift_applied: boolean;
+  shift_days: number;
+  shifted_occurrences: number;
+  preserved_occurrences: number;
+  rule_version: number;
 }
 
 interface CalendarDay {
@@ -136,6 +152,7 @@ export class SchedulingPage implements OnInit {
   protected readonly busyOccurrenceId = signal<string | null>(null);
   protected readonly postponeDates = signal<Record<string, string>>({});
   protected readonly confirmationAmounts = signal<Record<string, string>>({});
+  protected readonly actionNotice = signal<string | null>(null);
 
   protected readonly filters = this.builder.group({
     accountId: [''],
@@ -155,12 +172,13 @@ export class SchedulingPage implements OnInit {
     sunday: [false],
     startOn: ['', Validators.required],
     endOn: [''],
-    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)]],
+    amount: ['', [Validators.required, moneyExpressionValidator]],
     description: ['', Validators.maxLength(2000)],
     accountId: ['', Validators.required],
     destinationAccountId: [''],
     categoryId: [''],
     allocateToFunds: [false],
+    shiftFutureOnPostpone: [false],
   });
 
   protected readonly monthTitle = computed(() => {
@@ -329,6 +347,7 @@ export class SchedulingPage implements OnInit {
       destinationAccountId: rule.destination_account_id ?? '',
       categoryId: rule.category_id ?? '',
       allocateToFunds: rule.allocate_to_funds,
+      shiftFutureOnPostpone: rule.shift_future_on_postpone,
     });
     this.ruleFormOpen.set(true);
   }
@@ -359,6 +378,7 @@ export class SchedulingPage implements OnInit {
       destinationAccountId: '',
       categoryId: '',
       allocateToFunds: false,
+      shiftFutureOnPostpone: false,
     });
     this.ruleFormOpen.set(false);
   }
@@ -387,6 +407,7 @@ export class SchedulingPage implements OnInit {
         destination_account_id: rule.destination_account_id,
         category_id: rule.category_id,
         allocate_to_funds: rule.allocate_to_funds,
+        shift_future_on_postpone: rule.shift_future_on_postpone,
         active: !rule.active,
         version: rule.version,
       })
@@ -475,11 +496,12 @@ export class SchedulingPage implements OnInit {
 
   protected confirm(occurrence: ExpectedOccurrence): void {
     const amount = this.confirmationAmount(occurrence);
-    if (!positiveDecimal(amount)) return;
+    const normalized = moneyExpressionPayload(amount);
+    if (normalized === null || !positiveDecimal(normalized)) return;
     this.runOccurrenceAction(
       occurrence,
       'confirm',
-      { version: occurrence.version, amount: decimalPayload(amount) },
+      { version: occurrence.version, amount: normalized },
       'Не удалось подтвердить ожидаемую операцию.',
     );
   }
@@ -496,13 +518,30 @@ export class SchedulingPage implements OnInit {
     return positiveDecimal(this.confirmationAmount(occurrence));
   }
 
+  protected occurrenceRule(occurrence: ExpectedOccurrence): RecurringRule | undefined {
+    return this.rules().find((rule) => rule.id === occurrence.rule_id);
+  }
+
+  protected postponeConsequence(occurrence: ExpectedOccurrence): string | null {
+    const rule = this.occurrenceRule(occurrence);
+    const next = this.postponeDate(occurrence);
+    if (!rule?.shift_future_on_postpone || !next || next === occurrence.due_on) return null;
+    const days = daysBetween(occurrence.due_on, next);
+    return `Текущая дата и следующие нетронутые события сдвинутся на ${signedDays(days)}.`;
+  }
+
   protected postpone(occurrence: ExpectedOccurrence): void {
     const dueOn = this.postponeDate(occurrence);
     if (!dueOn || dueOn === occurrence.due_on) return;
+    const rule = this.occurrenceRule(occurrence);
     this.runOccurrenceAction(
       occurrence,
       'postpone',
-      { version: occurrence.version, due_on: dueOn },
+      {
+        version: occurrence.version,
+        due_on: dueOn,
+        ...(rule?.shift_future_on_postpone ? { rule_version: rule.version } : {}),
+      },
       'Не удалось перенести ожидаемую операцию.',
     );
   }
@@ -651,7 +690,7 @@ export class SchedulingPage implements OnInit {
       );
   }
 
-  private editingRule(): RecurringRule | undefined {
+  protected editingRule(): RecurringRule | undefined {
     return this.rules().find((rule) => rule.id === this.editingId());
   }
 
@@ -680,15 +719,25 @@ export class SchedulingPage implements OnInit {
   ): void {
     this.busyOccurrenceId.set(occurrence.id);
     this.error.set(null);
+    this.actionNotice.set(null);
     this.http
-      .post<ExpectedOccurrence>(
+      .post<ExpectedOccurrence | PostponeResult>(
         `${environment.apiBaseUrl}/scheduling/occurrences/${occurrence.id}/${action}`,
         body,
       )
       .subscribe({
-        next: () => {
+        next: (result) => {
           this.busyOccurrenceId.set(null);
-          this.loadOccurrences();
+          if (action === 'postpone' && 'series_shift_applied' in result) {
+            this.actionNotice.set(
+              result.series_shift_applied
+                ? `Серия сдвинута на ${signedDays(result.shift_days)}. Обновлено следующих событий: ${result.shifted_occurrences}; сохранено исключений: ${result.preserved_occurrences}.`
+                : 'Перенесено только выбранное событие.',
+            );
+            this.loadSchedule();
+          } else {
+            this.loadOccurrences();
+          }
         },
         error: (error: unknown) => {
           this.busyOccurrenceId.set(null);
@@ -727,12 +776,13 @@ export class SchedulingPage implements OnInit {
       weekdays: value.frequency === 'weekly' ? this.selectedWeekdays() : null,
       start_on: value.startOn,
       end_on: value.endOn || null,
-      amount: decimalPayload(value.amount),
+      amount: moneyExpressionPayload(value.amount)!,
       description: value.description || null,
       account_id: value.accountId,
       destination_account_id: value.type === 'transfer' ? value.destinationAccountId || null : null,
       category_id: value.type === 'transfer' ? null : value.categoryId || null,
       allocate_to_funds: value.type === 'transfer' && value.allocateToFunds,
+      shift_future_on_postpone: value.shiftFutureOnPostpone,
     };
   }
 }
@@ -755,9 +805,25 @@ function addDays(value: string, amount: number): string {
 }
 
 function positiveDecimal(value: string): boolean {
-  const match = /^(\d{1,16})(?:\.(\d{1,4}))?$/.exec(decimalPayload(value));
+  const normalized = moneyExpressionPayload(value);
+  if (normalized === null || normalized.startsWith('-')) return false;
+  const match = /^(\d{1,16})(?:\.(\d{1,4}))?$/.exec(normalized);
   if (!match) return false;
   return BigInt(match[1]) > 0n || BigInt(match[2] ?? '0') > 0n;
+}
+
+function daysBetween(from: string, to: string): number {
+  const left = parseIsoDate(from);
+  const right = parseIsoDate(to);
+  const leftUtc = Date.UTC(left.year, left.month - 1, left.day);
+  const rightUtc = Date.UTC(right.year, right.month - 1, right.day);
+  return Math.round((rightUtc - leftUtc) / 86_400_000);
+}
+
+function signedDays(days: number): string {
+  const absolute = Math.abs(days);
+  const suffix = absolute % 10 === 1 && absolute % 100 !== 11 ? 'день' : 'дн.';
+  return `${days > 0 ? '+' : ''}${days} ${suffix}`;
 }
 
 function calendarGridRange(month: string): { start: string; end: string } {

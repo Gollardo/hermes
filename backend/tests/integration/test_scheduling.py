@@ -16,7 +16,11 @@ from app.modules.funds.models import FundMovement
 from app.modules.operations.models import AccountMovement, FinancialOperation
 from app.modules.scheduling import service as scheduling_service
 from app.modules.scheduling.models import ExpectedOccurrence, RecurrenceFrequency, RecurringRule
-from app.modules.scheduling.service import list_occurrence_responses, materialize_all
+from app.modules.scheduling.service import (
+    calendar_year_later,
+    list_occurrence_responses,
+    materialize_all,
+)
 
 MASTER_PASSWORD = "correct-master-password"
 SETUP_PAYLOAD = {
@@ -235,6 +239,240 @@ def test_expected_occurrence_lifecycle_posts_only_on_confirmation(
         balances = {item["id"]: item["balance"] for item in client.get("/api/v1/accounts").json()}
         assert balances[source] == "105.0000"
         assert balances[destination] == "5.0000"
+
+
+def test_postponing_with_series_shift_preserves_manual_and_confirmed_occurrences(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        account = _account(client, headers, "Main", "100")
+        category = _category(client, headers, "Salary", "income")
+        today = _horizon_today(client, headers)
+        payload = _rule_payload(
+            operation_type="income",
+            start_on=today,
+            end_on=today + timedelta(days=4),
+            amount="10",
+            account_id=account,
+            category_id=category,
+        )
+        created = client.post("/api/v1/scheduling/rules", headers=headers, json=payload).json()
+        occurrences = _occurrences(client, created["id"])
+
+        manually_postponed = occurrences[2]
+        manual_due_on = date.fromisoformat(str(manually_postponed["due_on"])) + timedelta(days=2)
+        assert (
+            client.post(
+                f"/api/v1/scheduling/occurrences/{manually_postponed['id']}/postpone",
+                headers=headers,
+                json={
+                    "version": manually_postponed["version"],
+                    "rule_version": created["version"] + 100,
+                    "due_on": manual_due_on.isoformat(),
+                },
+            ).status_code
+            == 200
+        )
+        confirmed = occurrences[3]
+        assert (
+            client.post(
+                f"/api/v1/scheduling/occurrences/{confirmed['id']}/confirm",
+                headers=headers,
+                json={"version": confirmed["version"]},
+            ).status_code
+            == 200
+        )
+
+        update_payload = {**payload, "active": True, "version": created["version"]}
+        update_payload["shift_future_on_postpone"] = True
+        update_payload["end_on"] = (today + timedelta(days=3)).isoformat()
+        updated_rule = client.put(
+            f"/api/v1/scheduling/rules/{created['id']}", headers=headers, json=update_payload
+        ).json()
+        before = {item["scheduled_on"]: item for item in _occurrences(client, created["id"])}
+        first = before[today.isoformat()]
+        missing_rule_version = client.post(
+            f"/api/v1/scheduling/occurrences/{first['id']}/postpone",
+            headers=headers,
+            json={
+                "version": first["version"],
+                "due_on": (today + timedelta(days=4)).isoformat(),
+            },
+        )
+        assert missing_rule_version.status_code == 409
+        assert missing_rule_version.json()["detail"]["code"] == "scheduling_conflict"
+        stale = client.post(
+            f"/api/v1/scheduling/occurrences/{first['id']}/postpone",
+            headers=headers,
+            json={
+                "version": first["version"],
+                "rule_version": created["version"],
+                "due_on": (today + timedelta(days=4)).isoformat(),
+            },
+        )
+        assert stale.status_code == 409
+        assert stale.json()["detail"]["code"] == "scheduling_conflict"
+        response = client.post(
+            f"/api/v1/scheduling/occurrences/{first['id']}/postpone",
+            headers=headers,
+            json={
+                "version": first["version"],
+                "rule_version": updated_rule["version"],
+                "due_on": (today + timedelta(days=4)).isoformat(),
+            },
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result["series_shift_applied"] is True
+        assert result["shift_days"] == 4
+        assert result["shifted_occurrences"] == 1
+        assert result["preserved_occurrences"] == 3
+
+        after = {item["scheduled_on"]: item for item in _occurrences(client, created["id"])}
+        assert (
+            after[(today + timedelta(days=1)).isoformat()]["due_on"]
+            == (today + timedelta(days=5)).isoformat()
+        )
+        assert after[(today + timedelta(days=2)).isoformat()]["due_on"] == manual_due_on.isoformat()
+        assert after[(today + timedelta(days=3)).isoformat()]["status"] == "confirmed"
+        cancelled = after[(today + timedelta(days=4)).isoformat()]
+        assert cancelled["status"] == "cancelled"
+        assert cancelled["due_on"] == (today + timedelta(days=4)).isoformat()
+        assert cancelled["series_shift_days"] == 0
+        assert cancelled["preserve_from_series_shift"] is True
+        cancelled_before = before[(today + timedelta(days=4)).isoformat()]
+        cancelled_version_before = cancelled_before["version"]
+        assert isinstance(cancelled_version_before, int)
+        assert cancelled["version"] == cancelled_version_before + 1
+        rule_after = client.get("/api/v1/scheduling/rules").json()[0]
+        assert rule_after["series_shift_days"] == 4
+
+        extended_payload = {
+            **payload,
+            "active": True,
+            "version": result["rule_version"],
+            "shift_future_on_postpone": True,
+            "end_on": (today + timedelta(days=8)).isoformat(),
+        }
+        extended = client.put(
+            f"/api/v1/scheduling/rules/{created['id']}", headers=headers, json=extended_payload
+        )
+        assert extended.status_code == 200
+        rematerialized = {
+            item["scheduled_on"]: item for item in _occurrences(client, created["id"])
+        }
+        assert rematerialized[(today + timedelta(days=4)).isoformat()]["status"] == "cancelled"
+        assert (
+            rematerialized[(today + timedelta(days=4)).isoformat()]["preserve_from_series_shift"]
+            is True
+        )
+        assert (
+            rematerialized[(today + timedelta(days=5)).isoformat()]["due_on"]
+            == (today + timedelta(days=9)).isoformat()
+        )
+
+    with pytest.raises(IntegrityError), app.state.session_factory.begin() as session:
+        session.execute(
+            update(ExpectedOccurrence)
+            .where(ExpectedOccurrence.id == cancelled["id"])
+            .values(manually_modified=True)
+        )
+
+
+def test_disabling_shifted_rule_cancels_materialized_events_beyond_current_horizon(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        account = _account(client, headers, "Boundary", "0")
+        category = _category(client, headers, "Salary", "income")
+        today = _horizon_today(client, headers)
+        horizon_to = calendar_year_later(today)
+        payload = _rule_payload(
+            operation_type="income",
+            start_on=today,
+            end_on=horizon_to,
+            amount="10",
+            account_id=account,
+            category_id=category,
+        )
+        payload["shift_future_on_postpone"] = True
+        rule = client.post("/api/v1/scheduling/rules", headers=headers, json=payload).json()
+        occurrences = _occurrences(client, rule["id"])
+        first = occurrences[0]
+        shifted = client.post(
+            f"/api/v1/scheduling/occurrences/{first['id']}/postpone",
+            headers=headers,
+            json={
+                "version": first["version"],
+                "rule_version": rule["version"],
+                "due_on": (today + timedelta(days=4)).isoformat(),
+            },
+        ).json()
+        boundary_before = next(
+            item
+            for item in _occurrences(client, rule["id"])
+            if item["scheduled_on"] == horizon_to.isoformat()
+        )
+        assert boundary_before["due_on"] == (horizon_to + timedelta(days=4)).isoformat()
+
+        disabled_payload = {
+            **payload,
+            "active": False,
+            "version": shifted["rule_version"],
+        }
+        disabled = client.put(
+            f"/api/v1/scheduling/rules/{rule['id']}", headers=headers, json=disabled_payload
+        )
+        assert disabled.status_code == 200
+        boundary_after = next(
+            item for item in _occurrences(client, rule["id"]) if item["id"] == boundary_before["id"]
+        )
+        assert boundary_after["status"] == "cancelled"
+
+
+def test_series_shift_calendar_overflow_rolls_back_rule_and_occurrences(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        account = _account(client, headers, "Rollback", "0")
+        category = _category(client, headers, "Salary", "income")
+        today = _horizon_today(client, headers)
+        payload = _rule_payload(
+            operation_type="income",
+            start_on=today,
+            end_on=today + timedelta(days=1),
+            amount="10",
+            account_id=account,
+            category_id=category,
+        )
+        payload["shift_future_on_postpone"] = True
+        rule = client.post("/api/v1/scheduling/rules", headers=headers, json=payload).json()
+        before = _occurrences(client, rule["id"])
+
+        rejected = client.post(
+            f"/api/v1/scheduling/occurrences/{before[0]['id']}/postpone",
+            headers=headers,
+            json={
+                "version": before[0]["version"],
+                "rule_version": rule["version"],
+                "due_on": date.max.isoformat(),
+            },
+        )
+        assert rejected.status_code == 409
+        assert rejected.json()["detail"]["code"] == "invalid_occurrence_transition"
+        rule_after = client.get("/api/v1/scheduling/rules").json()[0]
+        assert rule_after["version"] == rule["version"]
+        assert rule_after["series_shift_days"] == 0
+        assert _occurrences(client, rule["id"]) == before
 
 
 def test_rule_edit_protects_manual_occurrences_and_materialization_is_idempotent(

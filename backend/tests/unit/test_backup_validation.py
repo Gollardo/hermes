@@ -266,8 +266,50 @@ def valid_data() -> dict[str, Any]:
 def test_valid_backup_domain_shape() -> None:
     data = BackupData.model_validate(valid_data())
     assert data.recurring_rules[0].allocate_to_funds is False
+    assert data.recurring_rules[0].shift_future_on_postpone is False
+    assert data.recurring_rules[0].series_shift_days == 0
     assert data.expected_occurrences[0].allocate_to_funds is False
+    assert data.expected_occurrences[0].series_shift_days == 0
+    assert data.expected_occurrences[0].preserve_from_series_shift is False
     validate_document(data)
+
+
+def test_backup_rejects_series_shift_outside_calendar_range() -> None:
+    invalid_rule = valid_data()
+    invalid_rule["recurring_rules"][0]["series_shift_days"] = 2**31 - 1
+    with pytest.raises(ValidationError, match="series shift exceeds the calendar range"):
+        BackupData.model_validate(invalid_rule)
+
+    invalid_occurrence = valid_data()
+    invalid_occurrence["expected_occurrences"][0]["series_shift_days"] = -(2**31)
+    with pytest.raises(ValidationError, match="series shift exceeds the calendar range"):
+        BackupData.model_validate(invalid_occurrence)
+
+
+def test_backup_rejects_series_shift_preservation_for_non_cancelled_occurrence() -> None:
+    invalid = valid_data()
+    invalid["expected_occurrences"][0]["preserve_from_series_shift"] = True
+
+    with pytest.raises(
+        ValidationError,
+        match="only automatically cancelled occurrences can be preserved from a series shift",
+    ):
+        BackupData.model_validate(invalid)
+
+    manually_cancelled = valid_data()
+    occurrence = manually_cancelled["expected_occurrences"][0]
+    occurrence.update(
+        {
+            "status": "cancelled",
+            "manually_modified": True,
+            "preserve_from_series_shift": True,
+        }
+    )
+    with pytest.raises(
+        ValidationError,
+        match="only automatically cancelled occurrences can be preserved from a series shift",
+    ):
+        BackupData.model_validate(manually_cancelled)
 
 
 def test_schema_one_checksum_remains_compatible_with_omitted_optional_fields() -> None:

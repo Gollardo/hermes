@@ -12,8 +12,9 @@ This contract is not a final design system. It does not define an approved
 component library, type scale, spacing scale, breakpoint set, or complete
 palette.
 
-The project owner approved the currently implemented `0.4.0` interface on
-2026-08-18 as the first-public-release baseline. Preserve its established
+The project owner approved the implemented `0.4.0` interface on 2026-08-18 as
+the first-public-release baseline. The current `0.4.5` changes extend its
+established patterns. Preserve the established
 navigation, modal composers, visual hierarchy and responsive behavior unless a
 later owner decision changes them. This approval does not promote incidental
 CSS values into a permanent design system or approve unimplemented screens.

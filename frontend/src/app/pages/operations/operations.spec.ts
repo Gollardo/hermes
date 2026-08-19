@@ -166,14 +166,14 @@ describe('OperationsPage', () => {
 
     setValue('#operation-type', 'expense');
     setValue('#operation-category', 'category-1');
-    setValue('#operation-amount', '12.3400');
+    setValue('#operation-amount', '12.34 + 0,66');
     setValue('#operation-account', 'account-1');
     expect(submit.disabled).toBe(false);
     fixture.nativeElement.querySelector('.entry-panel form').dispatchEvent(new Event('submit'));
 
     const request = http.expectOne('/api/v1/operations');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body.amount).toBe('12.3400');
+    expect(request.request.body.amount).toBe('13.00');
     expect(request.request.body.category_id).toBe('category-1');
     request.flush({});
     http.expectOne('/api/v1/accounts').flush([]);

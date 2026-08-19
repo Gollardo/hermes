@@ -8,7 +8,12 @@ import { apiErrorMessage } from '../../core/auth.service';
 import { DateTextPipe } from '../../shared/date-text.pipe';
 import { currencySymbol, formatMoney, MoneyPipe } from '../../shared/money.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
-import { DecimalInput, decimalPayload } from '../../shared/decimal-input';
+import {
+  DecimalInput,
+  decimalPayload,
+  moneyExpressionPayload,
+  moneyExpressionValidator,
+} from '../../shared/decimal-input';
 import { CreateOperationType, OperationCreateMenu } from '../../shared/operation-create-menu';
 
 type OperationType = 'income' | 'expense' | 'transfer' | 'balance_adjustment';
@@ -140,13 +145,13 @@ export class OperationsPage implements OnInit {
     type: this.builder.control<OperationType | ''>('', Validators.required),
     occurredOn: [this.today(), Validators.required],
     categoryId: [''],
-    amount: ['', [Validators.required, Validators.pattern(/^-?\d{1,16}(?:[.,]\d{1,4})?$/)]],
+    amount: ['', [Validators.required, moneyExpressionValidator]],
     accountId: ['', Validators.required],
     destinationAccountId: [''],
     description: ['', Validators.maxLength(2000)],
     reason: ['', Validators.maxLength(2000)],
     fundId: [''],
-    fundAmount: ['', Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)],
+    fundAmount: ['', moneyExpressionValidator],
   });
 
   protected readonly filters = this.builder.group({
@@ -314,14 +319,20 @@ export class OperationsPage implements OnInit {
 
   protected adjustmentDelta(target = this.form.controls.amount.value): string | null {
     const base = this.adjustmentBaseBalance();
-    return base === null ? null : subtractMoney(target, base);
+    const normalizedTarget = moneyExpressionPayload(target);
+    return base === null || normalizedTarget === null
+      ? null
+      : subtractMoney(normalizedTarget, base);
   }
 
   protected canSubmit(): boolean {
     const value = this.form.getRawValue();
+    const amount = moneyExpressionPayload(value.amount);
+    const fundAmount = value.fundAmount ? moneyExpressionPayload(value.fundAmount) : '';
+    if (amount === null || fundAmount === null) return false;
     const postingAmount =
-      value.type === 'balance_adjustment' ? this.adjustmentDelta(value.amount) : value.amount;
-    const expectedBalance = moneyUnits(value.amount);
+      value.type === 'balance_adjustment' ? this.adjustmentDelta(amount) : amount;
+    const expectedBalance = moneyUnits(amount);
     return (
       this.settingsReady() &&
       this.form.valid &&
@@ -336,16 +347,10 @@ export class OperationsPage implements OnInit {
         value.destinationAccountId,
         value.reason,
         value.fundId,
-        value.fundAmount,
-        value.amount,
+        fundAmount,
+        amount,
       ) &&
-      this.fundSelectionIsValid(
-        value.type,
-        value.accountId,
-        value.fundId,
-        value.amount,
-        value.fundAmount,
-      )
+      this.fundSelectionIsValid(value.type, value.accountId, value.fundId, amount, fundAmount)
     );
   }
 
@@ -368,9 +373,13 @@ export class OperationsPage implements OnInit {
   protected submit(): void {
     this.error.set(null);
     const value = this.form.getRawValue();
+    const amount = moneyExpressionPayload(value.amount);
+    const fundAmount = value.fundAmount ? moneyExpressionPayload(value.fundAmount) : '';
     const postingAmount =
-      value.type === 'balance_adjustment' ? this.adjustmentDelta(value.amount) : value.amount;
-    if (!this.canSubmit() || postingAmount === null) {
+      value.type === 'balance_adjustment' && amount !== null
+        ? this.adjustmentDelta(amount)
+        : amount;
+    if (!this.canSubmit() || postingAmount === null || fundAmount === null) {
       this.form.markAllAsTouched();
       this.error.set('Заполните обязательные поля выбранного типа операции.');
       return;
@@ -387,7 +396,7 @@ export class OperationsPage implements OnInit {
       fund_id: value.type === 'expense' || value.type === 'transfer' ? value.fundId || null : null,
       fund_amount:
         value.type === 'transfer' && value.fundId && value.fundAmount
-          ? decimalPayload(value.fundAmount)
+          ? decimalPayload(fundAmount)
           : null,
     };
     const id = this.editingId();

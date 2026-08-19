@@ -87,7 +87,8 @@ composer calculates the journal movement from the expected balance exactly.
 ## Important information
 
 - operation type as an explicit selected state;
-- amount with currency context and no ambiguous sign;
+- amount with currency context and no ambiguous sign; addition and subtraction
+  may be entered as one exact expression and are resolved before submission;
 - account or transfer direction;
 - fact date in the application timezone with no separate time;
 - category for income or expense;

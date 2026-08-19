@@ -5,14 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project intends to follow [Semantic Versioning](https://semver.org/).
 
-Entries through `0.4.0` describe internal development milestones. They were not
+Entries through `0.4.5` describe internal development milestones. They were not
 published as GitHub Releases or public git tags. After the first public release,
 ongoing changes belong under `Unreleased` until a release version and date are
 assigned.
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-08-19
+
+### Added
+
+- Exact addition and subtraction expressions in operation, transfer-allocation,
+  recurring-rule and occurrence-confirmation amount fields.
+- Optional recurring-rule policy that shifts untouched later occurrences by the
+  same number of days when the current occurrence is postponed.
+- Migration `0012_recurring_series_shift` and backward-compatible backup fields
+  for the rule policy, accumulated series offset and explicit protection of
+  automatically cancelled dated exceptions.
+
 ### Changed
+
+- Postpone responses report whether a series shift was applied, its day delta,
+  and counts of shifted and preserved occurrences.
+- Automatically cancelled occurrences preserved during a series shift expose a
+  dedicated state instead of relying on an offset mismatch, and Calendar names
+  that state explicitly.
+- Application version advanced to 0.4.5.
 
 - All UI monetary amounts and percentages now use spaces between thousand
   groups, a decimal comma and exactly two fractional digits with exact

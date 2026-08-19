@@ -10,9 +10,9 @@ financial decision. The future **Oracle · What if?** capability will compare
 hypothetical scenarios with the deterministic baseline forecast; it is planned,
 not part of the current release.
 
-> **Current internal version:** `0.4.0` adds manual/dynamic fund allocation and
-> recalculates planned allocations from projected fund balances. Versions
-> through `0.4.0` are development milestones; no public GitHub release has been
+> **Current internal version:** `0.4.5` adds exact amount expressions and an
+> optional future-series shift when a planned occurrence is postponed. Versions
+> through `0.4.5` are development milestones; no public GitHub release has been
 > published yet.
 
 ## Project priorities and contributions
@@ -40,7 +40,9 @@ and the maintainer's available time.
 - virtual funds, physical/free coverage, manual or target-aware dynamic
   percentage allocation, redistribution between accounts and funds, and progress;
 - recurring income, expense and transfer rules with selectable weekly weekdays,
-  weekly/monthly intervals and exact dated snapshots;
+  weekly/monthly intervals, exact dated snapshots and optional series shifting;
+- exact addition and subtraction directly in operation and scheduling amount
+  fields, with comma and dot decimal separators;
 - monthly calendar, upcoming/overdue list and confirm/postpone/cancel actions;
 - idempotent confirmation that atomically links one posted financial operation;
 - per-account and combined balance forecasts with five horizons, risk warnings

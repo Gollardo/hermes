@@ -17,6 +17,9 @@
   @if (error(); as message) {
     <p class="form-error" role="alert">{{ message }}</p>
   }
+  @if (actionNotice(); as message) {
+    <p class="status-note" role="status">{{ message }}</p>
+  }
 
   <section class="panel calendar-panel" aria-labelledby="calendar-title">
     <div class="calendar-toolbar">
@@ -109,6 +112,9 @@
                       {{ typeLabel(occurrence.type) }} ·
                       {{ occurrence.overdue ? 'Просрочено' : statusLabel(occurrence.status) }}
                     </span>
+                    @if (occurrence.preserve_from_series_shift) {
+                      <span>Сохранено при сдвиге серии</span>
+                    }
                     <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
                   </div>
                 }
@@ -169,10 +175,10 @@
                     Сумма подтверждения, {{ baseCurrency() }}
                   </label>
                   <input
-                    appDecimalInput
+                    appDecimalInput="expression"
                     [id]="'confirm-amount-' + occurrence.id"
                     type="text"
-                    inputmode="decimal"
+                    inputmode="text"
                     autocomplete="off"
                     [value]="confirmationAmount(occurrence)"
                     [attr.aria-invalid]="!validConfirmationAmount(occurrence)"
@@ -216,8 +222,15 @@
                           postponeDate(occurrence) === occurrence.due_on
                         "
                       >
-                        Перенести
+                        {{
+                          occurrenceRule(occurrence)?.shift_future_on_postpone
+                            ? 'Перенести серию'
+                            : 'Перенести'
+                        }}
                       </button>
+                      @if (postponeConsequence(occurrence); as consequence) {
+                        <p class="hint">{{ consequence }}</p>
+                      }
                     </div>
                     <button
                       type="button"
@@ -281,6 +294,15 @@
                   </p>
                   @if (rule.allocate_to_funds) {
                     <p>После перевода сумма распределяется по процентам активных фондов.</p>
+                  }
+                  @if (rule.shift_future_on_postpone) {
+                    <p>
+                      Следующие события сдвигаются вместе с переносимым
+                      @if (rule.series_shift_days) {
+                        · текущий сдвиг {{ rule.series_shift_days > 0 ? '+' : ''
+                        }}{{ rule.series_shift_days }} дн.
+                      }
+                    </p>
                   }
                 </div>
               </div>
@@ -413,15 +435,31 @@
           <label>
             Сумма, {{ baseCurrency() }}
             <input
-              appDecimalInput
+              appDecimalInput="expression"
               type="text"
-              inputmode="decimal"
+              inputmode="text"
               formControlName="amount"
               autocomplete="off"
             />
+            <span class="hint">Можно сложить или вычесть: 354,23 + 234,54 - 23,32.</span>
           </label>
           @if (ruleForm.controls.amount.touched && ruleForm.controls.amount.invalid) {
             <p class="field-error">Введите положительную сумму, не более четырёх знаков дроби.</p>
+          }
+          <fieldset class="weekday-picker allocation-choice">
+            <legend>Перенос события</legend>
+            <label>
+              <input type="checkbox" formControlName="shiftFutureOnPostpone" />
+              Сдвигать следующие события при переносе текущего
+            </label>
+          </fieldset>
+          <p class="hint">
+            Подтверждённые, отменённые и ранее перенесённые вручную события не изменятся.
+          </p>
+          @if (editingRule()?.series_shift_days; as shiftDays) {
+            <p class="hint">
+              Текущий накопленный сдвиг серии: {{ shiftDays > 0 ? '+' : '' }}{{ shiftDays }} дн.
+            </p>
           }
           <div class="control-label">
             Счёт

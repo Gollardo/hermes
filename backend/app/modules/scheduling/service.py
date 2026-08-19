@@ -26,6 +26,7 @@ from app.modules.scheduling.schemas import (
     ExpectedOccurrenceResponse,
     MaterializationResponse,
     OccurrencePageResponse,
+    OccurrencePostponeResponse,
     RecurringRuleCreateRequest,
     RecurringRuleResponse,
     RecurringRuleUpdateRequest,
@@ -204,13 +205,22 @@ def _copy_snapshot(rule: RecurringRule, occurrence: ExpectedOccurrence) -> bool:
     return changed
 
 
+def _shift_date(value: date, days: int) -> date:
+    try:
+        return value + timedelta(days=days)
+    except OverflowError as error:
+        raise InvalidOccurrenceTransitionError from error
+
+
 def _new_occurrence(rule: RecurringRule, scheduled_on: date, now: datetime) -> ExpectedOccurrence:
     return ExpectedOccurrence(
         rule_id=rule.id,
         scheduled_on=scheduled_on,
-        due_on=scheduled_on,
+        due_on=_shift_date(scheduled_on, rule.series_shift_days),
         status=OccurrenceStatus.PENDING,
         manually_modified=False,
+        series_shift_days=rule.series_shift_days,
+        preserve_from_series_shift=False,
         type=rule.type,
         amount=rule.amount,
         description=rule.description,
@@ -247,15 +257,17 @@ def _synchronize_rule(
 ) -> _MaterializationCounts:
     if existing is None:
         existing = _lock_rule_occurrences(session, rule.id)
-    target_dates = (
+    scheduled_range_from = _shift_date(horizon_from, -rule.series_shift_days)
+    scheduled_range_to = _shift_date(horizon_to, -rule.series_shift_days)
+    materialization_dates = (
         set(
             recurrence_dates(
                 frequency=rule.frequency,
                 interval=rule.interval,
                 weekdays=rule.weekdays,
                 anchor=rule.start_on,
-                range_from=horizon_from,
-                range_to=horizon_to,
+                range_from=scheduled_range_from,
+                range_to=scheduled_range_to,
                 end_on=rule.end_on,
             )
         )
@@ -265,29 +277,49 @@ def _synchronize_rule(
     now = datetime.now(UTC)
     counts = _MaterializationCounts()
     for scheduled_on, occurrence in existing.items():
-        if scheduled_on < horizon_from:
+        if occurrence.due_on < horizon_from:
+            continue
+        if occurrence.preserve_from_series_shift:
             continue
         if occurrence.status == OccurrenceStatus.CONFIRMED or occurrence.manually_modified:
             continue
         changed = False
-        if scheduled_on in target_dates:
+        matches_rule = scheduled_on in materialization_dates
+        if (
+            rule.active
+            and not matches_rule
+            and (scheduled_on < scheduled_range_from or scheduled_on > scheduled_range_to)
+        ):
+            matches_rule = bool(
+                recurrence_dates(
+                    frequency=rule.frequency,
+                    interval=rule.interval,
+                    weekdays=rule.weekdays,
+                    anchor=rule.start_on,
+                    range_from=scheduled_on,
+                    range_to=scheduled_on,
+                    end_on=rule.end_on,
+                )
+            )
+        if matches_rule:
             if occurrence.status != OccurrenceStatus.PENDING:
                 occurrence.status = OccurrenceStatus.PENDING
                 changed = True
-            if occurrence.due_on != scheduled_on:
-                occurrence.due_on = scheduled_on
+            expected_due_on = _shift_date(scheduled_on, occurrence.series_shift_days)
+            if occurrence.due_on != expected_due_on:
+                occurrence.due_on = expected_due_on
                 changed = True
             changed = _copy_snapshot(rule, occurrence) or changed
         elif occurrence.status != OccurrenceStatus.CANCELLED:
             occurrence.status = OccurrenceStatus.CANCELLED
-            occurrence.due_on = scheduled_on
+            occurrence.due_on = _shift_date(scheduled_on, occurrence.series_shift_days)
             changed = True
             counts.cancelled += 1
         if changed:
             occurrence.version += 1
             occurrence.updated_at = now
             counts.updated += 1
-    for scheduled_on in sorted(target_dates - existing.keys()):
+    for scheduled_on in sorted(materialization_dates - existing.keys()):
         session.add(_new_occurrence(rule, scheduled_on, now))
         counts.created += 1
     session.flush()
@@ -386,6 +418,8 @@ def _rule_response(session: Session, rule: RecurringRule) -> RecurringRuleRespon
         category_id=rule.category_id,
         category_name=(category_name(session, rule.category_id) if rule.category_id else None),
         allocate_to_funds=rule.allocate_to_funds,
+        shift_future_on_postpone=rule.shift_future_on_postpone,
+        series_shift_days=rule.series_shift_days,
         active=rule.active,
         version=rule.version,
         created_at=rule.created_at,
@@ -422,6 +456,8 @@ def _occurrence_response(
         due_on=occurrence.due_on,
         status=occurrence.status,
         manually_modified=occurrence.manually_modified,
+        series_shift_days=occurrence.series_shift_days,
+        preserve_from_series_shift=occurrence.preserve_from_series_shift,
         overdue=(
             occurrence.status in {OccurrenceStatus.PENDING, OccurrenceStatus.POSTPONED}
             and occurrence.due_on < today
@@ -546,9 +582,23 @@ def postpone_occurrence(
     *,
     due_on: date,
     expected_version: int,
+    expected_rule_version: int | None = None,
     today: date | None = None,
-) -> ExpectedOccurrenceResponse:
-    occurrence = _get_occurrence(session, occurrence_id, lock=True)
+) -> OccurrencePostponeResponse:
+    rule_id = session.scalar(
+        select(ExpectedOccurrence.rule_id).where(ExpectedOccurrence.id == occurrence_id)
+    )
+    if rule_id is None:
+        raise ExpectedOccurrenceNotFoundError
+    rule = _get_rule(session, rule_id, lock=True)
+    if rule.shift_future_on_postpone and (
+        expected_rule_version is None or rule.version != expected_rule_version
+    ):
+        raise SchedulingConflictError
+    occurrences = _lock_rule_occurrences(session, rule.id)
+    occurrence = next((item for item in occurrences.values() if item.id == occurrence_id), None)
+    if occurrence is None:
+        raise ExpectedOccurrenceNotFoundError
     if occurrence.version != expected_version:
         raise SchedulingConflictError
     if (
@@ -556,13 +606,56 @@ def postpone_occurrence(
         or occurrence.due_on == due_on
     ):
         raise InvalidOccurrenceTransitionError
+    shift_days = (due_on - occurrence.due_on).days
     occurrence.due_on = due_on
     occurrence.status = OccurrenceStatus.POSTPONED
     occurrence.manually_modified = True
+    occurrence.series_shift_days += shift_days
     occurrence.version += 1
-    occurrence.updated_at = datetime.now(UTC)
+    now = datetime.now(UTC)
+    occurrence.updated_at = now
+    shifted_occurrences = 0
+    preserved_occurrences = 0
+    if rule.shift_future_on_postpone:
+        rule.series_shift_days += shift_days
+        rule.version += 1
+        rule.updated_at = now
+        for sibling in occurrences.values():
+            if sibling.id == occurrence.id or sibling.scheduled_on <= occurrence.scheduled_on:
+                continue
+            if sibling.status == OccurrenceStatus.CANCELLED:
+                if not sibling.manually_modified and not sibling.preserve_from_series_shift:
+                    sibling.preserve_from_series_shift = True
+                    sibling.version += 1
+                    sibling.updated_at = now
+                preserved_occurrences += 1
+                continue
+            if sibling.status == OccurrenceStatus.CONFIRMED or sibling.manually_modified:
+                preserved_occurrences += 1
+                continue
+            sibling.series_shift_days += shift_days
+            sibling.due_on = _shift_date(sibling.due_on, shift_days)
+            sibling.version += 1
+            sibling.updated_at = now
+            shifted_occurrences += 1
+        resolved_today = today or _today(session)
+        _synchronize_rule(
+            session,
+            rule,
+            horizon_from=resolved_today,
+            horizon_to=calendar_year_later(resolved_today),
+            existing=occurrences,
+        )
     session.flush()
-    return _occurrence_response(session, occurrence, today=today or _today(session))
+    response = _occurrence_response(session, occurrence, today=today or _today(session))
+    return OccurrencePostponeResponse(
+        **response.model_dump(),
+        series_shift_applied=rule.shift_future_on_postpone,
+        shift_days=shift_days,
+        shifted_occurrences=shifted_occurrences,
+        preserved_occurrences=preserved_occurrences,
+        rule_version=rule.version,
+    )
 
 
 def cancel_occurrence(
@@ -577,7 +670,7 @@ def cancel_occurrence(
     if occurrence.status not in {OccurrenceStatus.PENDING, OccurrenceStatus.POSTPONED}:
         raise InvalidOccurrenceTransitionError
     occurrence.status = OccurrenceStatus.CANCELLED
-    occurrence.due_on = occurrence.scheduled_on
+    occurrence.due_on = _shift_date(occurrence.scheduled_on, occurrence.series_shift_days)
     occurrence.manually_modified = True
     occurrence.version += 1
     occurrence.updated_at = datetime.now(UTC)

@@ -39,11 +39,17 @@ date produces the next bounded window whenever materialization advances.
 An occurrence stores:
 
 - immutable `scheduled_on`, its identity in the source sequence;
-- mutable `due_on`, changed only by postponing that occurrence;
+- mutable `due_on`, changed by postponing that occurrence or by an explicitly
+  enabled future-series shift;
 - a complete operation snapshot: type, accounts, category, amount and
   description, plus the transfer-only fund-allocation choice;
 - status `pending`, `postponed`, `cancelled` or `confirmed`;
 - `manually_modified`, an explicit boundary protecting owner changes;
+- a day-offset snapshot that keeps already materialized and newly generated
+  dates consistent after a series shift;
+- an explicit series-shift preservation marker for automatically cancelled
+  dated exceptions; the marker requires `cancelled` status and excludes
+  `manually_modified`;
 - an optimistic version and, after confirmation, the actual operation link.
 
 Rule edits synchronize only current/future non-confirmed,
@@ -52,7 +58,9 @@ Matching dates receive the new snapshot. Dates removed by the new recurrence or
 by disabling the rule are automatically cancelled. Newly matching dates are
 materialized. An automatically cancelled occurrence may be restored if a later
 rule edit makes its original date valid again. Confirmed, postponed and manually
-cancelled occurrences never change implicitly.
+cancelled occurrences never change implicitly. A series shift marks an
+automatically cancelled dated occurrence as explicitly preserved, so later
+materialization does not depend on comparing its offset with the rule offset.
 
 Untouched occurrences that become overdue remain actionable. Advancing the
 materialization window never cancels or deletes them.
@@ -62,6 +70,12 @@ contract in the same database transaction. Posting and the `confirmed` link
 therefore commit or roll back together. Repeated confirmation returns the same
 link and cannot create a second financial operation. Postponing and cancelling
 never call Operations and cannot change actual balances.
+When the rule's series-shift policy is enabled, postponing also adds the same
+calendar-day delta to the rule offset and to later untouched occurrences.
+Confirmed, cancelled, manually postponed and earlier occurrences are preserved.
+The request must match both occurrence and rule versions; the rule and all
+materialized occurrences are locked and updated atomically. A single-occurrence
+postpone does not depend on the rule version when propagation is disabled.
 The owner may override the occurrence amount during confirmation. That amount
 is stored as a manual confirmed snapshot without changing its rule or siblings.
 When a transfer snapshot requests percentage allocation, application-level

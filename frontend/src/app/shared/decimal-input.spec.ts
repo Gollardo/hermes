@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { DecimalInput, decimalPayload } from './decimal-input';
+import { DecimalInput, decimalPayload, moneyExpressionPayload } from './decimal-input';
 
 @Component({
   imports: [ReactiveFormsModule, DecimalInput],
@@ -31,6 +31,21 @@ describe('DecimalInput', () => {
 
   it('normalizes comma payloads even when submit happens before blur', () => {
     expect(decimalPayload(' 100 000,25 ')).toBe('100000.25');
+  });
+
+  it('evaluates addition and subtraction exactly with mixed decimal separators', () => {
+    expect(moneyExpressionPayload('354.23 + 234,54 -23,32')).toBe('565.45');
+    expect(moneyExpressionPayload('0,0001 + 0.0002')).toBe('0.0003');
+    expect(moneyExpressionPayload('12.3400')).toBe('12.3400');
+    expect(moneyExpressionPayload('+00012,3')).toBe('00012.3');
+  });
+
+  it('rejects unsupported or malformed money expressions', () => {
+    expect(moneyExpressionPayload('10 * 2')).toBeNull();
+    expect(moneyExpressionPayload('10 +')).toBeNull();
+    expect(moneyExpressionPayload('(10 + 2)')).toBeNull();
+    expect(moneyExpressionPayload(`1${'+1'.repeat(256)}`)).toBeNull();
+    expect(moneyExpressionPayload(`1${' '.repeat(512)}`)).toBeNull();
   });
 
   it('formats a programmatic exact value but restores it for editing', () => {

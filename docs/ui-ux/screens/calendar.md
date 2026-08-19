@@ -35,6 +35,12 @@ events merely because they are within the next 30 days.
 - Every calendar chip contains a visible status label; color and strike-through
   are supplementary signals only.
 - A failed confirmation keeps the occurrence and entered postpone date visible.
+- A rule may expose an explicit “shift following events” option. Before a
+  postpone action, the interface states the signed day delta and that only
+  untouched later events move; the result reports shifted and preserved counts.
+- An automatically cancelled dated exception protected during a series shift
+  remains cancelled and carries a visible preservation explanation; it is not
+  presented as an occurrence that received the new offset.
 - An actionable occurrence exposes its confirmation amount so an approximate
   template amount can be corrected without editing the rule.
 - A fund-allocating transfer names that side effect beside the action and uses
@@ -48,7 +54,8 @@ events merely because they are within the next 30 days.
 ## Form rules
 
 - Type is explicit: income, expense or transfer.
-- Amount is an unsigned exact decimal with the base currency visible.
+- Amount is an unsigned exact decimal with the base currency visible. The field
+  accepts exact addition and subtraction expressions and resolves them on blur.
 - Income and expense require a matching category and one account.
 - Transfer requires two different accounts and no category.
 - A transfer may opt into immediate distribution across active funds by their

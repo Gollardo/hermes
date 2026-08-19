@@ -23,6 +23,7 @@ class RecurringRuleCreateRequest(BaseModel):
     destination_account_id: UUID | None = None
     category_id: UUID | None = None
     allocate_to_funds: bool = False
+    shift_future_on_postpone: bool = False
 
     @field_validator("description")
     @classmethod
@@ -92,6 +93,8 @@ class RecurringRuleResponse(BaseModel):
     category_id: UUID | None
     category_name: str | None
     allocate_to_funds: bool
+    shift_future_on_postpone: bool
+    series_shift_days: int
     active: bool
     version: int
     created_at: datetime
@@ -105,6 +108,8 @@ class ExpectedOccurrenceResponse(BaseModel):
     due_on: date
     status: OccurrenceStatus
     manually_modified: bool
+    series_shift_days: int
+    preserve_from_series_shift: bool
     overdue: bool
     type: OperationType
     amount: str
@@ -154,6 +159,15 @@ class OccurrenceConfirmRequest(OccurrenceVersionRequest):
 
 class OccurrencePostponeRequest(OccurrenceVersionRequest):
     due_on: date
+    rule_version: int | None = Field(default=None, ge=1)
+
+
+class OccurrencePostponeResponse(ExpectedOccurrenceResponse):
+    series_shift_applied: bool
+    shift_days: int
+    shifted_occurrences: int
+    preserved_occurrences: int
+    rule_version: int
 
 
 def format_money(value: Decimal) -> str:

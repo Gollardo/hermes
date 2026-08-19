@@ -10,8 +10,9 @@ detailed design system remains future work. The owner approved the implemented
 
 ## Implemented shared patterns in the current frontend
 
-The direction first applied in `0.1.0-alpha.2` now covers the current `0.4.0`
-interface as an approved release foundation, not a final design system:
+The direction first applied in `0.1.0-alpha.2` now covers the current `0.4.5`
+interface. Its approved release foundation remains the `0.4.0` owner decision,
+not a final design system:
 
 - the desktop shell uses persistent side navigation, a separate workspace, and
   a calm local-instance indicator;

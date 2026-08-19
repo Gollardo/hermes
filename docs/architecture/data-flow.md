@@ -169,6 +169,14 @@ an occurrence never changes the actual balance. Confirmation locks the
 occurrence, creates one actual operation through the Operations public contract
 and records its link in the same transaction. A retry returns that link instead
 of posting again. Sliding the window preserves overdue untouched occurrences.
+An optional postpone policy locks the rule and its materialized occurrences,
+updates the persisted series offset, and applies the same day delta only to
+later untouched occurrences in that transaction. Automatically cancelled later
+occurrences keep their dates and receive an explicit preservation marker in the
+same transaction; materialization uses that marker instead of inferring intent
+from offset differences. Synchronization checks already materialized future
+occurrences outside the bounded creation window individually, so rule
+deactivation or a shorter end date cannot leave shifted boundary events active.
 Rule replacement locks the rule and all of its occurrences before validating
 the category and deterministically ordered accounts. Confirmation already owns
 the occurrence before taking those same reference locks, so concurrent rule

@@ -16,7 +16,16 @@ Later revisions extend the same linear history:
 - `0008_session_idle_timeout` adds server-enforced session activity tracking;
 - `0009_scheduled_fund_allocation` records the transfer-allocation choice;
 - `0010_default_account` adds the optional default account;
-- `0011_dynamic_fund_allocation` adds the global manual/dynamic fund mode.
+- `0011_dynamic_fund_allocation` adds the global manual/dynamic fund mode;
+- `0012_recurring_series_shift` adds the opt-in postpone propagation policy and
+  persisted day offsets for rules and occurrences, plus an explicit marker for
+  automatically cancelled occurrences preserved from later series shifts.
 
-`0011_dynamic_fund_allocation` is the current single head. Revision identifiers,
+`0012_recurring_series_shift` is the current single head. Revision identifiers,
 rather than migration filenames, are the stable Alembic chain.
+
+Downgrading below `0012_recurring_series_shift` removes the rule policy, stored
+offsets and cancelled-occurrence preservation markers. Untouched occurrence
+dates are normalized back to their source dates; take a backup before rollback
+because the accumulated series shift and explicit preservation decisions cannot
+be reconstructed afterward.
