@@ -96,6 +96,11 @@ the exact decision the owner made.
   non-manually-modified occurrences move by the same exact calendar-day delta
   in one transaction. Earlier, confirmed and manually changed occurrences are
   preserved.
+- A series postpone locks the rule, selected occurrence, later pending
+  occurrences and automatically cancelled occurrences that need an explicit
+  preservation marker. Confirmed, manual and already protected exceptions are
+  counted in the response without taking row locks. Candidate rows are selected
+  in deterministic `(scheduled_on, id)` order.
 - Disabling the option later stops future propagation but does not undo shifts
   already applied.
 - Rule synchronization also revisits already materialized future occurrences

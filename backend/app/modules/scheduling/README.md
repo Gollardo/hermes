@@ -11,6 +11,9 @@ Scheduling never writes account movements directly.
 Account, category and timezone checks also use public module contracts. Rule
 replacement locks its occurrences before those references; confirmation locks
 one occurrence and follows the same category-before-account posting order.
+Series postponement locks the rule, selected occurrence and only mutable later
+occurrences in deterministic date/id order. Confirmed, manual and already
+protected exceptions are counted but do not receive unnecessary row locks.
 
 Public lifecycle-reference reads live in `contracts.py`. Account deletion and
 category type changes use them from application coordination without importing

@@ -1,14 +1,15 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from decimal import Decimal
-from threading import Barrier
+from threading import Barrier, Event
+from typing import Any
 
 import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from app.core.config import Settings
 from app.main import create_app
@@ -473,6 +474,122 @@ def test_series_shift_calendar_overflow_rolls_back_rule_and_occurrences(
         assert rule_after["version"] == rule["version"]
         assert rule_after["series_shift_days"] == 0
         assert _occurrences(client, rule["id"]) == before
+
+
+def test_series_shift_locks_only_selected_and_mutable_future_occurrences(
+    postgres_database_settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        account = _account(client, headers, "Narrow locks", "0")
+        category = _category(client, headers, "Salary", "income")
+        today = _horizon_today(client, headers)
+        payload = _rule_payload(
+            operation_type="income",
+            start_on=today,
+            end_on=today + timedelta(days=4),
+            amount="10",
+            account_id=account,
+            category_id=category,
+        )
+        rule = client.post("/api/v1/scheduling/rules", headers=headers, json=payload).json()
+        with app.state.session_factory() as session:
+            assert (
+                session.scalar(
+                    select(func.to_regclass("ix_expected_occurrences_series_shift_candidates"))
+                )
+                == "ix_expected_occurrences_series_shift_candidates"
+            )
+        occurrences = _occurrences(client, rule["id"])
+        manual_due_on = date.fromisoformat(str(occurrences[4]["due_on"])) + timedelta(days=1)
+        assert (
+            client.post(
+                f"/api/v1/scheduling/occurrences/{occurrences[4]['id']}/postpone",
+                headers=headers,
+                json={"version": occurrences[4]["version"], "due_on": manual_due_on.isoformat()},
+            ).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                f"/api/v1/scheduling/occurrences/{occurrences[3]['id']}/confirm",
+                headers=headers,
+                json={"version": occurrences[3]["version"]},
+            ).status_code
+            == 200
+        )
+        enabled_payload = {
+            **payload,
+            "active": True,
+            "version": rule["version"],
+            "shift_future_on_postpone": True,
+        }
+        enabled = client.put(
+            f"/api/v1/scheduling/rules/{rule['id']}", headers=headers, json=enabled_payload
+        ).json()
+        current = {item["id"]: item for item in _occurrences(client, rule["id"])}
+
+    locks_acquired = Event()
+    allow_materialization = Event()
+    original_materialize = scheduling_service._materialize_missing_occurrences
+
+    def pause_after_candidate_locks(*args: Any, **kwargs: Any) -> int:
+        locks_acquired.set()
+        if not allow_materialization.wait(timeout=10):
+            raise TimeoutError("series-shift lock test was not released")
+        return original_materialize(*args, **kwargs)
+
+    monkeypatch.setattr(
+        scheduling_service,
+        "_materialize_missing_occurrences",
+        pause_after_candidate_locks,
+    )
+
+    def shift_series() -> int:
+        with TestClient(app) as concurrent_client:
+            assert (
+                concurrent_client.post(
+                    "/api/v1/auth/login", json={"master_password": MASTER_PASSWORD}
+                ).status_code
+                == 200
+            )
+            selected = current[occurrences[1]["id"]]
+            return concurrent_client.post(
+                f"/api/v1/scheduling/occurrences/{selected['id']}/postpone",
+                headers=_headers(concurrent_client),
+                json={
+                    "version": selected["version"],
+                    "rule_version": enabled["version"],
+                    "due_on": (
+                        date.fromisoformat(str(selected["due_on"])) + timedelta(days=2)
+                    ).isoformat(),
+                },
+            ).status_code
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        result = executor.submit(shift_series)
+        try:
+            assert locks_acquired.wait(timeout=10), "series shift did not acquire candidate locks"
+            excluded_ids = [occurrences[0]["id"], occurrences[3]["id"], occurrences[4]["id"]]
+            with app.state.session_factory.begin() as session:
+                unlocked = session.scalars(
+                    select(ExpectedOccurrence)
+                    .where(ExpectedOccurrence.id.in_(excluded_ids))
+                    .order_by(ExpectedOccurrence.id)
+                    .with_for_update(nowait=True)
+                ).all()
+                assert len(unlocked) == 3
+            with pytest.raises(OperationalError), app.state.session_factory.begin() as session:
+                session.scalar(
+                    select(ExpectedOccurrence)
+                    .where(ExpectedOccurrence.id == occurrences[2]["id"])
+                    .with_for_update(nowait=True)
+                )
+        finally:
+            allow_materialization.set()
+        assert result.result(timeout=10) == 200
 
 
 def test_rule_edit_protects_manual_occurrences_and_materialization_is_idempotent(

@@ -31,6 +31,9 @@ assigned.
 - Automatically cancelled occurrences preserved during a series shift expose a
   dedicated state instead of relying on an offset mismatch, and Calendar names
   that state explicitly.
+- Series shifting locks only the selected occurrence and mutable later
+  candidates; confirmed and manual exceptions no longer receive unnecessary row
+  locks.
 - Application version advanced to 0.4.5.
 
 - All UI monetary amounts and percentages now use spaces between thousand

@@ -327,6 +327,10 @@ access. Direct public-internet exposure is unsupported.
 - Automatically cancelled future occurrences preserved during a series shift
   carry an explicit database-constrained marker. Their applied offset remains a
   date snapshot, and Calendar identifies the preservation state directly.
+- Series postponement locks the rule, selected occurrence and only mutable later
+  candidates through a partial-indexed deterministic query. Confirmed, manual
+  and already protected exceptions remain outside the row-lock set while their
+  count stays visible in the result.
 - Confirmation creates exactly one actual operation and records the link in the
   same transaction. Postponement and cancellation create no physical movement.
 - Calendar shows one month, account and type filters, and quick confirm,
@@ -402,7 +406,7 @@ access. Direct public-internet exposure is unsupported.
 
 ## Verification snapshot
 
-- For the current `0.4.5` worktree, 72 non-PostgreSQL backend tests, 57/57
+- For the current `0.4.5` worktree, 72 non-PostgreSQL backend tests, 58/58
   PostgreSQL integration tests and 114/114 frontend tests pass. The PostgreSQL
   run covers migration to head, the explicit cancelled-occurrence constraint,
   backup round trip, rollback on calendar overflow, and cancellation of shifted
@@ -604,10 +608,10 @@ access. Direct public-internet exposure is unsupported.
   policy is deferred.
 - Schedule timezone migration is absent. Timezone change is rejected after the
   first rule; an explicit migration flow is deferred.
-- Series shifting locks the rule and all materialized occurrences in one
-  transaction. This is intentionally simple for a single owner; very large
-  numbers of daily rules may eventually need a narrower persisted-offset read
-  model without weakening manual-occurrence protection.
+- Series shifting now narrows row locks, but still counts all later occurrences
+  and reads existing scheduled identities before filling the shifted horizon.
+  Very large daily schedules may eventually need a dedicated aggregate or
+  persisted materialization boundary; correctness must remain exact.
 - Annual forecast returns every explaining event and holds shared locks on
   selected occurrences/accounts for the request. Measured growth may require a
   consistent read projection, but explanations must never be silently truncated.

@@ -4,7 +4,7 @@ from decimal import Decimal
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -247,6 +247,74 @@ def _lock_rule_occurrences(session: Session, rule_id: UUID) -> dict[date, Expect
     }
 
 
+def _lock_series_shift_candidates(
+    session: Session, rule_id: UUID, *, after_scheduled_on: date
+) -> list[ExpectedOccurrence]:
+    return list(
+        session.scalars(
+            select(ExpectedOccurrence)
+            .where(
+                ExpectedOccurrence.rule_id == rule_id,
+                ExpectedOccurrence.scheduled_on > after_scheduled_on,
+                or_(
+                    ExpectedOccurrence.status == OccurrenceStatus.PENDING,
+                    and_(
+                        ExpectedOccurrence.status == OccurrenceStatus.CANCELLED,
+                        ExpectedOccurrence.manually_modified.is_(False),
+                        ExpectedOccurrence.preserve_from_series_shift.is_(False),
+                    ),
+                ),
+            )
+            .order_by(ExpectedOccurrence.scheduled_on, ExpectedOccurrence.id)
+            .with_for_update()
+        ).all()
+    )
+
+
+def _materialization_dates(
+    rule: RecurringRule, *, horizon_from: date, horizon_to: date
+) -> set[date]:
+    if not rule.active:
+        return set()
+    scheduled_range_from = _shift_date(horizon_from, -rule.series_shift_days)
+    scheduled_range_to = _shift_date(horizon_to, -rule.series_shift_days)
+    return set(
+        recurrence_dates(
+            frequency=rule.frequency,
+            interval=rule.interval,
+            weekdays=rule.weekdays,
+            anchor=rule.start_on,
+            range_from=scheduled_range_from,
+            range_to=scheduled_range_to,
+            end_on=rule.end_on,
+        )
+    )
+
+
+def _materialize_missing_occurrences(
+    session: Session,
+    rule: RecurringRule,
+    *,
+    horizon_from: date,
+    horizon_to: date,
+    now: datetime,
+) -> int:
+    target_dates = _materialization_dates(
+        rule,
+        horizon_from=horizon_from,
+        horizon_to=horizon_to,
+    )
+    existing_dates = set(
+        session.scalars(
+            select(ExpectedOccurrence.scheduled_on).where(ExpectedOccurrence.rule_id == rule.id)
+        ).all()
+    )
+    missing_dates = target_dates - existing_dates
+    for scheduled_on in sorted(missing_dates):
+        session.add(_new_occurrence(rule, scheduled_on, now))
+    return len(missing_dates)
+
+
 def _synchronize_rule(
     session: Session,
     rule: RecurringRule,
@@ -259,20 +327,10 @@ def _synchronize_rule(
         existing = _lock_rule_occurrences(session, rule.id)
     scheduled_range_from = _shift_date(horizon_from, -rule.series_shift_days)
     scheduled_range_to = _shift_date(horizon_to, -rule.series_shift_days)
-    materialization_dates = (
-        set(
-            recurrence_dates(
-                frequency=rule.frequency,
-                interval=rule.interval,
-                weekdays=rule.weekdays,
-                anchor=rule.start_on,
-                range_from=scheduled_range_from,
-                range_to=scheduled_range_to,
-                end_on=rule.end_on,
-            )
-        )
-        if rule.active
-        else set()
+    materialization_dates = _materialization_dates(
+        rule,
+        horizon_from=horizon_from,
+        horizon_to=horizon_to,
     )
     now = datetime.now(UTC)
     counts = _MaterializationCounts()
@@ -595,9 +653,8 @@ def postpone_occurrence(
         expected_rule_version is None or rule.version != expected_rule_version
     ):
         raise SchedulingConflictError
-    occurrences = _lock_rule_occurrences(session, rule.id)
-    occurrence = next((item for item in occurrences.values() if item.id == occurrence_id), None)
-    if occurrence is None:
+    occurrence = _get_occurrence(session, occurrence_id, lock=True)
+    if occurrence.rule_id != rule.id:
         raise ExpectedOccurrenceNotFoundError
     if occurrence.version != expected_version:
         raise SchedulingConflictError
@@ -617,34 +674,44 @@ def postpone_occurrence(
     shifted_occurrences = 0
     preserved_occurrences = 0
     if rule.shift_future_on_postpone:
+        siblings = _lock_series_shift_candidates(
+            session,
+            rule.id,
+            after_scheduled_on=occurrence.scheduled_on,
+        )
+        future_occurrence_count = int(
+            session.scalar(
+                select(func.count())
+                .select_from(ExpectedOccurrence)
+                .where(
+                    ExpectedOccurrence.rule_id == rule.id,
+                    ExpectedOccurrence.scheduled_on > occurrence.scheduled_on,
+                )
+            )
+            or 0
+        )
         rule.series_shift_days += shift_days
         rule.version += 1
         rule.updated_at = now
-        for sibling in occurrences.values():
-            if sibling.id == occurrence.id or sibling.scheduled_on <= occurrence.scheduled_on:
-                continue
+        for sibling in siblings:
             if sibling.status == OccurrenceStatus.CANCELLED:
-                if not sibling.manually_modified and not sibling.preserve_from_series_shift:
-                    sibling.preserve_from_series_shift = True
-                    sibling.version += 1
-                    sibling.updated_at = now
-                preserved_occurrences += 1
-                continue
-            if sibling.status == OccurrenceStatus.CONFIRMED or sibling.manually_modified:
-                preserved_occurrences += 1
+                sibling.preserve_from_series_shift = True
+                sibling.version += 1
+                sibling.updated_at = now
                 continue
             sibling.series_shift_days += shift_days
             sibling.due_on = _shift_date(sibling.due_on, shift_days)
             sibling.version += 1
             sibling.updated_at = now
             shifted_occurrences += 1
+        preserved_occurrences = future_occurrence_count - shifted_occurrences
         resolved_today = today or _today(session)
-        _synchronize_rule(
+        _materialize_missing_occurrences(
             session,
             rule,
             horizon_from=resolved_today,
             horizon_to=calendar_year_later(resolved_today),
-            existing=occurrences,
+            now=now,
         )
     session.flush()
     response = _occurrence_response(session, occurrence, today=today or _today(session))

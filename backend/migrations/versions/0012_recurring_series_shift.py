@@ -47,6 +47,16 @@ def upgrade() -> None:
         "expected_occurrences",
         "NOT preserve_from_series_shift OR (status = 'cancelled' AND NOT manually_modified)",
     )
+    op.create_index(
+        "ix_expected_occurrences_series_shift_candidates",
+        "expected_occurrences",
+        ["rule_id", "scheduled_on", "id"],
+        postgresql_where=sa.text(
+            "status = 'pending' OR "
+            "(status = 'cancelled' AND NOT manually_modified "
+            "AND NOT preserve_from_series_shift)"
+        ),
+    )
     op.drop_constraint("ck_expected_occurrences_due_date", "expected_occurrences", type_="check")
     op.create_check_constraint(
         "ck_expected_occurrences_due_date",
@@ -60,6 +70,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_index(
+        "ix_expected_occurrences_series_shift_candidates",
+        table_name="expected_occurrences",
+    )
     op.drop_constraint(
         "ck_expected_occurrences_series_shift_preservation",
         "expected_occurrences",

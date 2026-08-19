@@ -72,10 +72,16 @@ link and cannot create a second financial operation. Postponing and cancelling
 never call Operations and cannot change actual balances.
 When the rule's series-shift policy is enabled, postponing also adds the same
 calendar-day delta to the rule offset and to later untouched occurrences.
-Confirmed, cancelled, manually postponed and earlier occurrences are preserved.
-The request must match both occurrence and rule versions; the rule and all
-materialized occurrences are locked and updated atomically. A single-occurrence
-postpone does not depend on the rule version when propagation is disabled.
+Confirmed, manually cancelled or postponed, already protected automatically
+cancelled, and earlier occurrences are preserved. An unprotected automatically
+cancelled occurrence keeps its date and receives the explicit preservation
+marker.
+The request must match both occurrence and rule versions. The rule, selected
+occurrence and mutable later occurrences are locked and updated atomically in
+deterministic date/id order. Confirmed, manual and already protected exceptions
+remain outside the row-lock set because series shifting cannot mutate them. A
+single-occurrence postpone does not depend on the rule version when propagation
+is disabled.
 The owner may override the occurrence amount during confirmation. That amount
 is stored as a manual confirmed snapshot without changing its rule or siblings.
 When a transfer snapshot requests percentage allocation, application-level

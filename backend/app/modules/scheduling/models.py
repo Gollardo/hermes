@@ -15,6 +15,7 @@ from sqlalchemy import (
     SmallInteger,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
@@ -171,6 +172,17 @@ class ExpectedOccurrence(Base):
         ),
         UniqueConstraint("rule_id", "scheduled_on", name="uq_expected_occurrences_rule_date"),
         Index("ix_expected_occurrences_calendar", "due_on", "status", "id"),
+        Index(
+            "ix_expected_occurrences_series_shift_candidates",
+            "rule_id",
+            "scheduled_on",
+            "id",
+            postgresql_where=text(
+                "status = 'pending' OR "
+                "(status = 'cancelled' AND NOT manually_modified "
+                "AND NOT preserve_from_series_shift)"
+            ),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)

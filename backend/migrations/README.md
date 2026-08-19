@@ -19,7 +19,8 @@ Later revisions extend the same linear history:
 - `0011_dynamic_fund_allocation` adds the global manual/dynamic fund mode;
 - `0012_recurring_series_shift` adds the opt-in postpone propagation policy and
   persisted day offsets for rules and occurrences, plus an explicit marker for
-  automatically cancelled occurrences preserved from later series shifts.
+  automatically cancelled occurrences preserved from later series shifts. Its
+  partial candidate index supports narrow deterministic locking during a shift.
 
 `0012_recurring_series_shift` is the current single head. Revision identifiers,
 rather than migration filenames, are the stable Alembic chain.

@@ -281,7 +281,7 @@ describe('SchedulingPage recurrence editor', () => {
       series_shift_applied: true,
       shift_days: 4,
       shifted_occurrences: 2,
-      preserved_occurrences: 1,
+      preserved_occurrences: 3,
       rule_version: 4,
     });
     http
@@ -289,7 +289,7 @@ describe('SchedulingPage recurrence editor', () => {
       .flush([{ ...RULE, series_shift_days: 4, version: 4 }]);
     flushOccurrenceRequests([]);
     expect(fixture.nativeElement.textContent).toContain('Обновлено следующих событий: 2');
-    expect(fixture.nativeElement.textContent).toContain('сохранено исключений: 1');
+    expect(fixture.nativeElement.textContent).toContain('сохранено исключений: 3');
   });
 
   it('does not couple a single-occurrence postpone to the rule version', () => {
