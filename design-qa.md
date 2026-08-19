@@ -2,7 +2,7 @@
 
 ## Evidence
 
-- Source visual truth: `/var/folders/nw/xdxz9z097v3fyc6g6mqsjgjm0000gn/T/TemporaryItems/NSIRD_screencaptureui_elHYDE/Снимок экрана — 2026-08-17 в 19.59.19.png`
+- Source visual truth: temporary screenshot captured on 2026-08-17 at 19:59.
 - Source pixels: `1640 × 1750`; Safari capture supplied by the owner.
 - Implementation screenshot: `/private/tmp/hermes-operation-modal-final.png`
 - Implementation pixels and CSS viewport: `581 × 987`, device density `1x`.
@@ -25,8 +25,8 @@ responsive behavior rather than claiming pixel-identical fidelity.
   actions now use explicit token colors instead of a browser-dependent filter.
 - Image and icon fidelity: the form contains no raster imagery. Native select and date affordances
   remain platform-owned; the existing close glyph is unchanged.
-- Copy and content: required financial fields and labels are unchanged. Only the optional disclosure
-  text `Добавить описание` was added.
+- Copy and content: required financial fields and labels are unchanged. Only the optional description
+  disclosure was added.
 - Focused control comparison: type, category, amount, account, fund and date controls all render at
   `48px` in the verified browser state. The optional description expands without hiding the footer.
 

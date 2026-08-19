@@ -1,189 +1,190 @@
 # Dashboard
 
-## Статус
+## Status
 
-Основной продуктовый фокус подтверждён владельцем 2026-08-02. После owner review
-2026-08-12 реализована первая фактическая сводка: свободные, физические и
-зарезервированные деньги, прогноз месяца, сегодняшние/просроченные события и
-последние операции. Фиксированный dashboard предпочтительнее преждевременного
-конструктора виджетов. Текущая реализованная композиция утверждена 2026-08-18
-как baseline первого публичного релиза.
+The owner confirmed the primary product focus on 2026-08-02. After owner review
+on 2026-08-12, the first factual overview was implemented: free, physical, and
+reserved money, a monthly forecast, today's and overdue events, and recent
+operations. A fixed dashboard is preferable to a premature widget builder. The
+owner approved the current implemented composition on 2026-08-18 as the
+first-public-release baseline.
 
-## Цель экрана
+## Screen goal
 
-За короткий взгляд дать пользователю ответ на четыре owner-confirmed вопроса:
+Answer four owner-confirmed questions at a glance:
 
-1. Сколько сейчас свободных денег?
-2. Сколько их будет через выбранное число дней?
-3. Что будет, если я приму это финансовое решение?
-4. Куда ушла большая часть денег?
+1. How much money is free now?
+2. How much will be free after the selected number of days?
+3. What will happen if I make this financial decision?
+4. Where did most of the money go?
 
-Dashboard не должен заменять журнал, фонды, прогноз и аналитику. Он показывает
-обзорный набор сигналов, ведёт к источнику каждого из них и позволяет быстро
-создать операцию.
+Dashboard must not replace the journal, funds, forecast, or analytics. It shows
+a concise set of signals, provides a route to each source, and supports fast
+operation creation.
 
-## Главные пользовательские задачи
+## Primary user jobs
 
-- сразу увидеть свободные деньги и их тренд;
-- проверить общий фактический остаток и разбивку по счетам;
-- сравнить физические и зарезервированные в фондах деньги;
-- заметить ближайшее обязательство или прогнозный дефицит;
-- оценить долги/обязательства и их динамику после реализации этого домена;
-- увидеть основные категории расходов, доходы и тренд остатков по счетам;
-- создать доход, расход, перевод или корректировку;
-- открыть последние операции и понять недавнее изменение;
-- перейти от краткой сводки к нужному разделу.
+- immediately see free money and its trend;
+- verify the total actual balance and account breakdown;
+- compare physical money with money reserved in funds;
+- notice the nearest obligation or projected shortfall;
+- assess debts and liabilities and their trend after that domain exists;
+- see major expense categories, income, and account-balance trends;
+- create income, expense, transfer, or adjustment;
+- open recent operations and understand a recent change;
+- move from the summary to the relevant section.
 
-## Важная информация
+## Important information
 
-### Текущее состояние
+### Current state
 
-- свободные деньги как главное число;
-- общий физический остаток по совместимым активным счетам;
-- сумма в виртуальных фондах;
-- долги/обязательства после реализации соответствующего roadmap scope;
-- изменение ключевых значений за сопоставимый период;
-- короткая разбивка по счетам с переходом в детали;
-- явная отметка «сейчас», не зависящая от исторического фильтра.
+- free money as the primary number;
+- total physical balance across compatible active accounts;
+- total money in virtual funds;
+- debts and liabilities after the relevant roadmap scope exists;
+- changes in key values over a comparable period;
+- a short account breakdown with detail navigation;
+- an explicit “Now” marker independent of historical filters.
 
-Если агрегация счетов в разных валютах когда-либо появится, нельзя показывать
-единый итог до утверждения conversion-aware модели.
+If aggregation across currencies is ever introduced, do not show a combined
+total until a conversion-aware model is approved.
 
-### Требует внимания
+### Needs attention
 
-- первый прогнозируемый дефицит с датой и суммой;
-- просроченные ожидаемые события;
-- ближайшее крупное обязательство, меняющее доступность денег;
-- невозможность распределения или иной проверенный конфликт финансового
-  состояния.
+- first projected shortfall with date and amount;
+- overdue expected events;
+- the nearest large obligation that changes availability;
+- inability to allocate or another verified financial-state conflict.
 
-Этот блок скрывается, когда действий нет; вместо него не нужен декоративный
-статус «всё отлично».
+Hide this block when no action is needed; do not replace it with a decorative
+“Everything is fine” status.
 
-### Ближайшее будущее
+### Near future
 
-- события ближайших 7–30 дней;
-- суммарные ожидаемые поступления и списания;
-- короткий forecast preview с текущей точкой, минимумом и переходом в полный
-  прогноз.
+- events in the next 7–30 days;
+- total expected inflows and outflows;
+- a short forecast preview with the current point, minimum, and a route to the
+  full forecast.
 
-### Последние изменения
+### Recent changes
 
-- последние фактические операции;
-- дата, смысл операции, затронутый счёт/счета, сумма и классификация;
-- переход в полный журнал с сохранением применённого контекста.
+- recent actual operations;
+- date, meaning, affected account or accounts, amount, and classification;
+- a route to the full journal with context preserved.
 
-### Компактная аналитика
+### Compact analytics
 
-- расходы и доходы текущего календарного месяца по пяти крупнейшим корневым
-  категориям; меньшие категории объединяются в «Прочее»;
-- доли фондов в общей сумме отложенных средств;
-- цветовой маркер каждой доли повторяется рядом с её текстовым названием и
-  точной суммой, поэтому цвет не является единственным носителем смысла;
-- динамика остатков по счетам;
-- тренды свободных денег и долгов/обязательств, когда доступны исходные данные;
-- drill-down от каждого агрегата к исходному разделу или журналу.
+- current-calendar-month expenses and income across the five largest root
+  categories; smaller categories combine as “Other”;
+- fund shares of total saved money;
+- each share's color marker repeats beside its text label and exact amount, so
+  color is not the sole carrier of meaning;
+- account-balance trends;
+- free-money and debt/liability trends when source data exists;
+- drill-down from every aggregate to its source section or journal.
 
-Графики и диаграммы нужны, но их число ограничивается: каждый визуальный блок
-должен отвечать на один из трёх главных вопросов экрана.
+Charts are useful but limited: every visual block must answer one of the main
+screen questions.
 
-## Второстепенная информация
+## Secondary information
 
-- прогресс распределения по фондам;
-- состояние archived/empty сущностей только при наличии полезного действия;
-- информация о backup или экземпляре только при реальной проблеме, а не как
-  постоянная карточка.
+- fund-allocation progress;
+- archived or empty entity states only when a useful action exists;
+- backup or instance information only during a real problem, not as a permanent
+  card.
 
-## Предлагаемый порядок блоков
+## Proposed block order
 
-1. Заголовок, период для исторических блоков, «Новая операция».
-2. Свободные деньги как primary; рядом общий итог, в фондах и долги.
-3. Тренд свободных денег и короткий прогноз.
-4. Сигналы, требующие внимания.
-5. Компактная аналитика расходов, доходов и остатков по счетам.
-6. Последние операции.
+1. Title, historical-block period, and “New operation”.
+2. Free money first; physical total, money in funds, and debts beside it.
+3. Free-money trend and short forecast.
+4. Signals requiring attention.
+5. Compact expense, income, and account-balance analytics.
+6. Recent operations.
 
-На широком экране блоки могут образовывать асимметричную сетку, но порядок
-чтения и keyboard navigation остаётся последовательным. На узком экране
-приоритет сохраняется сверху вниз.
+Blocks may form an asymmetric grid on a wide screen, but reading order and
+keyboard navigation remain sequential. A narrow screen preserves priority from
+top to bottom.
 
-## Основные действия
+## Primary actions
 
-- создать операцию;
-- открыть конкретный счёт;
-- открыть фонд или распределение;
-- подтвердить/перенести/отменить ожидаемое событие после появления scheduling;
-- открыть полный прогноз в выбранном scope;
-- в будущем открыть «Что если?» с текущим финансовым контекстом;
-- применить категорию/период к журналу через drill-down;
-- скрыть чувствительные суммы, если privacy mode будет отдельно утверждён.
+- create an operation;
+- open a specific account;
+- open a fund or allocation;
+- confirm, postpone, or cancel an expected event after Scheduling exists;
+- open the full forecast in the selected scope;
+- in the future, open “What if?” with current financial context;
+- apply a category or period to the journal through drill-down;
+- hide sensitive amounts if a privacy mode is separately approved.
 
-## Возможные состояния
+## Possible states
 
-### Первый вход без финансовых данных
+### First visit without financial data
 
-Один последовательный путь: создать первый счёт, затем категории и первую
-операцию. Не показывать сетку из пустых нулевых карточек.
+Provide one sequential path: create the first account, then categories, then the
+first operation. Do not show a grid of empty zero cards.
 
-### Есть счета, но нет обычных операций
+### Accounts exist but no ordinary operations
 
-Показать фактические остатки и объяснить следующий шаг «Добавить доход или
-расход». Не выдавать начальную корректировку за активность ежедневного журнала
-без ясной подписи.
+Show actual balances and explain the next action, “Add income or expense”. Do
+not present an initial adjustment as daily-journal activity without a clear
+label.
 
-### Фонды ещё не настроены
+### Funds are not configured
 
-Свободные деньги остаются понятными; блок объясняет виртуальное назначение денег
-и ведёт к созданию первого фонда. Не изображать фонд как новый банковский счёт.
+Free money remains understandable. The block explains virtual purpose and leads
+to creating the first fund. Do not depict a fund as a new bank account.
 
-### Нет будущих событий
+### No future events
 
-Forecast preview показывает только текущий остаток и объясняет, что прогноз
-станет полезнее после добавления ожидаемых операций. Нельзя рисовать
-«стабильную» линию как реальное предсказание без событий.
+The forecast preview shows only the current balance and explains that the
+forecast becomes more useful after expected operations are added. Do not draw a
+“stable” line as a real prediction when no events exist.
 
-### Есть риск дефицита
+### Shortfall risk exists
 
-Риск располагается выше вторичной аналитики и содержит дату, затронутый счёт,
-минимум и переход к причинам. В aggregate scope внутренний перевод не создаёт
-ложное уменьшение общего итога.
+Place the risk above secondary analytics. Include date, affected account,
+minimum, and a route to causes. An internal transfer does not create a false
+reduction in combined scope.
 
-### Длинные значения и много счетов
+### Long values and many accounts
 
-Сводка не обрезает значащие цифры. Список счетов ограничивает высоту и ведёт к
-полному разделу; общий итог не рассчитывается по видимой части списка.
+The summary does not truncate significant digits. The account list limits its
+height and leads to the full section; the combined total is never calculated
+from only visible rows.
 
-### Загрузка или ошибка части данных
+### Partial loading or failure
 
-Связанные блоки имеют согласованное состояние. Если прогноз недоступен, текущий
-баланс может оставаться видимым с явным сообщением, но нельзя показывать
-прогнозные нули как данные. Retry действует на проблемный блок или весь
-согласованный набор — в зависимости от границы запроса.
-Ошибка категорийной аналитики не скрывает уже полученные текущие остатки,
-прогноз и операции: диаграммы показывают локальное сообщение об ошибке, а не
-подменяются нулевыми данными.
+Related blocks use a coherent state. If the forecast is unavailable, current
+balance may remain visible with a clear message, but projected zeroes cannot be
+shown as data. Retry applies to the failing block or coherent request set,
+depending on the request boundary.
 
-### Истёкшая сессия
+A category-analytics error does not hide current balances, forecast, and
+operations already received. Charts show a local error instead of replacing
+data with zeroes.
 
-Пользователь возвращается к входу; несохранённый ввод операции по возможности
-сохраняется локально без записи чувствительных данных дольше необходимого.
+### Expired session
 
-## Ошибки UX, которых нужно избегать
+Return to login. Preserve unsaved operation input locally where possible without
+retaining sensitive data longer than necessary.
 
-- одинаковый визуальный вес у всех карточек;
-- десятки KPI и искусственный «finance score» без действия;
-- несколько независимых period controls, незаметно меняющих разные блоки;
-- общий balance без объяснения состава счетов и валюты;
-- смешение фактических и ожидаемых операций в одной ленте;
-- круговые графики с большим числом категорий без агрегации «Прочее»;
-- скрытые клики по карточке без видимого affordance;
-- красный/зелёный как единственный носитель смысла;
-- рекламные, social или банковские card-мотивы из референсов;
-- персонализируемая сетка до проверки устойчивого набора задач.
+## UX failures to avoid
 
-## Вопросы для проверки прототипа
+- equal visual weight for every card;
+- dozens of KPIs or an artificial finance score without an action;
+- independent period controls that silently change different blocks;
+- a combined balance without account and currency composition;
+- mixing actual and expected operations in one feed;
+- pie charts with many categories and no “Other” aggregation;
+- invisible card clicks with no affordance;
+- red and green as the only source of meaning;
+- advertising, social, or bank-card motifs from references;
+- a customizable grid before a stable task set is validated.
 
-- Какой горизонт ближайших событий нужен по умолчанию?
-- Какие 2–3 графика лучше всего отвечают на главные вопросы без перегрузки?
-- Должна ли недавняя активность занимать больше места, чем компактная аналитика?
-- Нужен ли privacy mode для демонстрации экрана другим людям?
+## Questions for prototype validation
+
+- What is the default horizon for upcoming events?
+- Which two or three charts best answer the main questions without overload?
+- Should recent activity occupy more space than compact analytics?
+- Is a privacy mode needed when showing the screen to other people?

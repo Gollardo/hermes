@@ -115,7 +115,8 @@ CSS values into a permanent design system or approve unimplemented screens.
   smoothing changes presentation only.
 - MUST use the familiar currency symbol when mapped; use the ISO code as the
   fallback.
-- MUST display text dates outside inputs as `20 января 2025`; native date inputs
+- MUST display localized text dates outside inputs, for example `20 January
+  2025`; native date inputs
   retain the platform format.
 - SHOULD emphasize an amount only when it is the primary answer of the current
   context.

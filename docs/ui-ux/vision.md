@@ -1,216 +1,217 @@
 # UI/UX vision
 
-## Статус документа
+## Document status
 
-Документ сочетает owner-confirmed продуктовое направление от 2026-08-02,
-утверждённый 2026-08-18 текущий интерфейс `0.4.0` и гипотезы будущего развития.
-Текущая реализация является baseline первого публичного релиза, но документ не
-задаёт окончательную дизайн-систему и не утверждает ещё не реализованные экраны.
+This document combines the owner-confirmed product direction from 2026-08-02,
+the current `0.4.0` interface approved on 2026-08-18, and hypotheses for future
+development. The current implementation is the baseline for the first public
+release, but this document does not define a final design system or approve
+screens that have not yet been implemented.
 
-Документ опирается на подтверждённую доменную модель Hermes, текущий
-[статус проекта](../project-status.md), [roadmap](../roadmap.md), внешнее
-исследование и пять предоставленных визуальных референсов. Референсы задают
-желаемое ощущение, но не являются макетами для копирования.
+The document is based on the confirmed Hermes domain model, the current
+[project status](../project-status.md), the [roadmap](../roadmap.md), external
+research, and five supplied visual references. The references establish the
+desired feel; they are not mockups to copy.
 
-## North star: понять последствия до решения
+## North star: understand consequences before deciding
 
-Owner-confirmed направление от 2026-08-18:
+Owner-confirmed direction from 2026-08-18:
 
-> **Hermes помогает понять, что будет с деньгами дальше, и проверить финансовое
-> решение до того, как оно станет фактом.**
+> **Hermes helps the owner understand what will happen to their money next and
+> test a financial decision before it becomes a fact.**
 
-Главный продуктовый вопрос:
+The main product question is:
 
-> **Что будет, если я сейчас приму это финансовое решение?**
+> **What will happen if I make this financial decision now?**
 
-Учёт остаётся фундаментом, но не конечной целью. Продуктовая лестница Hermes:
+Tracking remains the foundation, but it is not the final goal. The Hermes
+product ladder is:
 
 ```text
-Факты → Намерения → Прогноз → Сценарий → Последствия → Решение
+Facts → Intentions → Forecast → Scenario → Consequences → Decision
 ```
 
-Прошлое помогает находить закономерности, настоящее даёт точную отправную
-точку, будущее объединяет известные планы и обязательства. Сценарий временно
-добавляет гипотетическое решение и сравнивает результат с базовым прогнозом,
-не изменяя ledger или расписание.
+The past helps identify patterns, the present provides an exact starting point,
+and the future combines known plans and obligations. A scenario temporarily
+adds a hypothetical decision and compares the result with the baseline forecast
+without changing the ledger or schedule.
 
-Будущая способность **«Оракул»** продолжает древнегреческую линию названия
-Hermes. Её основное действие **«Что если?»** представляет альтернативные
-финансовые сценарии как параллельные варианты будущего. Это метафора, а не
-обещание безошибочного предсказания: Оракул обязан раскрывать факты, допущения,
-источники и неопределённость результата.
+The future **Oracle** capability continues the ancient Greek theme of the Hermes
+name. Its primary **What if?** action presents alternative financial scenarios
+as parallel possible futures. This is a metaphor, not a promise of infallible
+prediction: Oracle must disclose the facts, assumptions, sources, and
+uncertainty behind a result.
 
-## Продуктовое обещание интерфейса
+## Interface product promise
 
-Hermes должен ощущаться как современный личный финансовый командный центр:
-точный, собранный и готовый к действию. После открытия пользователь должен за
-короткое время понять:
+Hermes should feel like a modern personal-finance command center: precise,
+composed, and ready for action. Shortly after opening it, the owner should
+understand:
 
-- сколько денег есть фактически;
-- какая часть уже получила назначение в фондах;
-- сколько денег остаётся свободным;
-- какие обязательства приближаются;
-- не приведут ли ожидаемые события к дефициту;
-- что изменилось недавно и какое действие нужно выполнить сейчас.
+- how much money physically exists;
+- how much already has a purpose in funds;
+- how much remains free;
+- which obligations are approaching;
+- whether expected events may cause a shortfall;
+- what changed recently and what action needs attention now.
 
-Owner-confirmed приоритет — свободные деньги. Главные ежедневные вопросы:
-«сколько свободно сейчас?», «сколько будет свободно через выбранное число дней?»
-«что будет, если я приму это решение?» и «куда ушла большая часть денег?». Общая
-сумма, долги/обязательства и тренды дают контекст, но не конкурируют с главным
-ответом.
+Free money is the owner-confirmed priority. The main everyday questions are:
+“How much is free now?”, “How much will be free after the selected number of
+days?”, “What will happen if I make this decision?”, and “Where did most of the
+money go?”. Total money, debts and liabilities, and trends provide context but
+must not compete with the primary answer.
 
-Интерфейс не должен оценивать пользователя, вызывать чувство вины или
-маскировать неопределённость оптимистичной визуализацией. Его задача — давать
-контроль через понятные факты, последствия и следующие действия.
+The interface must not judge the owner, induce guilt, or hide uncertainty behind
+an optimistic visualization. Its job is to create control through clear facts,
+consequences, and next actions.
 
-## Основной пользователь
+## Primary user
 
-Первый пользователь — единственный владелец self-hosted экземпляра и автор
-проекта. Он управляет собственными деньгами, но не обязан знать бухгалтерскую
-терминологию, финансовую аналитику или устройство двойной записи. Интерфейс при
-этом должен оставаться понятным более широкой аудитории: владелец с большой
-вероятностью планирует поделиться проектом публично.
+The first user is the sole owner of a self-hosted instance and the author of the
+project. They manage their own money but are not expected to know accounting
+terminology, financial analytics, or double-entry bookkeeping. The interface
+should nevertheless remain understandable to a broader audience because the
+owner is likely to publish the project.
 
-Интерфейс не предполагает единственную частоту использования. Он поддерживает:
+The interface does not assume one usage frequency. It supports:
 
-- короткие ежедневные сессии для ввода и проверки операций;
-- еженедельный обзор свободных денег, фондов и ближайших событий;
-- периодический анализ расходов и корректировка финансовых планов;
-- редкие административные задачи: настройка, архивирование, импорт, backup и
-  восстановление.
+- short daily sessions for entering and checking operations;
+- a weekly review of free money, funds, and upcoming events;
+- periodic expense analysis and adjustment of financial plans;
+- occasional administrative work such as setup, archiving, import, backup, and
+  restore.
 
-Hermes не должен исходить из наличия нескольких пользователей, банковского
-подключения или постоянного доступа к внешним сервисам.
+Hermes must not assume multiple users, a bank connection, or permanent access
+to external services.
 
-## Задачи пользователя
+## User jobs
 
-### Ориентироваться в настоящем
+### Understand the present
 
-- видеть физические остатки по счетам и общий совместимый итог;
-- отличать физический остаток от виртуально зарезервированных и свободных денег;
-- находить последние операции и быстро проверять причину изменения остатка;
-- замечать состояния, которые требуют внимания, без поиска по нескольким
-  разделам.
+- see physical account balances and a compatible combined total;
+- distinguish physical, virtually reserved, and free money;
+- find recent operations and quickly verify why a balance changed;
+- notice states requiring attention without searching several sections.
 
-### Фиксировать факты
+### Record facts
 
-- быстро создавать доход, расход, перевод или корректировку;
-- понимать, какие счета, категории и фонды затронет операция;
-- безопасно исправлять ошибочную операцию без частично сохранённых последствий;
-- сохранять точные денежные значения и видеть дату в понятном контексте.
+- quickly create income, expense, transfer, or adjustment operations;
+- understand which accounts, categories, and funds an operation affects;
+- safely correct an erroneous operation without partially saved effects;
+- preserve exact monetary values and see dates in an understandable context.
 
-### Распределять деньги по намерениям
+### Assign money to intentions
 
-- видеть фонды как назначения реальных денег, а не как дополнительные счета;
-- распределять поступившую сумму с предварительным просмотром результата;
-- понимать, где физически лежат деньги фонда;
-- видеть свободную и зарезервированную части каждого счёта.
+- treat funds as purposes assigned to real money, not as extra accounts;
+- allocate incoming money with a preview of the result;
+- understand where fund money is physically held;
+- see the free and reserved portions of each account.
 
-### Смотреть вперёд
+### Look forward
 
-- видеть ожидаемые доходы, расходы, переводы и обязательства;
-- понимать минимальный прогнозный остаток и дату возможного дефицита;
-- раскрывать события, из-за которых изменилась конкретная точка прогноза;
-- отличать факт, подтверждённый план и оценку.
+- see expected income, expenses, transfers, and obligations;
+- understand the minimum projected balance and possible shortfall date;
+- reveal the events that changed a particular forecast point;
+- distinguish facts, confirmed plans, and estimates.
 
-### Проверять решение до действия
+### Test a decision before acting
 
-- добавить гипотетическую покупку, доход, перенос даты или изменение суммы без
-  изменения фактов и подтверждённых планов;
-- сравнить базовый и альтернативный сценарии на одном горизонте;
-- увидеть изменение минимального остатка, свободных денег, напряжённых окон и
-  затронутых фондов;
-- проверить собственный stop-loss и предложенную системой границу риска;
-- сохранить выбранный сценарий или создать из него только черновик плана по
-  отдельному явному действию.
+- add a hypothetical purchase, income, date move, or amount change without
+  changing facts or confirmed plans;
+- compare baseline and alternative scenarios over the same horizon;
+- see changes in minimum balance, free money, stress windows, and affected
+  funds;
+- test the owner's stop-loss and a separate system-suggested risk boundary;
+- save a selected scenario or create only a plan draft through a separate,
+  explicit action.
 
-### Анализировать прошлое
+### Analyze the past
 
-- сравнивать расходы между периодами;
-- раскрывать агрегат до исходных операций;
-- фильтровать большой журнал без потери текущего контекста;
-- находить аномалии и повторяющиеся расходы, не получая непрозрачный «финансовый
-  рейтинг».
+- compare expenses across periods;
+- drill an aggregate down to its source operations;
+- filter a large journal without losing the current context;
+- find anomalies and recurring expenses without receiving an opaque “financial
+  score”.
 
-## Чем Hermes не является
+## What Hermes is not
 
-### Не банковское приложение
+### Not a banking application
 
-Банковский интерфейс обычно строится вокруг банковского продукта: карты,
-переводы внешним получателям, тарифы, кредитные предложения и статус платежа в
-банковской сети. Hermes строится вокруг личной модели денег независимо от того,
-где они лежат.
+A banking interface is usually organized around a bank product: cards,
+transfers to external recipients, tariffs, credit offers, and payment status in
+the banking network. Hermes is organized around the owner's personal model of
+money, regardless of where the money is held.
 
-Отличия Hermes:
+Hermes:
 
-- объединяет управленческий взгляд на несколько счетов;
-- связывает фактические операции с виртуальными фондами и будущими событиями;
-- помогает решить, что деньги должны делать дальше;
-- не имитирует банковские карты и не продвигает финансовые продукты;
-- не обещает банковскую синхронизацию или актуальность внешнего баланса, если
-  данные введены вручную.
+- combines a management view across several accounts;
+- connects actual operations with virtual funds and future events;
+- helps decide what money should do next;
+- does not imitate bank cards or promote financial products;
+- does not promise bank synchronization or an externally current balance when
+  data is entered manually.
 
-### Не бухгалтерская программа
+### Not an accounting package
 
-Бухгалтерия организует интерфейс вокруг проводок, плана счетов, закрытия
-периодов, регламентных отчётов и аудиторских ролей. В Hermes бухгалтерская
-корректность остаётся внутренней основой, но язык интерфейса описывает намерение
-пользователя.
+Accounting software organizes its interface around journal entries, charts of
+accounts, period closing, statutory reports, and auditor roles. Accounting
+correctness remains an internal foundation in Hermes, but the interface speaks
+in the language of user intent.
 
-Вместо «дебета» и «кредита» пользователь видит «доход», «расход», «перевод» и
-«корректировка». Вместо ручного редактирования остатка — объяснимую операцию.
-Вместо отчёта ради отчёта — ответ на вопрос о доступных деньгах, ближайшем риске
-или причине изменения.
+Instead of debit and credit, the owner sees income, expense, transfer, and
+adjustment. Instead of directly editing a balance, they see an explainable
+operation. Instead of reports for their own sake, they receive an answer about
+available money, the nearest risk, or the reason for a change.
 
-### Не таблица расходов
+### Not an expense table
 
-Журнал остаётся важным рабочим представлением, но не определяет весь продукт.
-Hermes связывает прошлые операции, текущее распределение денег и будущие
-обязательства в одну модель принятия решений.
+The journal remains an important working view, but it does not define the whole
+product. Hermes connects past operations, the current assignment of money, and
+future obligations into one decision-making model.
 
-## Выводы продуктового исследования
+## Product research findings
 
-Исследование ищет переносимые паттерны, а не список функций для копирования.
+The research looks for transferable patterns, not a feature list to copy.
 
-| Категория | Наблюдение | Что применимо к Hermes |
+| Category | Observation | Application to Hermes |
 | --- | --- | --- |
-| Personal finance | YNAB связывает накопление с понятной целью и показывает прогресс, а не только остаток. Actual отделяет ожидаемые операции от фактов и допускает точную, приблизительную или диапазонную сумму. | Показывать назначение денег и степень уверенности; переводить сложную модель в язык намерений. |
-| Банковские dashboards | Monzo Trends объединяет счета, показывает деньги на входе и выходе и вычитает ближайшие платежи из доступного остатка. Revolut сохраняет один временной контекст для виджетов и даёт разрезы по категории, получателю и счёту. | Начинать с доступности и ближайшего риска; применять общий период ко всему экрану; давать понятные разрезы. |
-| Productivity apps | Linear открывает частое создание одной командой, сохраняет черновик и использует контекстные свойства. Фильтры обновляют представление сразу и могут сохраняться как отдельный взгляд на те же данные. | Быстрый ввод с клавиатуры, безопасный черновик, контекстные defaults, сохраняемый рабочий контекст. |
-| Аналитические панели | Metabase применяет общие фильтры к нескольким карточкам и позволяет перейти из точки графика к исходным записям. | Один набор фильтров на связанный экран; любой значимый агрегат раскрывается до операций. |
-| Self-hosted приложения | Actual формулирует local-first подход через владение данными, отсутствие трекеров, прогрессивное раскрытие и адаптацию к устройству. Его журнал сочетает поиск, фильтры, массовый выбор и настраиваемую плотность. | Доверие создаётся прозрачностью и управляемостью; сложность раскрывается по мере необходимости; desktop и touch-сценарии различаются. |
+| Personal finance | YNAB connects saving to a clear goal and shows progress rather than only a balance. Actual separates expected operations from facts and permits exact, approximate, or range amounts. | Show the purpose of money and degree of confidence; translate a complex model into the language of intentions. |
+| Banking dashboards | Monzo Trends combines accounts, shows money in and out, and subtracts upcoming payments from the available balance. Revolut keeps one time context across widgets and offers breakdowns by category, recipient, and account. | Start with availability and the nearest risk; apply one period to the entire screen; provide understandable breakdowns. |
+| Productivity apps | Linear opens frequent creation with one command, preserves a draft, and uses contextual properties. Filters update the view immediately and can be saved as another view of the same data. | Fast keyboard input, safe drafts, contextual defaults, and persistent working context. |
+| Analytics dashboards | Metabase applies shared filters to several cards and can drill from a chart point to source rows. | One filter set for a related screen; every meaningful aggregate drills down to operations. |
+| Self-hosted applications | Actual frames local-first through data ownership, no trackers, progressive disclosure, and device adaptation. Its register combines search, filters, bulk selection, and adjustable density. | Trust comes from transparency and control; complexity appears when needed; desktop and touch workflows may differ. |
 
-Источники исследования:
+Research sources:
 
-- [YNAB: Goal Tracking](https://www.ynab.com/features/goal-tracking) и
+- [YNAB: Goal Tracking](https://www.ynab.com/features/goal-tracking) and
   [The YNAB Method](https://www.ynab.com/guide/foundations-the-ynab-method);
 - [Actual Budget: Schedules](https://actualbudget.org/docs/schedules/),
-  [Account Register](https://actualbudget.org/docs/tour/accounts/) и
+  [Account Register](https://actualbudget.org/docs/tour/accounts/), and
   [Product Vision](https://actualbudget.org/docs/vision/);
 - [Monzo: Summary and Trends](https://monzo.com/help/budgeting-overdrafts-savings/web-the-differences-between-Summary-and-Trends)
-  и [Revolut: spending and income analytics](https://help.revolut.com/help/accounts/budget-and-analytics/how-can-i-see-my-spending-and-income-analytics/);
-- [Linear: issue creation](https://linear.app/docs/creating-issues) и
+  and [Revolut: spending and income analytics](https://help.revolut.com/help/accounts/budget-and-analytics/how-can-i-see-my-spending-and-income-analytics/);
+- [Linear: issue creation](https://linear.app/docs/creating-issues) and
   [filters](https://linear.app/docs/filters);
 - [Metabase: dashboard filters](https://www.metabase.com/docs/latest/dashboards/filters)
-  и [drill-through](https://www.metabase.com/docs/latest/questions/visualizations/drill-through).
+  and [drill-through](https://www.metabase.com/docs/latest/questions/visualizations/drill-through).
 
-## Границы заимствования
+## Limits on borrowing patterns
 
-Нельзя переносить из референсов без проверки:
+Do not copy the following from references without validation:
 
-- «финансовый рейтинг», если у него нет проверяемой модели и полезного действия;
-- декоративные банковские карты, рекламные блоки, social feed и investment
-  watchlist, не соответствующие домену Hermes;
-- набор KPI-карточек только ради заполнения сетки;
-- сложные графики без возможности перейти к исходным данным;
-- AI-помощника, облачные зависимости и автоматические рекомендации, которых нет
-  в подтверждённом scope;
-- настраиваемый dashboard до того, как реальное использование покажет устойчивые
-  потребности.
+- a financial score without a verifiable model and useful action;
+- decorative bank cards, advertisements, social feeds, or investment watchlists
+  that do not match the Hermes domain;
+- a set of KPI cards added only to fill a grid;
+- complex charts with no route to the source data;
+- an AI assistant, cloud dependencies, or automatic recommendations outside the
+  confirmed scope;
+- a customizable dashboard before real use reveals stable needs.
 
-## Критерий успеха направления
+## Direction success criterion
 
-Направление успешно, если пользователь может без обучения ответить на три
-owner-confirmed вопроса — «сколько свободно сейчас?», «сколько будет свободно
-через выбранное число дней?» и «куда ушла большая часть денег?» — а затем
-выполнить нужное действие без сомнения в том, какие данные изменятся.
+The direction succeeds when an owner can, without training, answer four
+owner-confirmed questions—“How much is free now?”, “How much will be free after
+the selected number of days?”, “What will happen if I make this decision?”, and
+“Where did most of the money go?”—and then complete the relevant action without
+doubt about which data will change.

@@ -1,239 +1,236 @@
 # Information architecture
 
-## Статус и ограничения
+## Status and constraints
 
-Текущая реализованная структура `0.4.0` утверждена владельцем 2026-08-18 как
-baseline первого публичного релиза. Она не меняет ownership модулей и не
-утверждает ещё не спроектированные возможности roadmap. Альтернативы ниже
-остаются направлениями будущей проверки, а не release blockers.
+The currently implemented `0.4.0` structure was approved by the owner on
+2026-08-18 as the baseline for the first public release. It does not change
+module ownership or approve roadmap capabilities that have not yet been
+designed. Alternatives below remain directions for future validation rather
+than release blockers.
 
-Основной принцип IA: навигация следует вопросам пользователя, а связи данных —
-подтверждённым доменным границам.
+The primary IA rule is that navigation follows user questions while data
+relationships follow confirmed domain boundaries.
 
-## Разделы
+## Sections
 
-### Обзор
+### Overview
 
-Стартовый обзорный командный центр: свободные деньги как primary, общий остаток,
-долги/обязательства после их реализации, тренды, ближайшие события, прогнозный
-риск, компактная аналитика и быстрое создание операции. Не заменяет детальные
-разделы.
+The starting command center: free money as the primary answer, total balance,
+debts and liabilities after implementation, trends, upcoming events, forecast
+risk, compact analytics, and fast operation creation. It does not replace
+detailed sections.
 
-### Операции
+### Operations
 
-Единый журнал фактических доходов, расходов, переводов и корректировок. Здесь
-находятся поиск, фильтры, детали, редактирование и удаление. Ожидаемые события не
-смешиваются с фактическим журналом без явного режима.
+One journal of actual income, expense, transfer, and adjustment operations. It
+contains search, filters, details, editing, and deletion. Expected events do not
+mix with the actual journal without an explicit mode.
 
-### Счета
+### Accounts
 
-Физическое местонахождение денег: наличные, дебетовые и накопительные счета,
-их ledger-derived остатки, свободная и зарезервированная части, история
-конкретного счёта и lifecycle.
+The physical location of money: cash, debit, and savings accounts, their
+ledger-derived balances, free and reserved portions, account-specific history,
+and lifecycle.
 
-### Фонды
+### Funds
 
-Назначение реальных денег: суммы и необязательные цели фондов, точный прогресс,
-процент распределения, разбивка по счетам, история виртуальных движений,
-прямое начальное выделение и переводы между фондами. Фонд не представляется как
-банковский счёт.
+The purpose assigned to real money: fund amounts and optional targets, exact
+progress, allocation percentage, account breakdown, virtual-movement history,
+direct initial reservation, and transfers between funds. A fund is not
+presented as a bank account.
 
-### План
+### Plan
 
-Одна предметная область будущего с внутренними представлениями:
+One future-oriented area with internal views:
 
-- **Ближайшее** — список ожидаемых событий и требующих внимания обязательств;
-- **Календарь** — временное расположение ожидаемых событий;
-- **Прогноз** — расчёт будущих остатков и рисков;
-- **Оракул · Что если?** — временное сравнение альтернативных финансовых
-  сценариев без изменения фактов и подтверждённого плана.
+- **Upcoming** — expected events and obligations requiring attention;
+- **Calendar** — expected events arranged in time;
+- **Forecast** — future balances and risks;
+- **Oracle · What if?** — temporary comparison of alternative financial
+  scenarios without changing facts or the confirmed plan.
 
-Объединение уменьшает дублирование навигации, но не смешивает scheduling и
-forecasting на уровне доменного ownership.
+Grouping these views reduces duplicate navigation but does not mix Scheduling
+and Forecasting domain ownership.
 
-### Отчёты
+### Reports
 
-Ответы о прошлом: расходы по категориям, доходы и расходы за период, динамика
-остатков и фондов. Любой агрегат раскрывается в отфильтрованный журнал.
+Answers about the past: category expenses, income and expenses over a period,
+and account and fund trends. Every aggregate drills down to a filtered journal.
 
-### Настройки
+### Settings
 
-Основная валюта и timezone, безопасность и сессии, управление категориями,
-архивные сущности, импорт/экспорт, backup/restore и состояние экземпляра.
-Категории — важный справочник, но не ежедневный top-level сценарий.
+Base currency and timezone, security and sessions, category management,
+archived entities, import and export, backup and restore, and instance status.
+Categories are an important directory but not a daily top-level workflow.
 
-До появления части функций разделы могут отсутствовать или быть явно помечены
-как недоступные; нельзя создавать правдоподобные пустые dashboards для
-нереализованного домена.
+Until a capability exists, its section may be absent or clearly marked
+unavailable. Do not create convincing empty dashboards for an unimplemented
+domain.
 
-## Глобальная навигация
+## Global navigation
 
 ### Desktop
 
-Боковая навигация доступна постоянно по умолчанию, но владелец может скрыть её
-кнопкой в shell; выбор сохраняется локально, а действие восстановления остаётся
-видимым:
+The sidebar is visible by default, but the owner can hide it with a shell
+button. That choice persists locally, and a visible restore action remains:
 
-1. Обзор.
-2. Счета.
-3. Операции.
-4. Фонды.
-5. План с представлениями «Календарь» и «Прогноз».
-6. Отчёты с представлением «Доходы и расходы».
+1. Overview.
+2. Accounts.
+3. Operations.
+4. Funds.
+5. Plan with Calendar and Forecast views.
+6. Reports with an Income and expenses view.
 
-Категории и Настройки отделены в служебную группу «Управление»; состояние
-локального экземпляра и logout находятся в footer навигации. Help в текущем
-интерфейсе отсутствует. Названия видимы вместе с иконками; icon-only режим не
-является базовым.
+Categories and Settings belong to a secondary Management group. Local-instance
+status and logout appear in the navigation footer. The current interface has no
+Help section. Labels remain visible beside icons; icon-only navigation is not
+the baseline.
 
-### Узкий экран
+### Narrow screen
 
-Текущая реализация использует компактный многорядный верхний блок и сохраняет
-все доступные разделы без скрытого горизонтального scroll. Нижняя навигация с
-четырьмя частыми разделами остаётся только гипотезой для будущего сравнения;
-какие разделы считать частыми, нужно подтвердить наблюдением.
+The current implementation uses a compact multi-row header and preserves every
+available section without hidden horizontal scrolling. A bottom navigation bar
+with four frequent sections remains only a hypothesis for comparison. Real
+observation must determine which sections are frequent.
 
-### Контекст раздела
+### Section context
 
-В заголовке страницы находятся название, общий период/scope и одно основное
-действие. Owner-confirmed правило: на списке/в разделе это создание ключевой
-сущности, а на странице конкретной сущности — её редактирование. Breadcrumb
-нужен только при реальной вложенности, например `Счета → Наличные`, но не
-повторяет боковую навигацию на каждом top-level экране.
+The page header contains the title, shared period or scope, and at most one
+primary contextual action. The owner-confirmed rule is creation of the key
+entity on a list or section and editing on a specific entity page. Breadcrumbs
+appear only for real nesting, such as `Accounts → Cash`, and do not repeat the
+sidebar on every top-level page.
 
-## Глобальные быстрые действия
+## Global quick actions
 
-- Постоянно доступное действие «Новая операция».
-- Будущее decision-action «Что если?» доступно из dashboard и прогноза, но не
-  подменяет создание фактической операции.
-- Контекстные варианты: «Добавить счёт», «Распределить деньги», «Добавить
-  ожидаемое событие».
-- Вызов создания операции с клавиатуры после проверки конфликтов shortcuts.
-- В перспективе — command palette для навигации и действий, но не как
-  единственный способ обнаружить функцию.
+- A permanently available “New operation” action.
+- The future “What if?” decision action from dashboard and forecast; it never
+  replaces creation of an actual operation.
+- Contextual actions such as “Add account”, “Allocate money”, and “Add expected
+  event”.
+- A keyboard entry point for operation creation after shortcut conflicts are
+  evaluated.
+- A future command palette for navigation and actions, but never as the only
+  discoverable route.
 
-Quick action сохраняет происхождение: создание из конкретного счёта подставляет
-счёт; создание из фонда может подставить фонд. Любой default остаётся видимым и
-изменяемым.
+A quick action preserves its origin: creation from an account preselects that
+account, and creation from a fund may preselect that fund. Every default remains
+visible and editable.
 
-Создание и редактирование счетов, категорий, фондов, операций и регулярных
-правил открывается во временном modal-слое и не занимает постоянную колонку
-списка. `Esc` и явное действие закрытия возвращают к исходному контексту.
+Creating and editing accounts, categories, funds, operations, and recurrence
+rules opens in a temporary modal layer instead of occupying a permanent list
+column. `Esc` and an explicit close action return to the originating context.
 
-Выбор счёта и категории в финансовых формах использует единый поисковый
-combobox. Пустое поле показывает до пяти действительно последних выбранных сущностей, ввод
-фильтрует варианты по началу названия, а дополнительная строка различает
-одноимённые подкатегории и показывает финансовый контекст. Обычный `select`
-остаётся для коротких закрытых перечней вроде типа операции или периода.
-Технические справочники с составными идентификаторами могут явно включить поиск
-по вхождению: экран настроек использует этот режим для IANA timezone, чтобы
-`Moscow` находил `Europe/Moscow`; поведение финансовых справочников остаётся
-префиксным.
+Account and category selection in financial forms uses one searchable
+combobox. An empty field shows up to five genuinely recent selections; typing
+filters by name prefix, and a secondary line distinguishes identically named
+subcategories and shows financial context. A regular `select` remains suitable
+for short closed lists such as operation type or period. Technical directories
+with compound identifiers may explicitly support substring search: Settings
+uses this for IANA timezones so `Moscow` finds `Europe/Moscow`; financial
+directories remain prefix-based.
 
-## Dashboard как слой решений
+## Dashboard as a decision layer
 
-Порядок информации на dashboard отвечает последовательности вопросов:
+Dashboard information follows the order of user questions:
 
-1. **Сейчас:** свободные деньги как primary, затем физический итог и сумма в
-   фондах.
-2. **Требует внимания:** дефицит, просроченное событие, нарушение/невозможность
-   распределения или другие исключения.
-3. **Дальше:** ближайшие обязательства и короткий прогноз.
-4. **Что если:** переход к проверке гипотетического финансового решения.
-5. **Что изменилось:** последние операции и существенные изменения периода.
-6. **Почему:** компактные тренды и анализ расходов с переходом к журналу.
+1. **Now:** free money first, then physical total and money in funds.
+2. **Needs attention:** shortfall, overdue event, allocation conflict, or another
+   exception.
+3. **Next:** upcoming obligations and a short forecast.
+4. **What if:** enter a hypothetical financial decision.
+5. **What changed:** recent operations and material period changes.
+6. **Why:** compact trends and expense analysis with journal drill-down.
 
-Общий период действует на связанные блоки, но значение «сейчас» не должно
-становиться двусмысленным из-за фильтра исторического периода.
+A shared period applies to related blocks, but it must not make the meaning of
+“Now” ambiguous.
 
-## Связи сущностей в интерфейсе
+## Entity relationships in the interface
 
 ```mermaid
 flowchart LR
-    Accounts["Счета: где лежат деньги"] --> Operations["Операции: что произошло"]
-    Operations --> Balances["Фактические остатки"]
-    Accounts --> Funds["Фонды: для чего назначены деньги"]
+    Accounts["Accounts: where money is held"] --> Operations["Operations: what happened"]
+    Operations --> Balances["Actual balances"]
+    Accounts --> Funds["Funds: what money is for"]
     Operations --> Funds
-    Balances --> Forecast["Прогноз: что может произойти"]
-    Expected["Ожидаемые события и обязательства"] --> Forecast
-    Forecast --> Scenarios["Что если: альтернативные сценарии"]
-    Scenarios --> Draft["Явный черновик плана"]
-    Operations --> Reports["Отчёты о фактах"]
+    Balances --> Forecast["Forecast: what may happen"]
+    Expected["Expected events and obligations"] --> Forecast
+    Forecast --> Scenarios["What if: alternative scenarios"]
+    Scenarios --> Draft["Explicit plan draft"]
+    Operations --> Reports["Reports about facts"]
     Funds --> Reports
 ```
 
-### Счёт ↔ операция
+### Account ↔ operation
 
-Остаток выводится из движений, поэтому клик по остатку ведёт к журналу этого
-счёта. Редактирование баланса заменяется явной корректировкой.
+A balance is derived from movements, so selecting it opens that account's
+journal. Direct balance editing is replaced by an explicit adjustment.
 
-### Операция ↔ категория
+### Operation ↔ category
 
-Категория классифицирует доход/расход. Из категории в аналитике можно перейти к
-отфильтрованным операциям. Архивная категория остаётся видимой в истории, но не
-предлагается для новой операции.
+A category classifies income or expense. Selecting an analytics category can
+open filtered operations. An archived category remains visible in history but
+is unavailable for a new operation.
 
-### Счёт ↔ фонд
+### Account ↔ fund
 
-Счёт показывает физический остаток и его виртуальное покрытие. Фонд показывает
-общую сумму и физическую разбивку по счетам. Обе стороны ведут к одному и тому
-же объяснимому набору виртуальных движений.
+An account shows physical balance and its virtual coverage. A fund shows its
+total and physical account breakdown. Both sides lead to the same explainable
+set of virtual movements.
 
-### Операция ↔ фонд
+### Operation ↔ fund
 
-Расход из фонда уменьшает физическую и виртуальную части атомарно. Перевод может
-переместить виртуальную часть вместе с физической. Экран деталей показывает оба
-эффекта в одной операции, а не две несвязанные записи.
+An expense from a fund reduces physical and virtual money atomically. A
+transfer may move its virtual portion with the physical money. Details show
+both effects within one operation rather than as unrelated records.
 
-### Ожидаемое событие ↔ фактическая операция
+### Expected event ↔ actual operation
 
-Подтверждение создаёт фактическую операцию и сохраняет связь. Перенос и отмена
-не меняют текущий баланс. В UI ожидаемое событие не выглядит как уже проведённая
-строка журнала.
+Confirmation creates an actual operation and preserves the link. Postponement
+and cancellation do not change the current balance. An expected event never
+looks like an already posted journal row.
 
-### Прогноз ↔ сценарий ↔ план
+### Forecast ↔ scenario ↔ plan
 
-Прогноз является baseline известных фактов и планов. «Что если?» накладывает на
-тот же snapshot временную гипотезу и показывает дельту, не изменяя baseline.
-Сохранённый сценарий остаётся гипотезой. Отдельное действие может перенести его
-проверенные поля в composer черновика плана; обычное подтверждение composer
-остаётся единственным путём записи.
+The forecast is the baseline of known facts and plans. “What if?” applies a
+temporary hypothesis to the same snapshot and shows the delta without changing
+the baseline. A saved scenario remains hypothetical. A separate action may
+move its reviewed fields into a plan-draft composer; normal composer
+confirmation remains the only write path.
 
-### Факт и план ↔ прогноз
+### Fact and plan ↔ forecast
 
-Прогноз начинается с ledger-derived остатка и применяет будущие события по
-времени. Каждая точка раскрывает свой starting balance и влияющие события.
+The forecast starts from a ledger-derived balance and applies future events in
+time order. Every point reveals its starting balance and influencing events.
 
-## Общие модели представления
+## Shared presentation models
 
-- **Scope:** все совместимые счета или один счёт.
-- **Period:** устойчивые presets плюс произвольный диапазон там, где он нужен.
-- **Filter:** видимые chips для активных условий; сброс возвращает понятный
-  default.
-- **Details:** side panel для быстрого изучения без потери списка; отдельный
-  экран для сложного редактирования или глубокого сценария.
-- **Drill-down:** график/итог → отфильтрованная выборка → деталь операции.
-- **Empty state:** объясняет сущность и одно безопасное следующее действие.
+- **Scope:** all compatible accounts or one account.
+- **Period:** stable presets plus a custom range where needed.
+- **Filter:** visible chips for active conditions; reset returns to an
+  understandable default.
+- **Details:** a side panel for quick inspection without losing the list; a
+  separate page for complex editing or a deep workflow.
+- **Drill-down:** chart or total → filtered selection → operation details.
+- **Empty state:** explains the entity and one safe next action.
 
-## Что не следует помещать в основную навигацию сейчас
+## What does not belong in primary navigation yet
 
-- отдельные пункты для доходов и расходов: это типы одной операции;
-- отдельный раздел категорий: это поддерживающий справочник;
-- карточки, платежи, инвестиции и invoices из визуальных референсов: они не
-  соответствуют подтверждённому scope;
-- административный dashboard как главный экран;
-- AI-insights и «финансовый рейтинг» без отдельного продуктового решения;
-- настраиваемые dashboards до проверки фиксированной структуры.
+- separate Income and Expense sections: they are types of one operation;
+- a top-level Categories section: it is a supporting directory;
+- cards, payments, investments, and invoices borrowed from visual references:
+  they are outside the confirmed scope;
+- an administrative dashboard as the home page;
+- AI insights or a financial score without a separate product decision;
+- configurable dashboards before the fixed structure is validated.
 
-## Возможные улучшения после первого релиза
+## Possible improvements after the first release
 
-- Должен ли раздел «План» объединять календарь и прогноз или прогноз заслуживает
-  отдельного top-level пункта?
-- Нужен ли общий поиск только по операциям или глобально по счетам, фондам и
-  настройкам?
-- Является ли управление категориями частью настроек или отдельным вторичным
-  разделом?
-- Какие четыре направления действительно заслуживают места в mobile bottom
-  navigation?
-- Достаточно ли side panel для деталей операции на desktop и каким должен быть
-  mobile-переход?
+- Should Plan combine calendar and forecast, or does Forecast deserve a
+  top-level destination?
+- Should shared search cover only operations or also accounts, funds, and
+  settings?
+- Does category management belong in Settings or a secondary section?
+- Which four destinations genuinely deserve mobile bottom navigation?
+- Is a side panel sufficient for operation details on desktop, and what is the
+  correct mobile transition?

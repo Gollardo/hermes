@@ -33,6 +33,10 @@
 - Do not add external infrastructure without a recorded justification.
 - Mark assumptions explicitly; never present them as owner-approved decisions.
 - Never commit secrets.
+- Write all project documentation exclusively in English. Translate owner
+  decisions into English rather than adding Russian or bilingual passages;
+  localized runtime UI copy outside documentation may remain in its target
+  language.
 
 ## UI/UX rules
 

@@ -1,131 +1,129 @@
-# Оракул · Что если?
+# Oracle · What if?
 
-## Статус
+## Status
 
-Продуктовое направление и правила безопасности подтверждены владельцем
-2026-08-18. Экран, конкретная модель, API и хранение сценариев не реализованы и
-требуют отдельного design/architecture review перед включением в release scope.
+The owner confirmed the product direction and safety rules on 2026-08-18. The
+screen, specific model, API, and scenario storage are not implemented and
+require separate design and architecture review before entering a release
+scope.
 
-## Название и обещание
+## Name and promise
 
-**Оракул** — имя способности Hermes сравнивать возможные финансовые будущие.
-**Что если?** — главное действие и название сценарного режима. Двойное имя
-сохраняет древнегреческую линию Hermes и передаёт идею параллельных финансовых
-вариантов.
+**Oracle** is the name of the Hermes capability for comparing possible
+financial futures. **What if?** is its primary action and scenario-mode name.
+The combined name preserves the ancient Greek theme of Hermes and communicates
+parallel financial alternatives.
 
-Оракул не обещает знать будущее. Он отвечает на более точный вопрос:
+Oracle does not claim to know the future. It answers a more precise question:
 
-> Что изменится в известном финансовом прогнозе, если добавить это решение и
-> сохранить остальные явно показанные предположения?
+> What changes in the known financial forecast if this decision is added while
+> every other disclosed assumption remains the same?
 
-## Главная задача
+## Primary job
 
-Позволить проверить покупку, изменение дохода, перенос платежа или другую
-гипотезу с минимальным числом действий, не изменяя ledger и подтверждённый план.
+Test a purchase, income change, payment move, or another hypothesis with as few
+steps as possible without changing the ledger or confirmed plan.
 
-## Базовый поток
+## Baseline flow
 
-1. Пользователь выбирает «Что если?» и вводит свободный текст либо открывает
-   обычную структурированную форму.
-2. Необязательный локальный AI-adapter извлекает тип действия, сумму, дату,
-   scope и условия в структурированный черновик.
-3. Интерфейс показывает распознанные параметры. Существенно неизвестное поле
-   требует короткого уточнения; модель не подставляет его молча.
-4. Детерминированный движок рассчитывает альтернативу из того же согласованного
-   snapshot, scope и горизонта, что и базовый прогноз.
-5. Ответ сначала формулирует последствие, затем показывает сравнение, риски,
-   допущения и источники.
-6. Сценарий исчезает при закрытии, если пользователь отдельно не выбрал
-   «Сохранить сценарий» или «Создать черновик плана».
+1. The owner selects “What if?” and enters free text or opens the regular
+   structured form.
+2. An optional local AI adapter extracts action type, amount, date, scope, and
+   conditions into a structured draft.
+3. The interface shows the interpreted fields. A materially unknown field
+   triggers one concise clarification; the model never fills it silently.
+4. The deterministic engine calculates the alternative from the same coherent
+   snapshot, scope, and horizon as the baseline forecast.
+5. The response states the consequence first, then shows comparison, risks,
+   assumptions, and sources.
+6. The scenario disappears on close unless the owner separately chooses “Save
+   scenario” or “Create plan draft”.
 
-## Минимальная структурированная форма без AI
+## Minimum structured form without AI
 
-- тип гипотезы;
-- сумма или изменение суммы;
-- дата или изменение даты;
-- счёт либо совместимый общий scope;
-- необязательный фонд или источник средств;
-- горизонт сравнения.
+- hypothesis type;
+- amount or amount change;
+- date or date change;
+- account or compatible combined scope;
+- optional fund or source of money;
+- comparison horizon.
 
-AI сокращает путь к этой форме, но не открывает недоступную без него финансовую
-возможность.
+AI shortens the path to this form but never unlocks a financial capability that
+is unavailable without it.
 
-## Композиция ответа
+## Response composition
 
-1. **Ответ:** одно проверяемое предложение о главном последствии.
-2. **Было → станет:** свободные деньги, минимальный остаток, дата минимума,
-   конец периода и ближайшее напряжённое окно.
-3. **Границы риска:** пользовательский stop-loss и предложенная системой
-   граница с объяснением метода.
-4. **Почему:** события и фонды, которые изменили результат.
-5. **Предположения:** включённые доходы, расходы, обязательства, горизонт и
-   неизвестные факторы.
-6. **Варианты:** изменить сумму/дату, убрать событие, сравнить или сохранить.
+1. **Answer:** one verifiable sentence about the main consequence.
+2. **Before → after:** free money, minimum balance, minimum date, period end, and
+   nearest stress window.
+3. **Risk boundaries:** the owner's stop-loss and a separate system suggestion
+   with an explanation of its method.
+4. **Why:** the events and funds that changed the result.
+5. **Assumptions:** included income, expenses, obligations, horizon, and unknown
+   factors.
+6. **Variants:** change amount or date, remove an event, compare, or save.
 
-График является раскрытием сравнения, а не единственным ответом.
+The chart reveals the comparison; it is not the only answer.
 
-## Stop-loss и системная граница
+## Stop-loss and system-suggested boundary
 
-Пользователь может задать собственный денежный stop-loss для совместимого scope:
-остаток, ниже которого сценарий считается нежелательным. Это настройка риска,
-а не запрет на финансовую операцию.
+The owner can configure a monetary stop-loss for a compatible scope: a balance
+below which a scenario is considered undesirable. It is a risk preference, not
+a prohibition on a financial operation.
 
-Hermes также может предложить собственную границу на основе объяснимых данных,
-например обязательных расходов ближайшего периода, устойчивого расходного
-baseline или необходимого покрытия подтверждённых событий. Предложенная
-граница:
+Hermes may separately suggest a boundary from explainable data, such as
+mandatory expenses for the upcoming period, a stable expense baseline, or
+required coverage of confirmed events. The suggested boundary:
 
-- не заменяет пользовательскую автоматически;
-- показывает метод, период данных и составляющие;
-- не выдаётся, если данных недостаточно;
-- может быть принята, изменена или скрыта;
-- не блокирует действие без отдельного будущего продуктового решения.
+- never replaces the owner's value automatically;
+- shows its method, data period, and components;
+- is omitted when evidence is insufficient;
+- can be accepted, changed, or hidden;
+- does not block an action without a separate future product decision.
 
-## Работа с неопределённостью
+## Handling uncertainty
 
-Каждый элемент ответа относится к одному из классов:
+Every response element belongs to one class:
 
-- **факт** — ledger-derived состояние;
-- **подтверждённый план** — ожидаемое событие или обязательство;
-- **сценарий** — временная пользовательская гипотеза;
-- **оценка** — статистический или model-derived ввод с источником и
-  уверенностью.
+- **fact** — ledger-derived state;
+- **confirmed plan** — an expected event or obligation;
+- **scenario** — a temporary user hypothesis;
+- **estimate** — statistical or model-derived input with source and confidence.
 
-Если дата или сумма заданы диапазоном, результат не сводится к одному точному
-числу без явной политики. Система показывает диапазон либо несколько крайних
-сценариев.
+If a date or amount is a range, the result does not collapse it into one exact
+number without an explicit policy. The system shows a range or several boundary
+scenarios.
 
-## Сохранение и действия
+## Saving and actions
 
-- По умолчанию сценарий и текст диалога не сохраняются.
-- Сохранённый сценарий остаётся отдельной гипотезой и не меняет прогноз фактов.
-- «Создать черновик плана» переносит проверенные структурированные поля в
-  composer ожидаемого события.
-- Только обычное явное подтверждение соответствующего composer может записать
-  план.
-- Чат никогда напрямую не создаёт, не подтверждает и не проводит финансовую
-  операцию.
+- By default, neither the scenario nor conversation text is stored.
+- A saved scenario remains a separate hypothesis and does not alter the factual
+  forecast.
+- “Create plan draft” transfers reviewed structured fields into the expected-
+  event composer.
+- Only normal explicit confirmation in that composer can write a plan.
+- Chat never directly creates, confirms, or posts a financial operation.
 
-## Состояния и ошибки
+## States and errors
 
-- **AI отключён или недоступен:** структурированный сценарный ввод работает
-  полностью.
-- **Запрос неоднозначен:** показывается распознанная часть и одно конкретное
-  уточнение.
-- **Недостаточно истории:** детерминированный прогноз работает, историческая
-  рекомендация честно отсутствует.
-- **Прогноз недоступен:** нельзя подменять ответ правдоподобным текстом модели.
-- **Конфликт исходных данных:** сценарий пересчитывается на новом snapshot после
-  понятного уведомления.
-- **Несовместимые валюты:** единый итог запрещён до реализации conversion-aware
-  модели.
+- **AI disabled or unavailable:** structured scenario entry works completely.
+- **Ambiguous request:** show the interpreted part and one specific
+  clarification.
+- **Insufficient history:** deterministic forecasting works; a historical
+  suggestion is honestly absent.
+- **Forecast unavailable:** model-generated plausible text cannot replace the
+  answer.
+- **Source-data conflict:** recalculate the scenario from a new snapshot after
+  a clear notice.
+- **Incompatible currencies:** combined totals remain prohibited until a
+  conversion-aware model exists.
 
-## Проверка будущего прототипа
+## Future prototype checks
 
-- Покупка с известной суммой и датой.
-- Та же покупка без даты и с коротким уточнением.
-- Перенос покупки за границу напряжённого окна.
-- Сценарий, затрагивающий пользовательский stop-loss.
-- Различие пользовательской и предложенной системой границ.
-- Полный keyboard-only путь без AI.
-- Закрытие без сохранения и явное создание черновика плана.
+- A purchase with a known amount and date.
+- The same purchase without a date and with one concise clarification.
+- Moving the purchase beyond a stress window.
+- A scenario crossing the owner's stop-loss.
+- Different owner and system-suggested boundaries.
+- A complete keyboard-only path without AI.
+- Closing without saving and explicitly creating a plan draft.

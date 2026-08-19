@@ -1,817 +1,854 @@
 # Roadmap
 
-Этот документ описывает предполагаемый порядок развития проекта и границы будущих релизов.
+This document describes the proposed development sequence and the boundaries of
+future releases.
 
-Roadmap не является жёстким календарным планом. Состав и порядок этапов могут изменяться после получения опыта реального использования приложения.
+The roadmap is not a fixed calendar plan. The scope and order of milestones may
+change as the project gains experience from real-world use.
 
-Актуальное состояние реализации находится в [project-status.md](./project-status.md).
-Общая карта инженерной документации находится в [index.md](./index.md).
-Фактическая история версий находится в [CHANGELOG.md](../CHANGELOG.md):
-roadmap не должен повторно назначать уже использованный номер версии новому
-будущему scope.
+The current implementation state is documented in
+[project-status.md](./project-status.md). The engineering documentation map is
+in [index.md](./index.md). The actual version history is in
+[CHANGELOG.md](../CHANGELOG.md): the roadmap must not assign an already-used
+version number to a new future scope.
 
-Версии до `0.4.0` включительно являются внутренними development-вехами
-владельца, а не опубликованными GitHub Releases. Первый публичный тег начинает
-обычный release-процесс; его номер выбирается отдельно после закрытия текущего
-release gate.
+Versions through `0.4.0` are the owner's internal development milestones, not
+published GitHub Releases. The first public tag starts the normal release
+process; its version is selected separately after the current release gate is
+closed.
 
-## Принципы разработки
+## Development principles
 
-Проект развивается вертикальными пользовательскими сценариями.
+The project evolves through vertical user scenarios.
 
-Каждый законченный сценарий по возможности должен включать:
+Whenever possible, each completed scenario should include:
 
-- миграции базы данных;
+- database migrations;
 - backend;
 - frontend;
-- валидацию;
-- обработку ошибок;
-- автоматические тесты;
-- обновление инженерной документации;
-- проверку production-сборки.
+- validation;
+- error handling;
+- automated tests;
+- engineering documentation updates;
+- production build verification.
 
-Новый функционал не должен добавляться только на уровне базы данных или API без возможности проверить основной пользовательский сценарий.
+New functionality should not exist only at the database or API level without a
+way to verify its primary user scenario.
 
-Приоритеты проекта:
+Project priorities:
 
-1. Корректность финансовой модели.
-2. Сохранность и переносимость данных.
-3. Простота ежедневного ввода операций.
-4. Простота self-hosted развёртывания.
-5. Удобство интерфейса.
-6. Расширение аналитики и интеграций.
+1. Correctness of the financial model.
+2. Data safety and portability.
+3. Simplicity of daily operation entry.
+4. Simplicity of self-hosted deployment.
+5. Interface usability.
+6. Expansion of analytics and integrations.
 
-## Статусы элементов
+## Item statuses
 
-- `[ ]` — не начато.
-- `[~]` — находится в работе или реализовано частично.
-- `[x]` — реализовано и прошло предусмотренные проверки.
-- `[?]` — требует продуктового или архитектурного решения.
+- `[ ]` — not started.
+- `[~]` — in progress or partially implemented.
+- `[x]` — implemented and passed the required checks.
+- `[?]` — requires a product or architectural decision.
 
 ---
 
-# 0.0.x — фундамент проекта
+# 0.0.x — project foundation
 
-Цель этапа — создать воспроизводимое окружение и инженерную основу без полноценной финансовой бизнес-логики.
+The milestone goal was to create a reproducible environment and engineering
+foundation without complete financial business logic.
 
-## 0.0.1 — начальная структура
+## 0.0.1 — initial structure
 
-- [x] Инициализация Git-репозитория.
-- [x] Backend-каркас на Python и FastAPI.
-- [x] Frontend-каркас на Angular.
-- [x] PostgreSQL и Docker Compose.
-- [x] Начальная конфигурация миграций.
-- [x] Healthcheck приложения.
-- [x] Инструменты тестирования и статического анализа.
-- [x] Начальная архитектурная документация.
+- [x] Git repository initialization.
+- [x] Python and FastAPI backend skeleton.
+- [x] Angular frontend skeleton.
+- [x] PostgreSQL and Docker Compose.
+- [x] Initial migration configuration.
+- [x] Application health check.
+- [x] Testing and static-analysis tooling.
+- [x] Initial architecture documentation.
 - [x] `AGENTS.md`.
-- [x] Лицензия AGPL-3.0-or-later.
-- [x] Документация локальной разработки и развёртывания.
+- [x] AGPL-3.0-or-later license.
+- [x] Local development and deployment documentation.
 
-## Критерии завершения этапа
+## Milestone completion criteria
 
-- Проект можно развернуть по документации.
-- Backend, frontend и PostgreSQL запускаются в локальном окружении.
-- Проходят доступные тесты, lint, typecheck и production build.
-- В репозитории отсутствуют секреты и локальные артефакты.
-- Архитектурные границы описаны в `docs/`.
+- The project can be deployed by following its documentation.
+- Backend, frontend, and PostgreSQL start in the local environment.
+- Available tests, lint, type checks, and the production build pass.
+- The repository contains no secrets or local artifacts.
+- Architectural boundaries are described under `docs/`.
 
-Этот этап остался внутренней development-вехой и не публиковался как
-пользовательский релиз или git-тег.
+This milestone remained an internal development milestone and was not published
+as a user release or git tag.
 
 ---
 
-# 0.1.0-alpha.1 — первый запуск и доступ к приложению
+# 0.1.0-alpha.1 — first run and application access
 
-Цель релиза — получить защищённое однопользовательское приложение с базовыми настройками.
+The release goal was a protected single-user application with basic settings.
 
-**Статус: завершён 2026-08-02.** Пользовательский сценарий проверен в
-production-like Compose на чистом PostgreSQL volume; upgrade с
-`0001_first_run_access` до `0002_harden_access_invariants` проверен на
-инициализированной базе с сохранением credential, settings и sessions.
+**Status: completed on 2026-08-02.** The user scenario was verified in a
+production-like Compose environment on a clean PostgreSQL volume. The upgrade
+from `0001_first_run_access` to `0002_harden_access_invariants` was verified on
+an initialized database while preserving credentials, settings, and sessions.
 
-## Первый запуск
+## First run
 
-- [x] Определение состояния неинициализированного приложения.
-- [x] Экран первоначальной настройки.
-- [x] Создание мастер-пароля.
-- [x] Выбор основной валюты.
-- [x] Выбор часового пояса.
-- [x] Запрет повторной первоначальной настройки после инициализации.
+- [x] Detect an uninitialized application.
+- [x] Initial setup screen.
+- [x] Master password creation.
+- [x] Base currency selection.
+- [x] Timezone selection.
+- [x] Prevent repeated initial setup after initialization.
 
-## Авторизация
+## Authentication
 
-- [x] Хеширование пароля с помощью Argon2id.
-- [x] Вход по мастер-паролю.
-- [x] Серверные сессии.
+- [x] Password hashing with Argon2id.
+- [x] Sign in with the master password.
+- [x] Server-side sessions.
 - [x] HttpOnly cookie.
-- [x] Выход из текущей сессии.
-- [x] Завершение всех активных сессий.
-- [x] Защита API, кроме setup, login и healthcheck.
-- [x] Ограничение частых неудачных попыток входа.
+- [x] End the current session.
+- [x] End all active sessions.
+- [x] Protect every API except setup, login, and health check.
+- [x] Rate-limit frequent failed login attempts.
 
-## Настройки
+## Settings
 
-- [x] Просмотр настроек приложения.
-- [x] Изменение часового пояса.
-- [x] Изменение основной валюты до появления финансовых данных.
-- [x] Смена мастер-пароля.
+- [x] View application settings.
+- [x] Change timezone.
+- [x] Change the base currency before financial data exists.
+- [x] Change the master password.
 
-## Критерии релиза
+## Release criteria
 
-- [x] Новый пользователь может развернуть приложение и пройти первоначальную настройку.
-- [x] Неавторизованный пользователь не получает доступ к финансовым данным и защищённым API.
-- [x] Сессия корректно создаётся, проверяется и завершается.
-- [x] Проверен запуск на чистой базе данных.
-- [x] Проверена миграция уже инициализированной базы.
-
----
-
-# 0.1.0-alpha.2 — счета и категории
-
-Цель релиза — подготовить основные справочники финансового учёта.
-
-**Статус: основной срез реализован 2026-08-02.** Сценарии проверены на
-PostgreSQL 17 с чистой миграцией и upgrade существующих данных от
-`0001_first_run_access` до head. Проверка реальной операции с архивной
-категорией остаётся частичной до появления categorized operations в `alpha.3`.
-
-## Счета
-
-- [x] Создание счёта.
-- [x] Типы счетов: `cash`, `debit`, `savings`.
-- [x] Название и описание счёта.
-- [x] Начальный остаток через финансовую операцию корректировки.
-- [x] Просмотр списка счетов.
-- [x] Просмотр текущего остатка.
-- [x] Редактирование счёта.
-- [x] Архивирование и восстановление счёта.
-- [x] Запрет некорректного удаления счёта с историей операций.
-
-## Категории
-
-- [x] Создание категории.
-- [x] Категории доходов.
-- [x] Категории расходов.
-- [x] Подкатегории.
-- [x] Редактирование категорий.
-- [x] Архивирование категорий.
-- [~] Контракт архивных категорий готов; реальный operation scenario ожидает `alpha.3`.
-
-## Критерии релиза
-
-- [x] Пользователь может создать структуру счетов и категорий.
-- [x] Начальный остаток не хранится как произвольно изменяемое поле.
-- [x] История счетов и категорий сохраняется в реальных categorized operations.
-- [x] Денежные значения не используют `float`.
+- [x] A new user can deploy the application and complete initial setup.
+- [x] An unauthenticated user cannot access financial data or protected APIs.
+- [x] Sessions are created, validated, and ended correctly.
+- [x] Startup was verified on a clean database.
+- [x] Migration of an initialized database was verified.
 
 ---
 
-# 0.1.0-alpha.3 — финансовое ядро
+# 0.1.0-alpha.2 — accounts and categories
 
-Цель релиза — реализовать журнал операций и расчёт фактических остатков.
+The release goal was to prepare the core financial reference data.
 
-**Статус: вертикальный срез реализован и проверен 2026-08-02.** Модель проводок
-отдельно зафиксирована в ADR 0001; запрет отрицательного остатка подтверждён
-владельцем для текущего релиза, а overdraft и multi-currency требуют отдельных
-будущих моделей.
+**Status: the primary slice was implemented on 2026-08-02.** Scenarios were
+verified on PostgreSQL 17 with both a clean migration and an upgrade of existing
+data from `0001_first_run_access` to head. Verification of a real operation with
+an archived category remained partial until categorized operations arrived in
+`alpha.3`.
 
-Перед реализацией должна быть отдельно проверена и документирована модель финансовых проводок.
+## Accounts
 
-## Модель операций
+- [x] Create an account.
+- [x] Account types: `cash`, `debit`, and `savings`.
+- [x] Account name and description.
+- [x] Initial balance through a financial adjustment operation.
+- [x] View the account list.
+- [x] View the current balance.
+- [x] Edit an account.
+- [x] Archive and restore an account.
+- [x] Prevent invalid deletion of an account with operation history.
 
-- [x] Заголовок финансовой операции.
-- [x] Записи движения денег по счетам.
-- [x] Атомарное проведение операции.
-- [x] Получение остатка счёта из журнала движений.
-- [x] Проверка финансовых инвариантов.
-- [x] Защита от частично сохранённых операций.
+## Categories
 
-## Доходы
+- [x] Create a category.
+- [x] Income categories.
+- [x] Expense categories.
+- [x] Subcategories.
+- [x] Edit categories.
+- [x] Archive categories.
+- [~] The archived-category contract is ready; the real operation scenario
+  awaited `alpha.3`.
 
-- [x] Создание дохода.
-- [x] Выбор счёта.
-- [x] Выбор категории.
-- [x] Дата, сумма и описание.
-- [x] Редактирование дохода.
-- [x] Удаление дохода.
+## Release criteria
 
-## Расходы
-
-- [x] Создание расхода.
-- [x] Выбор счёта.
-- [x] Выбор категории.
-- [x] Дата, сумма и описание.
-- [x] Редактирование расхода.
-- [x] Удаление расхода.
-- [x] Контроль недостаточного остатка согласно принятой политике.
-
-## Переводы
-
-- [x] Перевод между двумя счетами.
-- [x] Представление перевода как единой операции.
-- [x] Атомарное списание и зачисление.
-- [x] Редактирование перевода.
-- [x] Удаление перевода.
-
-## Корректировка баланса
-
-- [x] Создание корректировки.
-- [x] Ввод ожидаемого остатка с точным расчётом движения журнала.
-- [x] Отображение причины корректировки.
-- [x] Сохранение корректировки в журнале операций.
-
-## Журнал операций
-
-- [x] Список операций.
-- [x] Фильтрация по периоду.
-- [x] Фильтрация по счёту.
-- [x] Фильтрация по типу и категории.
-- [x] Просмотр деталей операции.
-- [x] Пагинация.
-- [x] Направление перевода, активные фильтры и итог всей выборки.
-
-## Критерии релиза
-
-- Остаток каждого счёта полностью восстанавливается из журнала.
-- Создание, изменение и удаление операции выполняются транзакционно.
-- Перевод не может быть сохранён частично.
-- Основные инварианты покрыты unit- и integration-тестами.
-- Миграции проверены на чистой и существующей базе.
-
-Дополнительно regression-набор проверяет конкурентные списания и удаление счёта,
-rollback после сохранённого заголовка и первого движения, неизменность типа
-исторической категории, timezone-boundary upgrade и downgrade данных alpha.3.
+- [x] The user can create an account and category structure.
+- [x] Initial balance is not stored as an arbitrarily mutable field.
+- [x] Account and category history is preserved in real categorized operations.
+- [x] Monetary values do not use `float`.
 
 ---
 
-# 0.1.0-alpha.4 — виртуальные фонды
+# 0.1.0-alpha.3 — financial core
 
-Цель релиза — реализовать основную отличительную функцию приложения: виртуальное распределение денег по целям.
+The release goal was to implement the operation journal and calculation of
+actual balances.
 
-**Статус: основной вертикальный срез реализован и проверен 2026-08-11.**
-Модель виртуальных проводок, округления, покрытия и архивирования отдельно
-зафиксирована в ADR 0002.
+**Status: the vertical slice was implemented and verified on 2026-08-02.** The
+posting model is recorded separately in ADR 0001. The owner confirmed that
+negative balances are prohibited for the current release; overdraft and
+multi-currency behavior require separate future models.
 
-## Управление фондами
+The financial posting model had to be reviewed and documented separately before
+implementation.
 
-- [x] Создание фонда.
-- [x] Название и описание фонда.
-- [x] Процент распределения.
-- [x] Редактирование фонда.
-- [x] Архивирование фонда.
-- [x] Проверка суммы процентов активных фондов: не более 100%.
-- [x] Необязательная целевая сумма и прогресс достижения.
+## Operation model
 
-## Остатки фондов
+- [x] Financial operation header.
+- [x] Account movement records.
+- [x] Atomic posting of an operation.
+- [x] Derive an account balance from the movement journal.
+- [x] Validate financial invariants.
+- [x] Prevent partially saved operations.
 
-- [x] Общий остаток фонда.
-- [x] Разбивка фонда по физическим счетам.
-- [x] Свободный остаток каждого счёта.
-- [x] Зарезервированный остаток каждого счёта.
-- [x] История движений фонда.
+## Income
 
-## Распределение средств
+- [x] Create income.
+- [x] Select an account.
+- [x] Select a category.
+- [x] Date, amount, and description.
+- [x] Edit income.
+- [x] Delete income.
 
-- [x] Распределение произвольной суммы по процентам.
-- [x] Предварительный просмотр распределения.
-- [x] Возможность вручную скорректировать распределение.
-- [x] Прямое атомарное выделение суммы только в создаваемый фонд.
-- [x] Нераспределённая сумма остаётся свободной.
-- [x] Зафиксированная политика округления.
+## Expenses
 
-## Операции с фондами
+- [x] Create an expense.
+- [x] Select an account.
+- [x] Select a category.
+- [x] Date, amount, and description.
+- [x] Edit an expense.
+- [x] Delete an expense.
+- [x] Enforce the approved insufficient-balance policy.
 
-- [x] Расход из выбранного фонда.
-- [x] Расход без фонда.
-- [x] Перевод денег и виртуальной части фонда между счетами.
-- [x] Перераспределение фонда между счетами без изменения его общей суммы.
-- [x] Редактирование операций, связанных с фондом.
-- [x] Удаление операций, связанных с фондом.
-- [x] Восстановление инвариантов после изменения операции.
-- [x] Перевод виртуальной суммы между фондами на одном счёте.
+## Transfers
 
-## Критерии релиза
+- [x] Transfer between two accounts.
+- [x] Represent a transfer as one operation.
+- [x] Atomic debit and credit.
+- [x] Edit a transfer.
+- [x] Delete a transfer.
 
-- Сумма фондов на счёте не превышает физический остаток согласно принятой политике.
-- Расход из фонда уменьшает и счёт, и фонд.
-- Перевод фонда между счетами не меняет общую сумму фонда.
-- Процентное распределение воспроизводимо и покрыто тестами.
-- Правила округления задокументированы.
+## Balance adjustment
 
-Regression-набор проверяет точное независимое округление, concurrent allocation
-и fund consumption, rollback обоих журналов после injected failure, запрет
-нарушить coverage изменением физической операции, archive-инвариант и миграции
-на чистой и существующей alpha.3 базе.
+- [x] Create an adjustment.
+- [x] Enter the expected balance and calculate the exact journal movement.
+- [x] Display the adjustment reason.
+- [x] Save the adjustment in the operation journal.
 
----
+## Operation journal
 
-# 0.1.0-beta.1 — регулярные операции и календарь
+- [x] Operation list.
+- [x] Filter by period.
+- [x] Filter by account.
+- [x] Filter by type and category.
+- [x] View operation details.
+- [x] Pagination.
+- [x] Transfer direction, active filters, and the total for the full selection.
 
-Цель релиза — добавить плановые финансовые события.
+## Release criteria
 
-## Регулярные правила
+- Every account balance can be fully reconstructed from the journal.
+- Creating, editing, and deleting an operation is transactional.
+- A transfer cannot be saved partially.
+- Core invariants are covered by unit and integration tests.
+- Migrations are verified on clean and existing databases.
 
-- [x] Создание регулярного дохода.
-- [x] Создание регулярного расхода.
-- [x] Создание регулярного перевода.
-- [x] Периодичность.
-- [x] Дни недели и интервал 1–3 недели для weekly; интервал 1–3 месяца для monthly.
-- [x] Дата начала.
-- [x] Необязательная дата окончания.
-- [x] Счёт, категория, сумма и описание.
-- [x] Редактирование и отключение правила.
-
-## Ожидаемые экземпляры
-
-- [x] Материализация будущих экземпляров.
-- [x] Защита от повторного создания экземпляров.
-- [x] Статусы `pending`, `confirmed`, `postponed`, `cancelled`.
-- [x] Подтверждение ожидаемой операции.
-- [x] Корректировка суммы отдельного экземпляра при подтверждении.
-- [x] Атомарный плановый перевод с распределением по процентам фондов.
-- [x] Перенос отдельного экземпляра.
-- [x] Отмена отдельного экземпляра.
-- [x] Связь подтверждённого экземпляра с фактической операцией.
-
-## Календарь
-
-- [x] Месячное представление.
-- [x] Список ближайших операций.
-- [x] Фильтрация по счетам и типам.
-- [x] Выделение просроченных ожидаемых операций.
-- [x] Быстрое подтверждение, перенос и отмена.
-
-## Открытые решения
-
-- [x] Изменение правила синхронизирует или автоматически отменяет только
-  текущие/будущие нетронутые экземпляры; подтверждённые и вручную изменённые
-  сохраняются.
-- [x] Экземпляры материализуются от текущей даты на один календарный год вперёд
-  включительно.
-- [x] Несуществующие дни не допускаются: monthly ограничен днями 1–28, yearly
-  не принимает 29 февраля.
-- [x] Все значения являются календарными датами; timezone экземпляра считается
-  стабильным после первоначальной настройки, автоматическая миграция расписания
-  не выполняется.
-
-## Критерии релиза
-
-- Ожидаемая операция не изменяет фактический баланс.
-- Только подтверждение создаёт фактическую операцию.
-- Повторная материализация не создаёт дубликаты.
-- Перенос экземпляра не изменяет правило без явного действия пользователя.
-
-Regression-набор проверяет точную генерацию, повторную и конкурентную
-материализацию, защиту ручных экземпляров, сохранение overdue, idempotent
-confirmation, конкурентные confirmation/rule edit, auth/CSRF границу, rollback
-фактической операции и ссылки после injected failure, а также upgrade
-существующей alpha.4 базы и downgrade beta.1 схемы. Frontend-проверки покрывают
-полную пагинацию месяца, честный лимит ближайших событий, архивную ссылку при
-редактировании правила и прямую ссылку на факт. `alembic check` подтверждает
-отсутствие model/schema drift для head.
+The regression suite additionally verifies concurrent debits and account
+deletion, rollback after saving the header and first movement, immutability of a
+historical category type, and timezone-boundary upgrade and downgrade of
+`alpha.3` data.
 
 ---
 
-# 0.1.0-beta.2 — прогнозирование остатков
+# 0.1.0-alpha.4 — virtual funds
 
-Цель релиза — показывать будущие остатки с учётом ожидаемых операций.
+The release goal was to implement the application's primary differentiating
+feature: virtual allocation of money to purposes.
 
-**Статус: вертикальный срез реализован и проверен 2026-08-12.** Read-only
-модель не добавляет хранимых сущностей, поэтому новая миграция не требуется;
-совместимость существующей схемы подтверждается migration-проверками.
+**Status: the primary vertical slice was implemented and verified on
+2026-08-11.** The virtual posting, rounding, coverage, and archiving models are
+recorded separately in ADR 0002.
 
-## Расчётный движок
+## Fund management
 
-- [x] Прогноз по одному счёту.
-- [x] Суммарный прогноз по всем счетам.
-- [x] Горизонты: две недели, месяц, квартал, полгода, год.
-- [x] Учёт ожидаемых доходов.
-- [x] Учёт ожидаемых расходов.
-- [x] Учёт запланированных переводов.
-- [x] Расчёт минимального будущего остатка.
-- [x] Определение даты возможного отрицательного остатка.
-- [x] Объяснение событий, влияющих на каждую точку прогноза.
+- [x] Create a fund.
+- [x] Fund name and description.
+- [x] Allocation percentage.
+- [x] Edit a fund.
+- [x] Archive a fund.
+- [x] Ensure active-fund percentages total no more than 100%.
+- [x] Optional target amount and progress.
 
-## Интерфейс
+## Fund balances
 
-- [x] График прогнозируемых остатков.
-- [x] Переключение периода.
-- [x] Переключение счета.
-- [x] Общий прогноз.
-- [x] Предупреждения о недостатке средств.
-- [x] Просмотр операций, вызвавших изменение прогноза.
+- [x] Total fund balance.
+- [x] Fund breakdown by physical account.
+- [x] Free balance of each account.
+- [x] Reserved balance of each account.
+- [x] Fund movement history.
 
-## Критерии релиза
+## Allocation
 
-- Расчётный движок тестируется отдельно от визуализации.
-- Одинаковые исходные данные дают одинаковый прогноз.
-- Переводы не искажают суммарный баланс всех счетов.
-- Пользователь может понять, почему прогноз изменился.
+- [x] Allocate an arbitrary amount by percentages.
+- [x] Allocation preview.
+- [x] Manually adjust the allocation.
+- [x] Atomically allocate an amount directly to the fund being created.
+- [x] Leave the unallocated amount free.
+- [x] Fixed rounding policy.
 
-Pure unit-набор фиксирует календарные горизонты, Decimal-детерминизм,
-daily closing, минимальный/отрицательный остаток, scope-фильтрацию и нейтральность
-перевода. PostgreSQL integration-сценарий подтверждает, что confirmed событие
-переходит только в фактический старт, postponed меняет дату плана, а API не
-доступен без сессии. UI-тесты проверяют переключатели, риск и explanation.
+## Fund operations
 
----
+- [x] Spend from a selected fund.
+- [x] Spend without a fund.
+- [x] Transfer money and a virtual fund portion between accounts.
+- [x] Redistribute a fund between accounts without changing its total.
+- [x] Edit operations associated with a fund.
+- [x] Delete operations associated with a fund.
+- [x] Restore invariants after changing an operation.
+- [x] Transfer a virtual amount between funds on one account.
 
-# 0.1.0-rc.1 — резервное копирование и стабилизация MVP
+## Release criteria
 
-Цель релиза — подготовить приложение к реальному ежедневному использованию.
+- Funds reserved on an account do not exceed its physical balance under the
+  approved policy.
+- Spending from a fund reduces both the account and the fund.
+- Transferring a fund between accounts does not change the fund total.
+- Percentage allocation is reproducible and covered by tests.
+- Rounding rules are documented.
 
-## JSON-экспорт
-
-- [x] Полный экспорт данных.
-- [x] Версионированный формат.
-- [x] Поля `format`, `schema_version`, `app_version`, `exported_at`.
-- [x] Экспорт настроек.
-- [x] Экспорт счетов, категорий, операций и фондов.
-- [x] Экспорт регулярных правил и ожидаемых экземпляров.
-- [x] Проверка целостности сформированного backup.
-
-## Восстановление
-
-- [x] Загрузка JSON-файла.
-- [x] Проверка формата и версии.
-- [x] Предварительная сводка содержимого.
-- [x] Явное подтверждение замены данных.
-- [x] Транзакционное восстановление.
-- [x] Проверка доменных инвариантов после восстановления.
-- [x] Понятные сообщения об ошибках.
-- [x] Тест восстановления на чистой базе.
-
-## Стабилизация
-
-- [x] Проверка обновления со всех предыдущих prerelease-версий.
-- [x] Проверка развёртывания на чистом сервере.
-- [x] Документация обновления.
-- [x] Документация резервного копирования.
-- [x] Проверка production Docker-образа.
-- [x] Исправление критических UX-проблем.
-- [x] Исправление критических ошибок финансового ядра.
-- [x] Проверка отсутствия `float` в денежных расчётах.
-- [x] Проверка безопасности авторизации и сессий.
+The regression suite verifies exact independent rounding, concurrent allocation
+and fund consumption, rollback of both journals after an injected failure,
+prevention of coverage violations through physical-operation changes, the
+archive invariant, and migrations on clean and existing `alpha.3` databases.
 
 ---
 
-# 0.1.2 — стабилизированный MVP-срез
+# 0.1.0-beta.1 — recurring operations and calendar
 
-**Статус: кодовый срез завершён 2026-08-15.** Номер версии зафиксирован в
-changelog, но сам по себе не подтверждает публикацию первого публичного тега.
-Критерии реального использования и выпуска переносятся на текущий release gate.
+The release goal was to add planned financial events.
 
-## Возможности релиза
+## Recurrence rules
 
-- Однопользовательская авторизация.
-- Счета.
-- Категории и подкатегории.
-- Доходы и расходы.
-- Переводы.
-- Корректировки баланса.
-- Журнал операций.
-- Виртуальные фонды.
-- Процентное распределение средств.
-- Расходы и переводы с участием фондов.
-- Регулярные ожидаемые операции.
-- Календарь.
-- Прогноз остатков.
-- JSON-экспорт и восстановление.
-- Развёртывание через Docker Compose.
-- 30-минутное завершение сессии без взаимодействия.
-- Свободные средства как основной режим прогноза с явным переключением на
-  общий физический остаток.
-- Единые текстовые даты, символы валют и группировка тысяч в денежных полях.
+- [x] Create recurring income.
+- [x] Create a recurring expense.
+- [x] Create a recurring transfer.
+- [x] Recurrence frequency.
+- [x] Weekdays and a 1–3 week interval for weekly recurrence; a 1–3 month
+  interval for monthly recurrence.
+- [x] Start date.
+- [x] Optional end date.
+- [x] Account, category, amount, and description.
+- [x] Edit and disable a rule.
 
-## Критерии публичного выпуска
+## Expected occurrences
 
-- Нет известных ошибок, способных незаметно повредить финансовые данные.
-- Все ключевые финансовые инварианты покрыты тестами.
-- Проверено полное восстановление из backup.
-- Проверены миграции с предыдущей версии.
-- Документация соответствует фактическому поведению.
-- Есть понятные инструкции установки и обновления.
-- Production-образ собирается воспроизводимо.
-- Приложение прошло период реального личного использования.
+- [x] Materialize future occurrences.
+- [x] Prevent duplicate materialization.
+- [x] Statuses `pending`, `confirmed`, `postponed`, and `cancelled`.
+- [x] Confirm an expected operation.
+- [x] Adjust the amount of an individual occurrence during confirmation.
+- [x] Atomic planned transfer with percentage-based fund allocation.
+- [x] Postpone an individual occurrence.
+- [x] Cancel an individual occurrence.
+- [x] Link a confirmed occurrence to the actual operation.
 
----
+## Calendar
 
-# 0.3.0 — отчёты и удобство ежедневного использования
+- [x] Monthly view.
+- [x] Upcoming-operation list.
+- [x] Filter by accounts and types.
+- [x] Highlight overdue expected operations.
+- [x] Quick confirmation, postponement, and cancellation.
 
-**Статус: завершён 2026-08-17.** Промежуточная development-версия `0.2.0` не
-имеет отдельной секции в текущем changelog; её реализованный scope
-консолидирован под `0.3.0`. Нереализованные пункты прежнего плана перенесены в
-backlog без назначенного номера версии.
+## Resolved decisions
 
-- [x] Доходы и расходы за месяц или произвольный период.
-- [x] Расходы и доходы по категориям со списком операций.
-- [x] Перспектива фондов по запланированным процентным распределениям.
-- [x] Выпадающее быстрое создание с выбором типа операции.
-- [x] Необязательный активный счёт по умолчанию для новых доходов и расходов.
-- [x] Переработка визуальной части приложения в подтверждённом светлом
-  нейтральном направлении.
-- [x] Free-прогноз учитывает будущие процентные распределения переводов, а
-  total-прогноз сохраняет физическую нейтральность внутренних переводов.
+- [x] Editing a rule synchronizes or automatically cancels only untouched
+  current and future occurrences; confirmed and manually edited occurrences
+  remain unchanged.
+- [x] Occurrences are materialized from the current date through one calendar
+  year ahead, inclusive.
+- [x] Nonexistent dates are prohibited: monthly recurrence is limited to days
+  1–28, and yearly recurrence does not accept February 29.
+- [x] All values are calendar dates. The occurrence timezone is considered
+  stable after initial setup; schedules are not migrated automatically.
 
----
+## Release criteria
 
-# 0.4.0 — динамическое распределение по фондам
+- An expected operation does not change the actual balance.
+- Only confirmation creates an actual operation.
+- Repeated materialization does not create duplicates.
+- Postponing an occurrence does not change its rule without an explicit user
+  action.
 
-**Статус: реализация и автоматические проверки завершены 2026-08-17; owner
-acceptance на реальных данных и решение о публичном теге остаются release gate.**
-
-- [x] Переключение между ручным и динамическим режимом в настройках.
-- [x] Динамический расчёт по абсолютному остатку до цели с гарантированной
-  базовой долей.
-- [x] Исключение заполненных и архивных фондов и возврат восстановленных фондов.
-- [x] Пересчёт после фактических и последовательных запланированных пополнений.
-- [x] Сохранение текущих вычисленных процентов при возврате в ручной режим.
-- [x] Миграция, backup-совместимость, API/UI и автоматические проверки.
-- [x] Привести все UI-суммы и проценты к единому формату `100 000,00` /
-  `12,50%`, принимать запятую и точку в numeric inputs и покрыть контракт
-  frontend-тестами. Серверная точность при этом не меняется.
+The regression suite verifies exact generation, repeated and concurrent
+materialization, protection of manually edited occurrences, preservation of
+overdue items, idempotent confirmation, concurrent confirmation and rule edits,
+the authentication and CSRF boundary, rollback of the actual operation and link
+after an injected failure, upgrade of an existing `alpha.4` database, and
+downgrade of the `beta.1` schema. Frontend checks cover full month pagination,
+an honest upcoming-event limit, archived references when editing a rule, and a
+direct link to the actual operation. `alembic check` confirms that head has no
+model/schema drift.
 
 ---
 
-# Предлагаемый глобальный план после 0.4.0
+# 0.1.0-beta.2 — balance forecasting
 
-Этот план является продуктовой гипотезой для обсуждения, а не утверждённым
-детальным дизайном или календарным обязательством. Номер фиксирует удобную
-границу пользовательской ценности; scope каждой версии подтверждается отдельно
-до начала реализации. Невыполненный пункт не переносится в следующий релиз
-молча.
+The release goal was to show future balances including expected operations.
 
-## Принципы последовательности
+**Status: the vertical slice was implemented and verified on 2026-08-12.** The
+read-only model adds no stored entities, so no new migration is required;
+migration checks confirm compatibility with the existing schema.
 
-1. Сначала выпустить и укрепить надёжное self-hosted ядро.
-2. Рано добавить i18n-каркас, пока объём неперенесённых строк ограничен.
-3. Сначала построить детерминированный what-if движок, затем сокращать путь к
-   нему локальным AI.
-4. Импортировать качественные исходные данные до history-informed аналитики.
-5. Реализовать долги и бюджетирование как самостоятельные домены, не смешивая
-   их с фондами и обычными операциями.
-6. Сначала сделать объяснимую детерминированную аналитику, затем использовать
-   локальную модель только как необязательный помощник над теми же фактами.
-7. Мультивалютность должна предшествовать полноценному учёту инвестиций.
-8. Публичная онлайн-платформа является отдельной архитектурной программой и не
-   расширяет автоматически доверенную single-owner модель.
+## Calculation engine
 
-## До 1.0.0 — обкатка и подготовка стабильного self-hosted ядра
+- [x] Forecast for one account.
+- [x] Aggregate forecast for all accounts.
+- [x] Horizons: two weeks, one month, one quarter, six months, and one year.
+- [x] Include expected income.
+- [x] Include expected expenses.
+- [x] Include planned transfers.
+- [x] Calculate the minimum future balance.
+- [x] Identify the date of a possible negative balance.
+- [x] Explain the events affecting every forecast point.
 
-- [ ] Провести owner acceptance `0.4.0` на восстановленной копии реальных данных.
-- [ ] Зафиксировать поддерживаемые PostgreSQL, Python, Node, Docker и браузеры.
-- [ ] Проверить upgrade и backup/restore между публичными версиями.
-- [ ] Добавить автоматические локальные backup, проверку и ограниченную ротацию.
-- [ ] Опубликовать multi-arch image и документировать обновление, rollback,
-  reverse proxy, VPN и HTTPS.
-- [ ] Закрыть известные критические ошибки и release/security checklist.
-- [ ] Выпустить `1.0.0` только после отдельного явного решения владельца; само
-  выполнение технических пунктов не назначает дату и не открывает релиз.
+## Interface
 
-## 1.1.0 — мультиязычная основа
+- [x] Forecast balance chart.
+- [x] Period selector.
+- [x] Account selector.
+- [x] Aggregate forecast.
+- [x] Insufficient-funds warnings.
+- [x] View operations that changed the forecast.
 
-- [ ] Убрать пользовательские строки из компонентов и определить i18n-контракт.
-- [ ] Поддержать русский и английский интерфейс с явным fallback-языком.
-- [ ] Локализовать даты, числа, валюты, validation и API errors без изменения
-  точных domain payloads.
-- [ ] Проверить переполнение интерфейса, keyboard navigation и screen-reader
-  labels на обоих языках.
-- [ ] Документировать добавление community-перевода без изменения бизнес-кода.
+## Release criteria
 
-## 2.0.0 — Оракул: детерминированный режим «Что если?»
+- The calculation engine is tested separately from the visualization.
+- Identical source data produces an identical forecast.
+- Transfers do not distort the total balance across all accounts.
+- The user can understand why the forecast changed.
 
-- [ ] Временный сценарий покупки, дохода, изменения суммы и переноса даты без
-  изменения ledger и подтверждённого плана.
-- [ ] Обычная структурированная форма, не зависящая от AI.
-- [ ] Базовый и альтернативный прогнозы из одного snapshot, scope и horizon.
-- [ ] Ответ «что изменится» до графика: дельта свободных денег, минимум, дата,
-  напряжённое окно и затронутые фонды/события.
-- [ ] Пользовательский stop-loss и отдельная объяснимая системная граница риска.
-- [ ] Assumptions, источники и различие факта, плана, сценария и оценки.
-- [ ] Сценарий исчезает по умолчанию; сохранение и создание черновика плана —
-  отдельные явные действия.
-- [ ] Сценарный расчёт покрыт exact-decimal, snapshot consistency и
-  no-side-effect тестами.
-
-## 2.1.0 — сохранение и сравнение сценариев
-
-- [ ] Именованные сценарии без превращения в подтверждённый план.
-- [ ] Сравнение нескольких вариантов суммы, даты или набора решений.
-- [ ] Обнаружение устаревшего baseline и явный пересчёт на новых фактах.
-- [ ] Перенос проверенных полей только в composer черновика плана.
-- [ ] Backup/restore policy для сохранённых сценариев без истории диалогов.
-
-## 2.2.0 — локальный разговорный вход в Оракул
-
-- [ ] Необязательный local-model adapter переводит текст в структурированный
-  сценарный черновик.
-- [ ] Неизвестные существенные параметры вызывают короткое уточнение, а не
-  скрытый default.
-- [ ] Пользователь проверяет распознанные сумму, дату, scope и действие до
-  расчёта или сохранения.
-- [ ] Модель объясняет готовый детерминированный результат, но не рассчитывает
-  authoritative balances.
-- [ ] Чат напрямую не создаёт операции и планы; диалог не хранится по умолчанию.
-- [ ] Полный fallback без AI и удаление локальных model artifacts.
-
-## 3.0.0 — входящие и исходящие долги
-
-- [ ] Направления `owed_to_me` и `i_owe`, контрагент, даты, описание и статус.
-- [ ] Первоначальная сумма и текущий остаток, выводимый из выдач, получений и
-  погашений без допуска drift.
-- [ ] Частичное погашение и корректировка через явный финансовый факт.
-- [ ] Атомарная связь жизненного цикла долга с физическими операциями.
-- [ ] Срок возврата, просрочка, календарь, baseline forecast, Оракул и отчёты.
-- [ ] Backup/restore и migration compatibility.
-
-## 3.1.0 — кредиты и рассрочки
-
-- [ ] Кредитор, первоначальная и текущая сумма, даты начала и ожидаемого конца.
-- [ ] Регулярный платёж, периодичность и следующая дата платежа.
-- [ ] Упрощённый пользовательский график без попытки воспроизвести банковскую
-  математику процентов, комиссий и досрочного погашения.
-- [ ] Подтверждение платежа атомарно создаёт финансовую операцию и уменьшает
-  остаток обязательства.
-- [ ] Частичный, пропущенный и изменённый платёж имеют явные состояния.
-- [ ] Календарь, прогноз, сценарии, dashboard, отчёты и backup/restore.
-
-Кредиты не входят в первый debt release только ради общего слова
-«обязательство»: у них иной жизненный цикл, регулярный платёж и кредитор.
-
-## 4.0.0 — универсальный импорт банковских выгрузок
-
-Под «универсальным» понимается общий настраиваемый pipeline, а не обещание
-автоматически понимать любой банковский файл без настройки.
-
-- [ ] CSV с определением кодировки, разделителя, локали чисел и формата дат.
-- [ ] XLSX с выбором листа; оценить OFX/QIF как дополнительные форматы.
-- [ ] Сопоставление колонок, сохранённые профили формата и preview без записей.
-- [ ] Выбор счёта, нормализация знака/типа операции и предложение категории.
-- [ ] Объяснимые кандидаты дублей и ручное решение конфликтов.
-- [ ] Явное подтверждение, атомарная запись через публичные contracts owning-
-  модулей и итоговый отчёт.
-- [ ] Банкоспецифичные профили строятся поверх общего pipeline и не получают
-  прямого доступа к ledger.
-
-Последующие форматы, готовые профили банков и улучшения reconciliation могут
-выходить как minor-версии `4.x`, не меняя import ownership.
-
-## 5.0.0 — бюджетная политика, цели и план-факт
-
-- [ ] Периодические лимиты доходов и расходов по категориям.
-- [ ] Явная политика переноса остатка между периодами.
-- [ ] План, факт, доступно до конца периода и объяснимые отклонения.
-- [ ] Предупреждения без запрета легитимной операции и без изменения ledger.
-- [ ] Независимость бюджета от фондов: бюджет планирует поток за период, фонд
-  назначает уже имеющиеся деньги.
-- [ ] Шаблоны бюджетов, backup/restore и отчёты.
-- [ ] Целевая дата фонда, требуемый темп накопления и ожидаемая дата достижения.
-- [ ] Бюджеты и цели становятся явными входами baseline и what-if сценариев.
-
-## 6.0.0 — history-informed прогноз и объяснимая аналитика
-
-- [ ] Улучшенный поиск, сохранённые фильтры и массовая категоризация.
-- [ ] Тренды остатков, расходов, доходов, фондов, долгов и исполнения бюджета.
-- [ ] Настраиваемый dashboard и сравнение периодов.
-- [ ] Детерминированные прогнозные baseline-модели с backtesting и метриками
-  ошибки.
-- [ ] Машиночитаемый локальный analytical read model без обхода доменных
-  владельцев.
-- [ ] Объяснимое сравнение пользовательского плана с фактической историей без
-  автоматической подмены плана.
-- [ ] Финансовый горизонт, запас прочности и напряжённые окна с раскрываемой
-  методикой.
-
-## 6.1.0 — history-informed Оракул
-
-- [ ] Необязательное локальное исполнение без отправки финансовых данных во
-  внешний AI-сервис.
-- [ ] Предложение категории, поиск аномалий и объяснение трендов.
-- [ ] Прогноз как вероятностный сценарий рядом с детерминированным baseline, а
-  не замена точной финансовой модели.
-- [ ] Показывать источник данных, уверенность, горизонт и качество на
-  историческом backtesting.
-- [ ] Ни одна рекомендация не создаёт и не изменяет финансовую операцию без
-  явного подтверждения пользователя.
-- [ ] Возможность полностью отключить модель и удалить её локальные артефакты.
-- [ ] Разговорные вопросы к аналитике используют grounded tools/read models, а
-  не свободное угадывание ответа моделью.
-
-## 7.0.0 — мультивалютность и модель капитала
-
-- [ ] Валюта счёта и основная валюта отчётности.
-- [ ] Явно зафиксированный курс финансовой операции.
-- [ ] Источник, дата и политика отсутствующего курса.
-- [ ] Отдельное представление фактической стоимости и переоценки.
-- [ ] Currency-specific precision, переводы между валютами, отчёты и backup.
-- [ ] Базовая модель активов, обязательств и чистого капитала, пригодная для
-  последующего investment scope.
-
-## 7.1.0 — инвестиции и расширенный учёт активов
-
-- [ ] Сначала ручной реестр активов и обязательств и расчёт чистого капитала.
-- [ ] Денежный счёт отделён от investment account, позиция — от инструмента, а
-  сделка — от изменения рыночной цены.
-- [ ] Покупки, продажи, комиссии, дивиденды и realised/unrealised result.
-- [ ] Ручные котировки как baseline; внешний market-data provider требует
-  отдельного ADR, кэша, provenance и degradation policy.
-- [ ] Недвижимость, автомобили и другие нерыночные активы через периодические
-  оценки, не через фиктивные финансовые операции.
-- [ ] Broker import и криптоактивы рассматриваются после устойчивой базовой
-  модели и не входят автоматически в первый investment release.
-
-## Параллельный backlog ежедневной работы
-
-Эти улучшения можно включать в ближайший тематически подходящий релиз, если они
-не размывают его acceptance criteria:
-
-- шаблоны и дублирование операций;
-- более удобный календарь и дальнейшая мобильная адаптация;
-- дополнительные форматы экспорта;
-- PWA и ограниченный offline-режим;
-- зашифрованные backup и расширенная диагностика.
+The pure unit suite fixes calendar horizons, `Decimal` determinism, daily close,
+minimum and negative balance, scope filtering, and transfer neutrality. The
+PostgreSQL integration scenario confirms that a confirmed event moves only into
+the actual starting state, a postponed event changes the planned date, and the
+API is unavailable without a session. UI tests cover selectors, risk, and
+explanations.
 
 ---
 
-# Стратегическая программа Hermes Online
+# 0.1.0-rc.1 — backup and MVP stabilization
 
-Возможная бесплатная онлайн-платформа с подпиской, без неё или с добровольными
-донатами не является обычным продолжением self-hosted deployment. До назначения
-версии нужен отдельный feasibility milestone и ADR со следующими решениями:
+The release goal was to prepare the application for real daily use.
 
-- сохраняется ли self-hosted Hermes основным продуктом и существует ли hosted
-  edition без закрытого функционального fork;
-- identity, password recovery, email verification, роли, tenant isolation и
-  удаление аккаунта/экспорт данных;
-- шифрование, secret management, rate limiting, abuse prevention, observability,
-  incident response, vulnerability disclosure и privacy policy;
-- изоляция фоновых задач, backup каждого tenant, disaster recovery и проверка
-  восстановления;
-- стоимость PostgreSQL, файлов, писем, model inference и поддержки;
-- подписка, донаты или полностью бесплатная модель, налоги и платёжный provider;
-- лицензирование AGPL, правила contribution и прозрачное разделение общих и
-  hosted-компонентов.
+## JSON export
 
-До закрытия этих вопросов текущая гарантия остаётся прежней: один владелец в
-защищённом контуре. Код новых доменов не должен заранее зависеть от multi-tenant
-или cloud infrastructure.
+- [x] Full data export.
+- [x] Versioned format.
+- [x] Fields `format`, `schema_version`, `app_version`, and `exported_at`.
+- [x] Export settings.
+- [x] Export accounts, categories, operations, and funds.
+- [x] Export recurrence rules and expected occurrences.
+- [x] Validate the generated backup's integrity.
 
----
+## Restore
 
-# Политика версий и релизов
+- [x] Upload a JSON file.
+- [x] Validate format and version.
+- [x] Preview a content summary.
+- [x] Explicitly confirm data replacement.
+- [x] Transactional restore.
+- [x] Validate domain invariants after restore.
+- [x] Clear error messages.
+- [x] Restore test on a clean database.
 
-- Вся серия `0.x` является внутренней обкаткой. Версии `0.1.0`–`0.4.0` и
-  следующие номера до отдельного решения владельца не считаются стабильными
-  публичными релизами.
-- Первым стабильным публичным релизом будет `1.0.0`. Его готовность и момент
-  выпуска объявляет владелец отдельно; roadmap не может сделать это
-  автоматически.
-- Основные продуктовые поколения получают номера `2.0.0`, `3.0.0` и далее.
-  Функциональные доработки внутри поколения выпускаются как minor `N.x.0`, а
-  совместимые исправления — как patch `N.x.y`.
-- После `1.0.0` каждый публичный major, minor и patch получает annotated git
-  tag, GitHub Release, changelog и необходимые migration/backup notes; для
-  поставляемого container image используется тот же номер.
-- Несовместимое изменение после `1.0.0` по возможности откладывается до
-  следующей major-версии и всегда получает явный migration path. Minor не
-  должен молча ломать API, backup или сохранённые данные.
-- Для проверки реального upgrade допустимы `N.x.0-rc.1`; pre-release не заменяет
-  стабильный backup/restore test.
-- После первого публичного релиза опубликованные миграции не переписываются.
+## Stabilization
+
+- [x] Verify upgrades from all previous prerelease versions.
+- [x] Verify deployment on a clean server.
+- [x] Update documentation.
+- [x] Backup documentation.
+- [x] Verify the production Docker image.
+- [x] Fix critical UX issues.
+- [x] Fix critical financial-core defects.
+- [x] Verify that monetary calculations do not use `float`.
+- [x] Review authentication and session security.
 
 ---
 
-# 1.0.0 — стабильный релиз
+# 0.1.2 — stabilized MVP slice
 
-Версия `1.0.0` не должна выпускаться только потому, что реализовано много функций.
+**Status: the code slice was completed on 2026-08-15.** The version number is
+recorded in the changelog but does not by itself confirm publication of the
+first public tag. Real-use and publication criteria move to the current release
+gate.
 
-Предлагаемые критерии:
+## Release capabilities
 
-- Приложение стабильно используется на реальных данных.
-- Финансовая модель считается устойчивой.
-- Форматы операций и фондов не требуют разрушительной переработки.
-- Backup и восстановление проверены на разных версиях.
-- Документирована политика совместимости.
-- Миграции между публичными версиями надёжны.
-- Есть процесс обработки уязвимостей.
-- Есть понятный процесс выпуска обновлений.
-- Отсутствуют известные критические ошибки.
-- Базовые пользовательские сценарии не требуют ручного вмешательства в базу данных.
-- Проект может быть установлен и обновлён по документации человеком, не участвовавшим в разработке.
+- Single-user authentication.
+- Accounts.
+- Categories and subcategories.
+- Income and expenses.
+- Transfers.
+- Balance adjustments.
+- Operation journal.
+- Virtual funds.
+- Percentage-based allocation.
+- Expenses and transfers involving funds.
+- Recurring expected operations.
+- Calendar.
+- Balance forecast.
+- JSON export and restore.
+- Docker Compose deployment.
+- End an inactive session after 30 minutes.
+- Free funds as the primary forecast mode, with an explicit switch to total
+  physical balance.
+- Consistent textual dates, currency symbols, and thousands grouping in
+  monetary fields.
 
-До выполнения этих условий проект может оставаться в серии `0.x`, даже если им уже можно полноценно пользоваться.
+## Public release criteria
+
+- No known defects can silently corrupt financial data.
+- All key financial invariants are covered by tests.
+- Full restore from backup is verified.
+- Migrations from the previous version are verified.
+- Documentation matches actual behavior.
+- Installation and upgrade instructions are clear.
+- The production image builds reproducibly.
+- The application has completed a period of real personal use.
 
 ---
 
-# Правила изменения roadmap
+# 0.3.0 — reports and everyday usability
 
-При изменении roadmap необходимо:
+**Status: completed on 2026-08-17.** The intermediate development version
+`0.2.0` has no separate section in the current changelog; its implemented scope
+is consolidated under `0.3.0`. Unimplemented items from the former plan were
+moved to an unversioned backlog.
 
-1. Проверить соответствие архитектурной документации.
-2. Не отмечать пункт выполненным только по наличию backend-кода.
-3. Переносить незавершённый функционал между релизами явно.
-4. Не добавлять новую инфраструктуру без архитектурного обоснования.
-5. Обновлять [project-status.md](./project-status.md), если изменился текущий этап.
-6. Не использовать roadmap как журнал каждого коммита.
-7. Не указывать календарные сроки без явного решения владельца проекта.
+- [x] Income and expenses for a month or arbitrary period.
+- [x] Expenses and income by category with operation lists.
+- [x] Fund outlook based on planned percentage allocations.
+- [x] Quick-create dropdown with operation-type selection.
+- [x] Optional active default account for new income and expenses.
+- [x] Redesign the application in the approved light, neutral visual direction.
+- [x] Free-balance forecasting includes future percentage allocations from
+  transfers, while total forecasting preserves the physical neutrality of
+  internal transfers.
+
+---
+
+# 0.4.0 — dynamic fund allocation
+
+**Status: implementation and automated checks were completed on 2026-08-17;
+owner acceptance on real data and the public-tag decision remain the release
+gate.**
+
+- [x] Switch between manual and dynamic modes in settings.
+- [x] Calculate dynamic percentages from each remaining amount to target while
+  guaranteeing a base share.
+- [x] Exclude completed and archived funds, and include restored funds again.
+- [x] Recalculate after actual and sequential planned allocations.
+- [x] Preserve currently calculated percentages when returning to manual mode.
+- [x] Migration, backup compatibility, API/UI, and automated checks.
+- [x] Format every UI amount and percentage consistently as `100 000,00` and
+  `12,50%`, accept comma and period decimal separators in numeric inputs, and
+  cover the contract with frontend tests. Server-side precision is unchanged.
+
+---
+
+# Proposed global plan after 0.4.0
+
+This plan is a product hypothesis for discussion, not an approved detailed
+design or calendar commitment. A version number marks a convenient boundary of
+user value; each version's scope is confirmed separately before implementation.
+An unfinished item is never moved silently into the next release.
+
+## Sequencing principles
+
+1. First publish and strengthen a reliable self-hosted core.
+2. Add the i18n foundation early, while the amount of unmigrated copy is small.
+3. Build the deterministic What if? engine before shortening its input path
+   with local AI.
+4. Import high-quality source data before history-informed analytics.
+5. Implement debts and budgeting as independent domains, without mixing them
+   with funds or ordinary operations.
+6. Build explainable deterministic analytics first, then use a local model only
+   as an optional assistant over the same facts.
+7. Multi-currency support must precede full investment accounting.
+8. A public online platform is a separate architectural program and does not
+   automatically expand the trusted single-owner model.
+
+## Before 1.0.0 — trial use and stable self-hosted core preparation
+
+- [ ] Perform owner acceptance of `0.4.0` on a restored copy of real data.
+- [ ] Define supported PostgreSQL, Python, Node, Docker, and browser versions.
+- [ ] Verify upgrades and backup/restore between public versions.
+- [ ] Add automated local backups, validation, and limited rotation.
+- [ ] Publish a multi-architecture image and document upgrades, rollback,
+  reverse proxy, VPN, and HTTPS.
+- [ ] Resolve known critical defects and complete the release/security
+  checklist.
+- [ ] Release `1.0.0` only after a separate explicit owner decision; completing
+  the technical items does not assign a date or open the release by itself.
+
+## 1.1.0 — multilingual foundation
+
+- [ ] Move user-facing copy out of components and define an i18n contract.
+- [ ] Support Russian and English interfaces with an explicit fallback
+  language.
+- [ ] Localize dates, numbers, currencies, validation, and API errors without
+  changing exact domain payloads.
+- [ ] Verify interface overflow, keyboard navigation, and screen-reader labels
+  in both languages.
+- [ ] Document how to add a community translation without changing business
+  code.
+
+## 2.0.0 — Oracle: deterministic What if? mode
+
+- [ ] Create a temporary purchase, income, amount-change, or date-shift scenario
+  without changing the ledger or confirmed plan.
+- [ ] Provide an ordinary structured form that does not depend on AI.
+- [ ] Calculate baseline and alternative forecasts from one snapshot, scope,
+  and horizon.
+- [ ] Answer “what changes” before showing a chart: delta in free money,
+  minimum, date, stress window, and affected funds or events.
+- [ ] Support a user-defined stop-loss and a separate, explainable risk boundary
+  suggested by the system.
+- [ ] Expose assumptions and sources, and distinguish facts, plans, scenarios,
+  and estimates.
+- [ ] Discard a scenario by default; saving it or creating a plan draft are
+  separate explicit actions.
+- [ ] Cover scenario calculation with exact-decimal, snapshot-consistency, and
+  no-side-effect tests.
+
+## 2.1.0 — save and compare scenarios
+
+- [ ] Named scenarios that do not become confirmed plans.
+- [ ] Compare several amount, date, or decision-set alternatives.
+- [ ] Detect a stale baseline and recalculate explicitly from new facts.
+- [ ] Transfer reviewed fields only into the plan-draft composer.
+- [ ] Define a backup/restore policy for saved scenarios without conversation
+  history.
+
+## 2.2.0 — local conversational input for Oracle
+
+- [ ] An optional local-model adapter converts text into a structured scenario
+  draft.
+- [ ] Unknown material parameters trigger a short clarification instead of a
+  hidden default.
+- [ ] The user reviews the recognized amount, date, scope, and action before
+  calculation or saving.
+- [ ] The model explains the completed deterministic result but does not
+  calculate authoritative balances.
+- [ ] Chat does not create operations or plans directly, and conversations are
+  not stored by default.
+- [ ] Provide a complete non-AI fallback and deletion of local model artifacts.
+
+## 3.0.0 — receivable and payable debts
+
+- [ ] Directions `owed_to_me` and `i_owe`, counterparty, dates, description,
+  and status.
+- [ ] Initial amount and current balance derived from loans, receipts, and
+  repayments without allowing drift.
+- [ ] Partial repayment and adjustment through an explicit financial fact.
+- [ ] Atomic relationship between the debt lifecycle and physical operations.
+- [ ] Due date, overdue state, calendar, baseline forecast, Oracle, and reports.
+- [ ] Backup/restore and migration compatibility.
+
+## 3.1.0 — loans and installment plans
+
+- [ ] Creditor, initial and current amounts, start date, and expected end date.
+- [ ] Regular payment, frequency, and next payment date.
+- [ ] A simplified user-facing schedule that does not attempt to reproduce bank
+  mathematics for interest, fees, and early repayment.
+- [ ] Confirming a payment atomically creates a financial operation and reduces
+  the outstanding liability.
+- [ ] Partial, missed, and modified payments have explicit states.
+- [ ] Calendar, forecast, scenarios, dashboard, reports, and backup/restore.
+
+Loans do not belong in the first debt release merely because both use the word
+“liability”: loans have a different lifecycle, a recurring payment, and a
+creditor.
+
+## 4.0.0 — universal bank-statement import
+
+“Universal” means a shared configurable pipeline, not a promise to understand
+every bank file automatically without configuration.
+
+- [ ] CSV with encoding, delimiter, numeric locale, and date-format detection.
+- [ ] XLSX with worksheet selection; evaluate OFX and QIF as additional formats.
+- [ ] Column mapping, saved format profiles, and a write-free preview.
+- [ ] Account selection, normalization of operation sign and type, and category
+  suggestions.
+- [ ] Explainable duplicate candidates and manual conflict resolution.
+- [ ] Explicit confirmation, atomic writes through owning modules' public
+  contracts, and a result report.
+- [ ] Bank-specific profiles build on the shared pipeline and receive no direct
+  ledger access.
+
+Additional formats, ready-made bank profiles, and reconciliation improvements
+may ship as `4.x` minor versions without changing import ownership.
+
+## 5.0.0 — budgeting policy, goals, and plan versus actual
+
+- [ ] Periodic income and expense limits by category.
+- [ ] Explicit policy for carrying remaining amounts between periods.
+- [ ] Plan, actual, available through period end, and explainable variances.
+- [ ] Warnings that neither prohibit a legitimate operation nor change the
+  ledger.
+- [ ] Independence of budgets from funds: a budget plans flow over a period,
+  while a fund assigns money already held.
+- [ ] Budget templates, backup/restore, and reports.
+- [ ] Fund target date, required savings pace, and expected completion date.
+- [ ] Budgets and goals become explicit inputs to baseline and What if?
+  scenarios.
+
+## 6.0.0 — history-informed forecasting and explainable analytics
+
+- [ ] Improved search, saved filters, and bulk categorization.
+- [ ] Trends in balances, expenses, income, funds, debts, and budget execution.
+- [ ] Configurable dashboard and period comparison.
+- [ ] Deterministic forecast baselines with backtesting and error metrics.
+- [ ] Machine-readable local analytical read model that does not bypass domain
+  owners.
+- [ ] Explainable comparison of the user's plan with actual history, without
+  replacing the plan automatically.
+- [ ] Financial horizon, resilience runway, and stress windows with a disclosed
+  methodology.
+
+## 6.1.0 — history-informed Oracle
+
+- [ ] Optional local execution without sending financial data to an external AI
+  service.
+- [ ] Category suggestions, anomaly detection, and trend explanations.
+- [ ] A forecast as a probabilistic scenario beside the deterministic baseline,
+  not a replacement for the exact financial model.
+- [ ] Show data source, confidence, horizon, and quality from historical
+  backtesting.
+- [ ] No recommendation creates or changes a financial operation without
+  explicit user confirmation.
+- [ ] Allow the model to be disabled completely and its local artifacts deleted.
+- [ ] Conversational analytics questions use grounded tools and read models,
+  not unconstrained model guesses.
+
+## 7.0.0 — multi-currency support and capital model
+
+- [ ] Account currency and base reporting currency.
+- [ ] Explicit exchange rate recorded on a financial operation.
+- [ ] Rate source, date, and missing-rate policy.
+- [ ] Separate representation of actual value and revaluation.
+- [ ] Currency-specific precision, cross-currency transfers, reports, and
+  backup.
+- [ ] Basic asset, liability, and net-worth model suitable for a later
+  investment scope.
+
+## 7.1.0 — investments and advanced asset accounting
+
+- [ ] Begin with a manual asset and liability register and net-worth
+  calculation.
+- [ ] Separate a cash account from an investment account, a position from an
+  instrument, and a trade from a market-price change.
+- [ ] Purchases, sales, fees, dividends, and realized and unrealized results.
+- [ ] Manual quotes as the baseline; an external market-data provider requires
+  a separate ADR, cache, provenance, and degradation policy.
+- [ ] Real estate, vehicles, and other non-market assets use periodic valuations
+  rather than fictitious financial operations.
+- [ ] Broker import and crypto assets are considered after the base model is
+  stable and are not automatically part of the first investment release.
+
+## Parallel everyday-work backlog
+
+These improvements may be included in the nearest thematically appropriate
+release if they do not dilute its acceptance criteria:
+
+- operation templates and duplication;
+- a more convenient calendar and further mobile adaptation;
+- additional export formats;
+- PWA and limited offline mode;
+- encrypted backups and extended diagnostics.
+
+---
+
+# Hermes Online strategic program
+
+A potential free online platform—with a subscription, without one, or supported
+by voluntary donations—is not an ordinary continuation of the self-hosted
+deployment. Before assigning it a version, the project needs a separate
+feasibility milestone and an ADR covering these decisions:
+
+- whether self-hosted Hermes remains the primary product and whether a hosted
+  edition can exist without a closed functional fork;
+- identity, password recovery, email verification, roles, tenant isolation,
+  account deletion, and data export;
+- encryption, secret management, rate limiting, abuse prevention,
+  observability, incident response, vulnerability disclosure, and privacy
+  policy;
+- background-job isolation, per-tenant backup, disaster recovery, and restore
+  verification;
+- costs for PostgreSQL, files, email, model inference, and support;
+- subscription, donations, or a fully free model, as well as taxes and the
+  payment provider;
+- AGPL licensing, contribution rules, and a transparent division between
+  shared and hosted components.
+
+Until these questions are resolved, the current guarantee remains unchanged:
+one owner in a protected environment. Code for new domains must not depend
+prematurely on multi-tenant or cloud infrastructure.
+
+---
+
+# Version and release policy
+
+- The entire `0.x` series is for internal trial use. Versions `0.1.0`–`0.4.0`
+  and subsequent numbers before a separate owner decision are not stable public
+  releases.
+- The first stable public release will be `1.0.0`. The owner announces its
+  readiness and release date separately; the roadmap cannot do so
+  automatically.
+- Major product generations use `2.0.0`, `3.0.0`, and so on. Functional
+  improvements within a generation ship as minor `N.x.0` versions, while
+  compatible fixes ship as patches `N.x.y`.
+- After `1.0.0`, every public major, minor, and patch receives an annotated git
+  tag, a GitHub Release, a changelog entry, and any required migration and
+  backup notes. A distributed container image uses the same version.
+- Whenever possible, an incompatible change after `1.0.0` waits for the next
+  major version and always has an explicit migration path. A minor version must
+  not silently break the API, backups, or stored data.
+- `N.x.0-rc.1` prereleases may verify a real upgrade; a prerelease does not
+  replace a stable backup/restore test.
+- Published migrations are never rewritten after the first public release.
+
+---
+
+# 1.0.0 — stable release
+
+Version `1.0.0` must not be released merely because many features have been
+implemented.
+
+Proposed criteria:
+
+- The application is used reliably with real data.
+- The financial model is considered stable.
+- Operation and fund formats do not require destructive redesign.
+- Backup and restore are verified across different versions.
+- A compatibility policy is documented.
+- Migrations between public versions are reliable.
+- A vulnerability-handling process exists.
+- The update release process is clear.
+- No known critical defects remain.
+- Core user scenarios require no manual database intervention.
+- A person who did not participate in development can install and upgrade the
+  project by following the documentation.
+
+Until these conditions are met, the project may remain in the `0.x` series even
+if it is already fully usable.
+
+---
+
+# Rules for changing the roadmap
+
+When changing the roadmap:
+
+1. Check consistency with the architecture documentation.
+2. Do not mark an item complete solely because backend code exists.
+3. Move unfinished functionality between releases explicitly.
+4. Do not add infrastructure without architectural justification.
+5. Update [project-status.md](./project-status.md) when the current phase
+   changes.
+6. Do not use the roadmap as a log of every commit.
+7. Do not specify calendar deadlines without an explicit owner decision.

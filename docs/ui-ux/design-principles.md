@@ -1,219 +1,217 @@
 # UX principles
 
-## Статус
+## Status
 
-Текущие общие правила представления подтверждены владельцем; конкретный layout,
-библиотека компонентов и будущая дизайн-система определяются отдельно. При
-конфликте с подтверждёнными доменными инвариантами приоритет остаётся у доменной
-документации.
+The current general presentation rules are owner-confirmed. Specific layouts,
+the component library, and a future design system are decided separately. When
+these principles conflict with confirmed domain invariants, domain
+documentation takes precedence.
 
-## Подтверждённые правила представления
+## Confirmed presentation rules
 
-- Календарные даты вне полей ввода показываются текстом: `20 января 2025`.
-  Нативные поля даты сохраняют формат платформы.
-- Для денег по возможности используется знакомый символ валюты; ISO-код служит
-  fallback для валют без сопоставленного символа.
-- Все суммы и проценты в интерфейсе группируют тысячи пробелами и показывают
-  ровно два знака дробной части. Канонический вывод использует запятую:
-  `100 000,00`, `12,50%`.
-- Поля сумм и процентов одинаково принимают запятую и точку как десятичный
-  разделитель: `1000,50` и `1000.50` означают одно точное значение.
-- Форматирование относится только к представлению. В API уходит нормализованная
-  точная decimal-строка без разделителей тысяч; серверная точность и расчёты не
-  сокращаются до двух знаков.
-- Отдельные значения округляются точной decimal-арифметикой `ROUND_HALF_UP`.
-  Если серверные доли одного разбиения точно составляют 100%, отображаемые сотые
-  распределяются стабильным методом наибольшего остатка и тоже дают `100,00%`;
-  исходные проценты не изменяются.
+- Calendar dates outside input fields use localized text, for example `20
+  January 2025`. Native date inputs retain the platform format.
+- Money uses a familiar currency symbol where possible; the ISO code is the
+  fallback for currencies without a mapping.
+- Every amount and percentage groups thousands with spaces and shows exactly two
+  fraction digits. The canonical rendered form uses a comma: `100 000,00` and
+  `12,50%`.
+- Amount and percentage fields accept comma and dot as equivalent decimal
+  separators: `1000,50` and `1000.50` represent the same exact value.
+- Formatting is presentation-only. The API receives a normalized exact decimal
+  string without grouping separators; server precision and calculations are not
+  reduced to two places.
+- Individual values use exact decimal `ROUND_HALF_UP`. When exact server shares
+  form a 100% breakdown, displayed hundredths are distributed by a stable
+  largest-remainder pass and also total `100,00%`; source percentages do not
+  change.
 
-## 1. Решение важнее показателя
+## 1. The decision matters more than the metric
 
-**Зачем.** Командный центр должен помогать действовать, а не демонстрировать
-максимальное количество метрик. Число без контекста увеличивает нагрузку и
-может создавать ложную уверенность.
+**Why.** A command center should help the owner act rather than display the
+largest possible number of metrics. A number without context increases load and
+may create false confidence.
 
-**Где применяется.** Dashboard, сводки счетов и фондов, аналитика, прогноз.
+**Where it applies.** Dashboard, account and fund summaries, analytics, and
+forecasting.
 
-**Хорошее решение.** Рядом с минимальным прогнозным остатком указаны дата,
-причина и действие «Посмотреть влияющие события». Карточка не появляется, если
-не отвечает на отдельный пользовательский вопрос.
+**Good outcome.** The minimum forecast balance includes its date, reason, and a
+“View influencing events” action. A card does not appear unless it answers a
+distinct user question.
 
-## 2. Факт, план и оценка визуально различимы
+## 2. Facts, plans, and estimates are visibly distinct
 
-**Зачем.** Ожидаемая операция не изменяет фактический баланс, а прогноз не
-является обещанием. Их смешение — одна из самых опасных финансовых ошибок UX.
+**Why.** An expected operation does not change the actual balance, and a
+forecast is not a promise. Mixing them is one of the most dangerous financial
+UX errors.
 
-**Где применяется.** Dashboard, календарь, прогноз, детали операции,
-уведомления о ближайших событиях.
+**Where it applies.** Dashboard, calendar, forecast, operation details, and
+upcoming-event notices.
 
-**Хорошее решение.** Фактический остаток подписан как «сейчас», ожидаемые
-события имеют собственный статус, а прогнозная линия отличается стилем и имеет
-объяснение исходных данных. Различие сохраняется без цвета.
+**Good outcome.** The actual balance is labeled “Now”, expected events have
+their own status, and the forecast line has a distinct style and an explanation
+of its source data. The distinction survives without color.
 
-## 3. Частая операция создаётся быстро, сложная — безопасно
+## 3. Frequent work is fast; complex work is safe
 
-**Зачем.** Ручной ввод может быть ежедневным, но доход, расход, перевод и
-корректировка имеют разные последствия. Скорость нельзя получать за счёт
-неявных полей или двусмысленного знака суммы.
+**Why.** Manual entry may be daily, but income, expense, transfer, and
+adjustment have different consequences. Speed must not come from hidden fields
+or an ambiguous amount sign.
 
-**Где применяется.** Быстрое действие «Новая операция», создание из журнала,
-повтор операции, подтверждение ожидаемого события.
+**Where it applies.** The “New operation” action, journal creation, operation
+duplication, and expected-event confirmation.
 
-**Хорошее решение.** После выбора типа форма показывает только относящиеся к
-нему обязательные поля, использует безопасные контекстные defaults и позволяет
-сохранить с клавиатуры. Для перевода всегда видны источник и получатель, а перед
-сохранением кратко показано влияние на оба счёта.
+**Good outcome.** After type selection, the form shows only relevant required
+fields, uses safe contextual defaults, and supports keyboard submission. A
+transfer always shows source and destination, with a concise preview of both
+effects before saving.
 
-## 4. Высокая плотность строится слоями
+## 4. High density is built in layers
 
-**Зачем.** Финансовые данные требуют сравнения многих строк, но одновременный
-показ всех свойств делает интерфейс нечитаемым.
+**Why.** Financial work requires comparing many rows, but showing every
+property at once makes the interface unreadable.
 
-**Где применяется.** Журнал, списки счетов и фондов, dashboard, панели деталей.
+**Where it applies.** Journal, account and fund lists, dashboard, and detail
+panels.
 
-**Хорошее решение.** В строке журнала видны дата, смысл, счёт, классификация и
-сумма; технические идентификаторы и редкие поля открываются в панели деталей.
-На desktop таблица остаётся плотной, на узком экране строка превращается в
-иерархичную запись, а не в горизонтально обрезанную таблицу.
+**Good outcome.** A journal row shows date, meaning, account, classification,
+and amount; technical identifiers and rare fields open in details. The desktop
+table remains dense, while a narrow screen turns the row into a semantic
+hierarchy instead of clipping a desktop table horizontally.
 
-## 5. Денежные состояния точны и однозначны
+## 5. Monetary states are exact and unambiguous
 
-**Зачем.** Пользователь должен отличать физический баланс, зарезервированные
-средства, свободные деньги и прогноз. Форматирование не должно менять смысл
-точного decimal-значения.
+**Why.** The owner must distinguish physical balance, reserved money, free
+money, and forecast. Formatting must not alter an exact decimal value.
 
-**Где применяется.** Все суммы, итоги, формы, графики, tooltips и экспортные
-сводки.
+**Where it applies.** Every amount, total, form, chart, tooltip, and export
+summary.
 
-**Хорошее решение.** Для счёта рядом показано равенство «физический остаток =
-в фондах + свободно». Валюта и знак видимы; все экранные значения используют
-единый двухзначный формат, а точные серверные значения продолжают участвовать в
-расчётах; отрицательная сумма имеет текстовую семантику, а не только красный
-цвет.
+**Good outcome.** An account shows “physical balance = in funds + free”.
+Currency and sign are visible; all rendered values use the common two-place
+format while exact server values continue to drive calculations. A negative
+amount has text semantics rather than only a red color.
 
-## 6. Любой расчёт можно объяснить
+## 6. Every calculation can be explained
 
-**Зачем.** Прогнозы и агрегаты полезны только тогда, когда пользователь может
-проверить их по исходным данным.
+**Why.** Forecasts and aggregates are useful only when the owner can verify them
+against source data.
 
-**Где применяется.** Прогноз, аналитика расходов, итоги фондов и счетов,
-dashboard.
+**Where it applies.** Forecasting, expense analytics, account and fund totals,
+and dashboard.
 
-**Хорошее решение.** Клик по точке прогноза открывает начальный остаток и список
-событий этого дня. Клик по категории расходов применяет фильтр к журналу, не
-создавая отдельную несвязанную копию отчёта.
+**Good outcome.** Selecting a forecast point opens its starting balance and the
+events for that date. Selecting an expense category applies a journal filter
+instead of creating an unrelated copy of the report.
 
-## 7. Цвет усиливает смысл, но не несёт его один
+## 7. Color reinforces meaning but never carries it alone
 
-**Зачем.** Семантический цвет нужен для быстрого сканирования, но зависит от
-темы, восприятия цвета и культурного контекста.
+**Why.** Semantic color supports scanning but depends on theme, color
+perception, and cultural context.
 
-**Где применяется.** Риски, статусы, динамика, суммы операций, прогресс фондов,
-валидация формы.
+**Where it applies.** Risks, statuses, trends, operation amounts, fund progress,
+and form validation.
 
-**Хорошее решение.** Риск дефицита отмечен цветом, иконкой, подписью и датой.
-Доход и расход различаются знаком, направлением и текстом; зелёный не означает
-автоматически «доход» во всех контекстах.
+**Good outcome.** A shortfall risk uses color, icon, label, and date. Income and
+expense differ by sign, direction, and text; green does not automatically mean
+income everywhere.
 
-## 8. Одинаковое действие ведёт себя одинаково
+## 8. The same action behaves the same way
 
-**Зачем.** Повторяемость снижает время обучения и количество финансовых ошибок.
+**Why.** Repetition lowers learning time and the number of financial mistakes.
 
-**Где применяется.** Создание, редактирование, архивирование, фильтры,
-контекстные меню, панели деталей и подтверждения.
+**Where it applies.** Creation, editing, archiving, filters, contextual menus,
+detail panels, and confirmations.
 
-**Хорошее решение.** Основное действие находится в предсказуемом месте, `Esc`
-закрывает временный слой, несохранённый ввод защищён, а архивирование везде
-объясняет последствия и способ восстановления.
+**Good outcome.** The primary action has a predictable location, `Esc` closes a
+temporary layer, unsaved input is protected, and every archive action explains
+its consequences and recovery path.
 
-## 9. Опасные изменения требуют ясного последствия, а не трения ради трения
+## 9. Risky changes need a clear consequence, not friction for its own sake
 
-**Зачем.** Редактирование и удаление операции пересчитывает остатки и может
-затронуть фонды. Обычный ввод не должен страдать от одинаково тяжёлых
-подтверждений.
+**Why.** Editing or deleting an operation recalculates balances and may affect
+funds. Ordinary entry should not suffer from the same heavy confirmations.
 
-**Где применяется.** Удаление и редактирование операций, архивирование сущностей
-с историей, восстановление backup, изменение распределения фонда.
+**Where it applies.** Operation deletion and editing, archiving entities with
+history, backup restore, and fund-allocation changes.
 
-**Хорошее решение.** Подтверждение сообщает конкретный эффект: какие остатки и
-виртуальные движения будут пересчитаны. Обычное создание завершается без
-дополнительного диалога, если форма уже однозначно показывает результат.
+**Good outcome.** Confirmation states which balances and virtual movements will
+be recalculated. Ordinary creation completes without another dialog when the
+form already shows an unambiguous result.
 
-## 10. Ошибка должна оставлять путь к завершению задачи
+## 10. An error leaves a path to task completion
 
-**Зачем.** Сообщение без причины и следующего шага заставляет пользователя
-повторять действие и сомневаться в сохранности данных.
+**Why.** A message without cause or next action forces repetition and creates
+doubt about whether data was saved.
 
-**Где применяется.** Валидация формы, недостаточный остаток, конфликт
-редактирования, истёкшая сессия, импорт и восстановление.
+**Where it applies.** Form validation, insufficient balance, edit conflicts,
+expired sessions, import, and restore.
 
-**Хорошее решение.** При конфликте редактирования введённые данные сохраняются,
-показывается изменившаяся версия и доступны действия «Сравнить» и «Повторить на
-актуальных данных». При серверной ошибке интерфейс не утверждает, что операция
-сохранена.
+**Good outcome.** An edit conflict preserves input, shows the changed version,
+and offers “Compare” and “Retry on current data”. A server error never claims
+that an operation was saved.
 
-## 11. Progressive disclosure важнее преждевременной настройки
+## 11. Progressive disclosure beats premature configuration
 
-**Зачем.** Новичку нужна понятная базовая модель, а опытному владельцу — высокая
-скорость и детализация. Полная настройка каждого экрана до подтверждения
-потребностей создаёт лишнюю сложность.
+**Why.** A beginner needs a clear base model; an experienced owner needs speed
+and detail. Making every screen configurable before needs are proven adds
+unnecessary complexity.
 
-**Где применяется.** Dashboard, расширенные фильтры, детали прогнозов, свойства
-фондов и системные настройки.
+**Where it applies.** Dashboard, advanced filters, forecast details, fund
+properties, and system settings.
 
-**Хорошее решение.** Основной dashboard имеет устойчивый порядок ключевых
-блоков. Расширенные разрезы и редкие поля доступны по запросу. Сохранённые
-фильтры появляются как развитие доказанного повторяющегося сценария.
+**Good outcome.** The primary dashboard has a stable order of key blocks.
+Advanced breakdowns and rare fields appear on request. Saved filters emerge
+only after a repeated workflow has been demonstrated.
 
-## 12. Приватность и self-hosting видимы там, где это помогает доверию
+## 12. Privacy and self-hosting are visible where they build trust
 
-**Зачем.** Владелец выбрал самостоятельное хранение данных, но постоянные
-технические индикаторы не должны отвлекать от управления деньгами.
+**Why.** The owner chose independent data storage, but permanent technical
+indicators should not distract from managing money.
 
-**Где применяется.** Первый запуск, настройки, backup/restore, состояние
-экземпляра и ошибки подключения.
+**Where it applies.** First run, settings, backup and restore, instance status,
+and connection errors.
 
-**Хорошее решение.** Настройки ясно сообщают, где находятся данные, когда
-создан последний проверенный backup и что произойдёт при восстановлении.
-Обычный dashboard не превращается в панель администрирования сервера.
+**Good outcome.** Settings clearly state where data lives, when the last verified
+backup was created, and what restore will do. The ordinary dashboard does not
+become a server-administration panel.
 
-## 13. Прогноз существует ради решения
+## 13. A forecast exists to support a decision
 
-**Зачем.** График сам по себе не отвечает, можно ли безопасно совершить покупку,
-перенести платёж или изменить план.
+**Why.** A chart alone does not answer whether a purchase is safe, a payment
+should move, or a plan should change.
 
-**Где применяется.** Прогноз, dashboard, фонды, будущие обязательства и
-сценарный режим «Что если?».
+**Where it applies.** Forecast, dashboard, funds, future obligations, and the
+“What if?” scenario mode.
 
-**Хорошее решение.** Hermes сравнивает базовый прогноз с альтернативным,
-показывает изменение минимального остатка и напряжённого периода, раскрывает
-причины и предлагает изменить дату или сумму. Пользователь видит ответ до
-графика, а график объясняет ответ.
+**Good outcome.** Hermes compares baseline and alternative forecasts, shows the
+change in minimum balance and stress window, reveals causes, and allows the
+owner to try another date or amount. The answer appears before the chart; the
+chart explains the answer.
 
-## 14. Оракул объясняет, а не гадает
+## 14. Oracle explains; it does not divine
 
-**Зачем.** Разговорный интерфейс полезен только при сохранении доверия к точному
-финансовому ядру. Модель может ошибиться в понимании текста и не должна
-незаметно превращать предположение в финансовый факт.
+**Why.** A conversational interface is useful only while preserving trust in
+the exact financial core. A model can misunderstand text and must not silently
+turn an assumption into a financial fact.
 
-**Где применяется.** Natural-language ввод сценария, диалоговая аналитика,
-предложения категорий и объяснения прогноза.
+**Where it applies.** Natural-language scenario input, conversational analytics,
+category suggestions, and forecast explanations.
 
-**Хорошее решение.** Локальная модель строит структурированный черновик,
-пользователь проверяет сумму, дату и scope, а результат рассчитывает обычный
-детерминированный сценарный движок. Тот же путь доступен без AI. Диалог не
-сохраняется по умолчанию, а операция или план создаются только отдельным явным
-действием.
+**Good outcome.** A local model creates a structured draft, the owner verifies
+amount, date, and scope, and the ordinary deterministic scenario engine
+calculates the result. The same path works without AI. Conversation is not
+stored by default, and an operation or plan is created only through a separate,
+explicit action.
 
-## Проверка принципов на прототипах
+## Testing the principles in prototypes
 
-Перед утверждением интерфейсного паттерна нужно проверить хотя бы следующие
-вопросы:
+Before approving an interaction pattern, test at least these questions:
 
-1. Понимает ли пользователь разницу между физическими, свободными и
-   зарезервированными деньгами?
-2. Может ли он создать типичную операцию без инструкции и затем объяснить её
-   эффект?
-3. Может ли он перейти от агрегата или прогноза к исходным операциям?
-4. Различимы ли факт, ожидание и оценка без опоры только на цвет?
-5. Сохраняются ли точность и смысл на desktop и узком экране?
+1. Does the owner understand the difference between physical, free, and
+   reserved money?
+2. Can they create a typical operation without instructions and then explain
+   its effect?
+3. Can they drill from an aggregate or forecast to source operations?
+4. Are fact, expectation, and estimate distinguishable without color alone?
+5. Do precision and meaning survive on desktop and narrow screens?

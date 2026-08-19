@@ -2,7 +2,7 @@
 
 ## Application JSON backup
 
-Open **Настройки → Экспорт и восстановление** and select **Скачать backup**.
+Open the backup and restore section in Settings and select its download action.
 Store the JSON file outside the Hermes host, protect it as financial
 data and periodically test it on a separately initialized instance. The file is
 not encrypted by Hermes.
@@ -13,10 +13,11 @@ and data restore share one transaction; failure leaves the instance
 uninitialized and lets the owner choose another file or start fresh.
 
 On an initialized destination, sign in, choose the JSON file in Settings and
-review the count/currency/timezone summary. Type `ЗАМЕНИТЬ ВСЕ ДАННЫЕ`, enter the
-destination instance's current master password and confirm. Current financial
-and planning data is replaced; the current owner credential and current session
-are retained, while other sessions are ended. A checksum, strict schema and
+review the count/currency/timezone summary. Enter the exact destructive-
+confirmation phrase shown by the interface, provide the destination instance's
+current master password, and confirm. Current financial and planning data is
+replaced; the current owner credential and current session are retained, while
+other sessions are ended. A checksum, strict schema and
 references are checked before mutation. Table locks, one database transaction
 and post-write domain checks guarantee that a failed restore leaves the old data
 intact.

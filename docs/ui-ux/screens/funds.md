@@ -1,193 +1,190 @@
 # Funds
 
-## Статус
+## Status
 
-Реализованная композиция `0.4.0` утверждена владельцем 2026-08-18 как baseline
-первого публичного релиза. Визуальная дизайн-система отдельно не формализована,
-а posting, rounding и archive rules зафиксированы в ADR 0002 как
-подтверждённая владельцем политика текущего релиза.
+The owner approved the implemented `0.4.0` composition on 2026-08-18 as the
+first-public-release baseline. A visual design system has not been formalized,
+while posting, rounding, and archive rules are recorded in ADR 0002 as the
+owner-confirmed current-release policy.
 
-После owner review 2026-08-12 экран использует явные действия «Выделить со
-счёта», «Перевести и распределить» и «Перенести назначение между счетами».
-Прежний термин «перераспределение фонда» не используется без пояснения
-физического эффекта.
+After owner review on 2026-08-12, the screen uses explicit actions: “Reserve
+from account”, “Transfer and allocate”, and “Move assignment between accounts”.
+The former term “fund redistribution” is not used without explaining the
+physical effect.
 
-Визуальная корректировка 2026-08-17 сохраняет эти сценарии, но усиливает
-иерархию: основные денежные итоги отделены от вторичных процентов, редкие
-переносы раскрываются по запросу, а фонды показаны плотным списком с общей
-сеткой вместо набора вложенных карточек.
+The visual refinement on 2026-08-17 preserves these workflows while
+strengthening hierarchy: primary monetary totals are separated from secondary
+percentages, rare transfers are disclosed on request, and funds appear in one
+dense aligned list instead of nested cards.
 
-## Цель экрана
+## Screen goal
 
-Показать, для чего предназначены реальные деньги, где они физически лежат и
-какая часть остаётся свободной. Пользователь должен понимать, что фонд —
-виртуальное назначение, а не дополнительный банковский счёт.
+Show what real money is intended for, where it is physically held, and how much
+remains free. The owner must understand that a fund is a virtual assignment,
+not another bank account.
 
-## Главные пользовательские задачи
+## Primary user jobs
 
-- увидеть общую сумму во всех фондах и свободные деньги;
-- проверить состояние каждого фонда;
-- увидеть цель фонда, сумму и процент прогресса, а также общий прогресс целей;
-- понять разбивку фонда по физическим счетам;
-- создать, изменить или архивировать фонд;
-- при создании сразу выделить конкретную свободную сумму только в новый фонд;
-- настроить проценты распределения;
-- видеть выбранный в настройках ручной или динамический режим и текущие
-  вычисленные проценты;
-- распределить выбранную сумму с preview;
-- вручную скорректировать предложенное распределение;
-- перевести сумму с другого физического счёта и в той же транзакции распределить
-  её на счёте назначения по процентам активных фондов;
-- открыть историю виртуальных движений;
-- перенести назначение между двумя фондами на одном физическом счёте;
-- понять, почему распределение или расход невозможны.
+- see the total in all funds and total free money;
+- check each fund's state;
+- see a fund target, amount, progress percentage, and combined target progress;
+- understand the fund's physical account breakdown;
+- create, edit, or archive a fund;
+- reserve a specific free amount immediately only when creating a new fund;
+- configure allocation percentages;
+- see the selected manual or dynamic mode and current calculated percentages;
+- allocate a selected amount with a preview;
+- manually adjust a proposed allocation;
+- transfer money from another physical account and allocate it on the
+  destination account by active-fund percentages in the same transaction;
+- open virtual-movement history;
+- move an assignment between two funds on one physical account;
+- understand why an allocation or expense is unavailable.
 
-## Важная информация
+## Important information
 
-### Глобальная сводка
+### Global summary
 
-- общий совместимый физический остаток;
-- всего зарезервировано в фондах;
-- всего свободно;
-- сумма процентов активных фондов и нераспределённая доля;
-- предупреждение, если проверяемый инвариант не может быть выполнен.
+- combined compatible physical balance;
+- total reserved in funds;
+- total free;
+- sum of active-fund percentages and unallocated share;
+- warning when a verifiable invariant cannot be satisfied.
 
-### Список фондов
+### Fund list
 
-Для каждого фонда:
+For each fund:
 
-- название и при необходимости короткое описание;
-- текущая общая виртуальная сумма;
-- необязательная целевая сумма, точный процент достижения и progress bar;
-- процент будущего явного распределения;
-- разбивка по счетам или affordance её раскрыть;
+- name and optional short description;
+- current total virtual amount;
+- optional target amount, exact completion percentage, and progress bar;
+- percentage for future explicit allocation;
+- account breakdown or an affordance to reveal it;
 - lifecycle state;
-- одно ожидаемое контекстное действие.
+- one expected contextual action.
 
-### Физическое покрытие
+### Physical coverage
 
-Экран должен позволять проверить две перспективы:
+The screen supports two perspectives:
 
-- фонд → на каких счетах лежат его части;
-- счёт → сколько на нём физически, зарезервировано и свободно.
+- fund → which accounts hold its portions;
+- account → physical, reserved, and free amounts.
 
-Для небольшого числа сущностей это может быть раскрываемый список. Для большого
-числа фондов и счетов понадобится matrix/table view; решение принимается после
-проверки реального объёма данных.
+An expandable list may serve a small number of entities. Many funds and
+accounts may require a matrix or table view; decide after measuring real data.
 
-## Второстепенная информация
+## Secondary information
 
-- история распределений и расходов фонда;
-- дата последнего движения;
-- архивные фонды в отдельном режиме;
-- цель по сроку остаётся вне scope; цель по сумме подтверждена владельцем
-  2026-08-14;
-- декоративная иконка/цвет фонда как средство сканирования, не обязательное
-  поле.
+- allocation and fund-expense history;
+- date of the latest movement;
+- archived funds in a separate mode;
+- a target date remains outside the current scope; target amount was confirmed
+  on 2026-08-14;
+- optional decorative fund icon or color for scanning, never a required field.
 
-## Основные действия
+## Primary actions
 
-- создать фонд;
-- изменить название, описание и процент;
-- открыть детали/историю;
-- распределить произвольную входящую сумму;
-- изменить preview распределения до commit;
-- перераспределить виртуальную часть между счетами в рамках утверждённой модели;
-- инициировать расход из фонда через общую форму операции;
-- архивировать/восстановить после утверждения handling остатка.
+- create a fund;
+- edit name, description, and percentage;
+- open details or history;
+- allocate an arbitrary incoming amount;
+- adjust allocation preview before commit;
+- redistribute the virtual portion between accounts within the approved model;
+- initiate an expense from a fund through the shared operation form;
+- archive or restore after balance handling is satisfied.
 
-## Сценарий распределения
+## Allocation flow
 
-1. Пользователь выбирает сумму и допустимый физический источник.
-2. Система рассчитывает распределение по активным процентам точной decimal
-   арифметикой.
-3. Preview показывает сумму каждого фонда, остаток свободных денег и rounding
-   remainder.
-4. Пользователь может изменить значения в допустимых границах.
-5. После ручной коррекции итоги пересчитываются точной decimal-арифметикой; до
-   сохранения показаны фактически выбранная сумма и конечный свободный остаток.
-6. Распределение сохраняется атомарно или не меняет ничего.
+1. The owner selects an amount and eligible physical source.
+2. The system calculates allocation by active percentages using exact decimal
+   arithmetic.
+3. Preview shows each fund amount, remaining free money, and rounding remainder.
+4. The owner may change values within valid bounds.
+5. After manual adjustment, totals recalculate with exact decimal arithmetic;
+   the actually selected amount and ending free balance appear before saving.
+6. Allocation commits atomically or changes nothing.
 
-Смена счёта или исходной суммы инвалидирует старый preview. Новые распределения
-и перераспределения предлагают только активные физические счета. Денежные суммы
-показываются с базовой валютой приложения; история имеет серверную пагинацию.
+Changing account or source amount invalidates the old preview. New allocations
+and redistributions offer only active physical accounts. Amounts use the base
+application currency; history is server-paginated.
 
-Изменение процентов само по себе не должно визуально выглядеть как
-перераспределение уже накопленных денег, пока это предположение не подтверждено.
+Changing percentages alone must not visually imply redistribution of money
+already accumulated unless that behavior is separately confirmed.
 
-## Возможные состояния
+## Possible states
 
-### Нет фондов
+### No funds
 
-Пустое состояние объясняет модель на коротком числовом примере: реальные деньги
-остаются на счёте, фонд лишь назначает их часть. Основное действие — «Создать
-фонд».
+The empty state explains the model with a short numerical example: real money
+stays in an account, while a fund only assigns part of it. The primary action is
+“Create fund”.
 
-### Фонды есть, но суммы нулевые
+### Funds exist with zero balances
 
-Показать проценты и действие распределения. Нулевая сумма не означает ошибку.
+Show percentages and an allocation action. A zero amount is not an error.
 
-### Проценты меньше 100%
+### Percentages total less than 100%
 
-Оставшаяся доля явно подписана как свободная. Это допустимое состояние, а не
-предупреждение.
+Label the remaining share as free. This is valid, not a warning.
 
-### Проценты равны 100%
+### Percentages total 100%
 
-Preview показывает отсутствие процентного остатка, но не утверждает, что все
-текущие физические деньги уже находятся в фондах.
+Preview shows no percentage remainder but does not claim that all current
+physical money is already in funds.
 
-### Динамический режим
+### Dynamic mode
 
-Цель обязательна для каждого неархивного фонда. Список показывает текущий
-вычисленный процент и объясняет ноль у заполненного или архивного фонда.
-Процент не редактируется в форме фонда. При отсутствии незаполненных фондов
-preview и атомарный перевод сообщают, что распределение сейчас невозможно.
-Архивирование исключает фонд, восстановление возвращает его в следующий расчёт.
+Every non-archived fund requires a target. The list shows the current calculated
+percentage and explains zero for a filled or archived fund. Percentage is not
+editable in the fund form. With no incomplete funds, preview and atomic transfer
+state that allocation is unavailable. Archiving excludes a fund; restoring it
+returns it to the next calculation.
 
-### Попытка превысить 100%
+### Attempt to exceed 100%
 
-Сохранение блокируется до запроса и повторно проверяется сервером. Интерфейс
-показывает рассчитанный из точного значения доступный процент в общем
-двухзначном UI-формате. Нельзя молча нормализовать доменные значения.
+Saving is blocked before the request and checked again by the server. The
+interface shows the available percentage derived from exact values in the
+shared two-place UI format. Domain values are never silently normalized.
 
-### Недостаточно физического покрытия
+### Insufficient physical coverage
 
-Показать конкретный счёт, физически доступно, уже зарезервировано и требуемую
-сумму. Решение не переносит деньги между счетами автоматически.
+Show the specific account, physically available amount, already reserved
+amount, and required amount. The solution does not move money between accounts
+automatically.
 
-### Фонд распределён по многим счетам
+### Fund distributed across many accounts
 
-Общий итог остаётся primary, физическая разбивка раскрывается рядом. Сумма
-частей должна очевидно совпадать с общим итогом.
+The total remains primary, with its physical breakdown nearby. The portions
+must visibly sum to the total.
 
-### Архивирование фонда с остатком
+### Archiving a fund with a balance
 
-Архивирование блокируется, пока общий остаток не равен нулю. Интерфейс не
-освобождает и не переносит назначение неявно.
+Archiving is blocked until total balance reaches zero. The interface neither
+releases nor moves an assignment implicitly.
 
-### Ошибка сохранения или конфликт
+### Save failure or conflict
 
-Preview и ручные изменения сохраняются. После получения актуального состояния
-пользователь видит, какое значение стало причиной конфликта.
+Preserve preview and manual changes. After current state arrives, show which
+value caused the conflict.
 
-## Ошибки UX, которых нужно избегать
+## UX failures to avoid
 
-- визуализация фонда как карты или независимого физического счёта;
-- один progress bar без суммы, процента и физической разбивки;
-- смешение процента распределения новых денег с долей текущего общего баланса;
-- автоматическое изменение существующих сумм при редактировании процента;
-- скрытый rounding remainder;
-- сумма процентов больше 100% с автоматической нормализацией;
-- расход из фонда, который незаметно потребляет свободные деньги;
-- архивирование с неявной потерей назначения остатка;
-- чрезмерная геймификация накоплений и оценка пользователя;
-- цвет фонда как единственный идентификатор.
+- depicting a fund as a card or independent physical account;
+- one progress bar without amount, percentage, and physical breakdown;
+- mixing the allocation percentage for new money with the current-balance
+  share;
+- automatically changing existing amounts when a percentage changes;
+- hiding the rounding remainder;
+- normalizing percentages above 100% automatically;
+- an expense from a fund that silently consumes free money;
+- archiving with implicit loss of the remaining assignment;
+- excessive savings gamification or judgment of the owner;
+- using fund color as its only identifier.
 
-## Вопросы для проверки прототипа
+## Questions for prototype validation
 
-- Пользователь мыслит сначала фондами или сначала счетами?
-- Нужен ли matrix view при ожидаемом количестве счетов и фондов?
-- Что важнее в списке: текущая сумма или процент распределения?
-- Требуется ли дата цели отдельно от суммы?
-- Как должен обрабатываться остаток при архивировании фонда?
+- Does the owner think fund-first or account-first?
+- Is a matrix needed at the expected number of accounts and funds?
+- Which matters more in the list: current amount or allocation percentage?
+- Is a target date needed in addition to target amount?
+- How should remaining balance be handled before archiving?

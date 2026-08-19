@@ -1,239 +1,231 @@
 # Preliminary visual direction
 
-## Статус
+## Status
 
-Общая визуальная ось подтверждена владельцем 2026-08-02. Документ направляет
-будущие moodboard, wireframe и прототипы, но намеренно не задаёт CSS-значения,
-конкретные шрифты, полную палитру или библиотеку компонентов. Детальная
-дизайн-система остаётся будущей задачей. Текущий реализованный интерфейс `0.4.0`
-утверждён владельцем 2026-08-18 как baseline первого публичного релиза.
+The owner confirmed the overall visual axis on 2026-08-02. This document guides
+future moodboards, wireframes, and prototypes, but intentionally does not define
+CSS values, specific typefaces, a complete palette, or a component library. A
+detailed design system remains future work. The owner approved the implemented
+`0.4.0` interface on 2026-08-18 as the first-public-release baseline.
 
-## Реализованные общие паттерны текущего frontend
+## Implemented shared patterns in the current frontend
 
-Направление, впервые применённое в `0.1.0-alpha.2`, расширено на текущий
-интерфейс `0.4.0` как утверждённая release-основа, а не как окончательная
-дизайн-система:
+The direction first applied in `0.1.0-alpha.2` now covers the current `0.4.0`
+interface as an approved release foundation, not a final design system:
 
-- desktop-shell использует постоянную боковую навигацию, отдельную рабочую
-  область и спокойный индикатор локального экземпляра;
-- на узком экране навигация превращается в компактный многорядный верхний блок:
-  все текущие разделы остаются видимыми без скрытого горизонтального скролла, а
-  основные и служебные ссылки визуально разделены, управление скрытием находится
-  в верхней строке самого блока, а списки и формы перестраиваются в один
-  смысловой поток;
-- экран раздела начинается с общего page header: контекст, один главный
-  заголовок, пояснение и при необходимости одно primary-действие;
-- panel объединяет одну связанную задачу; мягкая поверхность, тонкая граница и
-  умеренное скругление заменяют тяжёлые тени и вложенные карточки;
-- создание ключевой сущности находится рядом со списком и открывает временный
-  modal-слой; на mobile форма перестраивается в один смысловой поток;
-- вход и первый запуск используют единый split-layout: спокойное продуктовое
-  объяснение слева и сфокусированная форма справа;
-- primary, secondary, danger, status и empty/loading-состояния имеют общую
-  иерархию во всех реализованных разделах.
-- переход на новый экран возвращает его к началу, чтобы заголовок и связанный
-  контекст не оказывались скрыты предыдущей позицией прокрутки.
+- the desktop shell uses persistent side navigation, a separate workspace, and
+  a calm local-instance indicator;
+- on a narrow screen, navigation becomes a compact multi-row header: every
+  current section remains visible without hidden horizontal scrolling, primary
+  and administrative links are visually separated, the hide control sits in
+  the block's own top row, and lists and forms become one semantic flow;
+- a section starts with a shared page header containing context, one primary
+  heading, an explanation, and at most one primary action;
+- a panel groups one related task; a soft surface, thin border, and moderate
+  radius replace heavy shadows and nested cards;
+- creation of a key entity appears beside its list and opens a temporary modal
+  layer; on mobile, the form becomes one semantic flow;
+- login and first-run setup use one split layout: calm product context on the
+  left and a focused form on the right;
+- primary, secondary, danger, status, empty, and loading states share one
+  hierarchy across implemented sections;
+- navigation to a new screen returns it to the top so its title and context are
+  not hidden by the previous scroll position.
 
-Эти паттерны следует сохранять в текущем интерфейсе. Их формализация в токены,
-типографическую шкалу и библиотеку компонентов остаётся предметом отдельного
-согласования будущей дизайн-системы.
+Preserve these patterns in the current interface. Formalizing them as tokens, a
+type scale, and a component library requires separate approval of a future
+design system.
 
 ## Owner-confirmed direction
 
-- современный минималистичный интерфейс с premium-ощущением;
-- Quixotic — главный ориентир среди приложенных референсов;
-- светлая нейтральная основа с приглушённым зелёным акцентом;
-- мягкие поверхности, скругления, свободное пространство и лёгкие градиенты
-  допустимы;
-- визуальный характер остаётся нейтральным, без выраженного бренда;
-- тёмная тема не является текущим приоритетом.
+- a modern minimalist interface with a premium feel;
+- Quixotic as the primary reference among the supplied images;
+- a light neutral base with a muted green accent;
+- soft surfaces, rounded shapes, whitespace, and restrained gradients are
+  acceptable;
+- the visual character remains neutral rather than heavily branded;
+- dark mode is not a current priority.
 
-## Синтез приложенных референсов
+## Synthesis of supplied references
 
-В исследовании использованы файлы `530d6495b0473031495f4aa2f8f786f8.jpg`,
+The research used `530d6495b0473031495f4aa2f8f786f8.jpg`,
 `05527702fe0869dbbd3b6b686b8f55fd.jpg`,
 `e9fb4e9cfc1764c144d49ab0687f66d1.jpg`,
-`e84f19875e5a26de5a43ab240201a956.jpg` и
+`e84f19875e5a26de5a43ab240201a956.jpg`, and
 `ef72718ba9d31cfb2a7f462411fc094d.jpg`.
 
-| Референс                    | Полезные качества                                                                       | Что не переносить буквально                                                                            |
-| --------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Светлый Coinest dashboard   | Ясная боковая навигация, спокойный зелёный акцент, сочетание сводки, графика и журнала. | Избыток равнозначных карточек, finance score, банковские карты и activity feed.                        |
-| Тёмный Apex dashboard       | Высокая плотность, единая строка временных фильтров, компактные состояния и таблица.    | Свечение, декоративный фон, business-метрики и QR-блок.                                                |
-| Тёмный Helios dashboard     | Сильная иерархия, ограниченная палитра, крупный основной график и компактные сегменты.  | Investment/watchlist семантика, AI-promotional блок и низкий контраст вторичного текста.               |
-| Светлый OripioFin dashboard | Хорошая иерархия баланса, понятные controls периода, рабочая таблица под обзором.       | Имитация кошельков/карт и layout, рассчитанный на банковские продукты.                                 |
-| Светлый Quixotic dashboard  | Воздушная композиция, мягкие поверхности, один акцент и фокус на одном крупном графике. | Чрезмерное свободное место для dense-data сценариев и не относящиеся к домену avatars/payment actions. |
+| Reference | Useful qualities | Do not copy literally |
+| --- | --- | --- |
+| Light Coinest dashboard | Clear side navigation, calm green accent, and a useful combination of summary, chart, and journal. | Too many equally weighted cards, a finance score, bank cards, and an activity feed. |
+| Dark Apex dashboard | High density, one row of time filters, compact states, and a table. | Glow, decorative background, business metrics, and a QR block. |
+| Dark Helios dashboard | Strong hierarchy, restrained palette, one large primary chart, and compact segments. | Investment/watchlist semantics, AI promotion, and low-contrast secondary text. |
+| Light OripioFin dashboard | Good balance hierarchy, understandable period controls, and a useful table under the overview. | Wallet/card imitation and a layout designed around bank products. |
+| Light Quixotic dashboard | Airy composition, soft surfaces, one accent, and focus on one large chart. | Excess whitespace for dense-data workflows and unrelated avatars or payment actions. |
 
-В пяти приложенных изображениях повторяются следующие черты:
+The five images repeat several traits:
 
-- нейтральный фон и ясно отделённая рабочая поверхность;
-- один доминирующий акцент: чаще зелёный, в тёмных вариантах — приглушённый
-  фиолетовый;
-- постоянная боковая или верхняя навигация и заметное название текущего раздела;
-- модульная сетка из карточек разных размеров;
-- крупные суммы, короткие подписи и компактные сравнительные индикаторы;
-- графики рядом с управляющим периодом и деталями по наведению;
-- сочетание обзорных карточек с плотной таблицей последних событий;
-- мягкие формы, тонкие границы и небольшой визуальный шум.
+- a neutral background and clearly separated workspace;
+- one dominant accent, usually green or a muted purple in dark variants;
+- persistent side or top navigation and a prominent section title;
+- a modular grid of differently sized cards;
+- large amounts, short labels, and compact comparison indicators;
+- charts placed near period controls and hover details;
+- overview cards combined with a dense recent-events table;
+- soft shapes, thin borders, and low visual noise.
 
-Референсы также показывают риск: карточная сетка легко превращается в коллекцию
-равнозначных KPI, декоративных банковских карт и не связанных между собой
-графиков. Hermes должен брать композиционную ясность, но строить приоритет по
-решениям пользователя.
+The references also expose a risk: a card grid easily becomes a collection of
+equally weighted KPIs, decorative bank cards, and unrelated charts. Hermes
+should borrow compositional clarity while prioritizing user decisions.
 
-## Характер
+## Character
 
-Подтверждённый характер — **современный минималистичный инструмент с
-premium-эстетикой и человеческим языком**.
+The confirmed character is a **modern minimalist tool with premium aesthetics
+and human language**.
 
-- Спокойный: без агрессивных продаж, геймификации и тревожных красных экранов.
-- Аналитический: точные числа, хорошие таблицы, управляемые периоды и раскрытие
-  расчётов.
-- Человеческий: термины описывают реальную задачу, а не устройство ledger.
-- Собранный: немного поверхностей, ясная иерархия и предсказуемое положение
-  действий.
-- Премиальный: качество ощущается через пропорции, типографику, выверенные
-  состояния и внимание к деталям, а не через блеск или декоративную роскошь.
-- Личный: фонды и будущие обязательства показывают назначение денег, но
-  персонализация не зависит от иллюстраций или аватаров.
+- **Calm:** no aggressive sales, gamification, or alarming full-red screens.
+- **Analytical:** exact numbers, good tables, controlled periods, and disclosed
+  calculations.
+- **Human:** terminology describes the real task rather than ledger internals.
+- **Composed:** few surfaces, clear hierarchy, and predictable action placement.
+- **Premium:** quality comes from proportions, typography, resolved states, and
+  attention to detail rather than shine or decorative luxury.
+- **Personal:** funds and future obligations communicate the purpose of money,
+  while personalization does not depend on illustrations or avatars.
 
-## Плотность интерфейса
+## Interface density
 
-Desktop-направление — умеренная плотность с достаточным свободным пространством
-в духе Quixotic. На одном экране можно сравнить несколько связанных значений и
-8–15 строк журнала без ощущения электронной таблицы, занимающей весь продукт.
+The desktop direction is moderately dense with enough whitespace in the spirit
+of Quixotic. One screen can compare several related values and 8–15 journal
+rows without making the whole product feel like a spreadsheet.
 
-Плотность регулируется иерархией:
+Hierarchy controls density:
 
-- сначала состояние и исключения, требующие внимания;
-- затем короткий горизонт будущего и недавние изменения;
-- подробные свойства — в панели деталей или отдельном экране;
-- редкие административные действия — в контекстном меню;
-- на узком экране данные перегруппировываются по смыслу, а не просто уменьшаются.
+- state and exceptions requiring attention come first;
+- the short-term future and recent changes follow;
+- detailed properties live in a detail panel or separate page;
+- rare administrative actions live in contextual menus;
+- narrow screens regroup data semantically rather than merely shrinking it.
 
-В первой версии не следует добавлять пользовательский выбор compact/comfortable
-без подтверждённой потребности. Достаточно выбрать одну качественную базовую
-плотность и проверить её на реальных данных.
+The first version should not offer a compact/comfortable density preference
+without proven need. Choose one high-quality baseline density and test it on
+real data.
 
-## Типографика
+## Typography
 
-- Нейтральный sans-serif с хорошей читаемостью кириллицы и латиницы.
-- Чёткая, но не чрезмерно контрастная иерархия заголовков, пояснений и метаданных.
-- Суммы получают визуальный приоритет только там, где они являются главным
-  ответом экрана.
-- Табличные цифры обязательны в сравниваемых колонках, итогах и временных рядах.
-- Знак, код/символ валюты, десятичная часть и отрицательное состояние должны
-  сканироваться без разночтений.
-- Все экранные суммы и проценты группируют тысячи пробелом и показывают ровно
-  два десятичных знака с запятой (`100 000,00`, `12,50%`). Возможная точность
-  третьего и четвёртого знака сохраняется в доменном значении и расчётах, но не
-  выводится в интерфейсе.
-- Верхний регистр, слишком тонкие начертания и декоративные display-шрифты не
-  подходят для основных финансовых данных.
+- A neutral sans serif with strong Cyrillic and Latin readability.
+- A clear but not excessively contrasted hierarchy of headings, explanations,
+  and metadata.
+- Amounts receive visual priority only when they are the screen's primary
+  answer.
+- Tabular figures are mandatory in comparable columns, totals, and time series.
+- Sign, currency code or symbol, decimal portion, and negative state must scan
+  without ambiguity.
+- Every rendered amount and percentage groups thousands with spaces and shows
+  exactly two decimal places with a comma (`100 000,00`, `12,50%`). Third- and
+  fourth-place precision remains in the domain value and calculations but is
+  not rendered.
+- Uppercase, overly thin weights, and decorative display typefaces are
+  unsuitable for primary financial data.
 
-Конкретная гарнитура и шкала размеров остаются предметом отдельного
-согласования.
+The specific family and size scale require separate approval.
 
-## Цвет
+## Color
 
-Подтверждённая ось первого прототипа — светлые нейтральные поверхности и один
-сдержанный зелёный продуктовый акцент. Конкретные оттенки ещё не утверждены.
+The confirmed first-prototype axis is light neutral surfaces with one restrained
+green product accent. Exact colors are not yet approved.
 
-Правила направления:
+Direction rules:
 
-- продуктовый акцент обозначает интерактивность, выбор и фокус, а не любое
-  положительное число;
-- семантические цвета зарезервированы для риска, успеха, предупреждения и
-  информационного состояния;
-- доход/расход не кодируются только парой зелёный/красный;
-- большие цветные заливки используются редко, чтобы не конкурировать с числами;
-- muted-состояния остаются читаемыми, а архивные данные не выглядят disabled,
-  если с ними можно взаимодействовать;
-- палитра проверяется на контраст и распространённые особенности цветового
-  восприятия.
+- the product accent represents interaction, selection, and focus rather than
+  every positive number;
+- semantic colors are reserved for risk, success, warning, and information;
+- income and expense are not encoded only as green and red;
+- large color fills are rare so they do not compete with numbers;
+- muted states remain readable, and archived data does not look disabled when
+  it remains interactive;
+- validate the palette for contrast and common color-vision differences.
 
-## Поверхности и карточки
+## Surfaces and cards
 
-Карточка — смысловая группа, а не обязательная рамка вокруг каждого числа.
+A card is a semantic group, not a mandatory frame around every number.
 
-- Одна карточка отвечает на один вопрос или объединяет одну связанную группу.
-- Внутри есть ясный заголовок, основной ответ, контекст периода и ожидаемое
-  действие.
-- Тонкая граница или изменение поверхности предпочтительнее тяжёлой тени.
-- Скругления могут поддерживать мягкий характер, но должны быть единообразны.
-- Карточки разного размера допустимы только при явной иерархии, а не ради
-  мозаичного эффекта.
-- Вложенные карточки и карусели избегаются: они скрывают сравнение и увеличивают
-  число уровней навигации.
+- One card answers one question or groups one related set.
+- It contains a clear title, primary answer, period context, and expected
+  action.
+- A thin border or surface change is preferable to a heavy shadow.
+- Rounded shapes may support the soft character but remain consistent.
+- Differently sized cards are acceptable only with clear hierarchy, not for a
+  mosaic effect.
+- Avoid nested cards and carousels; they hide comparison and add navigation
+  levels.
 
-## Таблицы и списки
+## Tables and lists
 
-Таблица — основное desktop-представление журнала и детальных финансовых данных.
+Tables are the primary desktop representation for the journal and detailed
+financial data.
 
-- Числа выравниваются для сравнения, текстовые поля сохраняют устойчивую точку
-  начала.
-- Заголовки колонок короткие и поддерживают сортировку там, где она имеет смысл.
-- Фильтры видимы над таблицей как текущий контекст, а не спрятаны только в modal.
-- Строка имеет достаточно выразительный primary label и спокойные метаданные.
-- Hover и selection различаются; keyboard focus не исчезает.
-- Итоги явно указывают, относятся ли они ко всей выборке или только к текущей
-  странице.
-- На mobile используется список с тем же порядком смыслов; критичные данные не
-  прячутся в горизонтальном scroll по умолчанию.
+- Align numbers for comparison and keep a stable starting point for text.
+- Column headers are short and support sorting where meaningful.
+- Filters remain visible above the table as current context instead of living
+  only in a modal.
+- A row has a strong enough primary label and calm metadata.
+- Hover and selection differ; keyboard focus remains visible.
+- Totals state whether they apply to the whole selection or current page.
+- Mobile uses a list with the same semantic order; critical data is not hidden
+  in horizontal scrolling by default.
 
-## Графики
+## Charts
 
-График используется только для отношения, которое труднее понять по двум-трём
-числам.
+Use a chart only for a relationship that is harder to understand through two or
+three values.
 
-- Линия подходит для фактической или прогнозной динамики во времени.
-- Столбцы — для сравнения дискретных периодов или категорий.
-- Stacked-представление — только когда состав целого важнее точного сравнения
-  сегментов.
-- Donut и радиальные диаграммы — максимум для малого числа крупных долей;
-  детальная разбивка расходов лучше читается списком или столбцами.
-- Фактическая и прогнозная части визуально разделены.
-- Нулевая линия, временной интервал, валюта и область данных не скрываются.
-- Tooltip показывает значение в общем двухзначном UI-формате, точную дату,
-  влияющие события и доступный drill-down; расчёт использует исходную серверную
-  точность.
-- Сглаживание не должно создавать несуществующие значения между точками.
-- Цвета серий сохраняют смысл между dashboard, прогнозом и аналитикой.
+- A line suits actual or projected change over time.
+- Bars suit discrete period or category comparison.
+- A stacked view is appropriate only when composition matters more than exact
+  segment comparison.
+- Donut and radial charts are limited to a small number of major shares; a list
+  or bars communicate a detailed expense breakdown better.
+- Actual and forecast portions are visually distinct.
+- The zero line, time interval, currency, and data scope remain visible.
+- A tooltip shows the shared two-place UI format, exact date, influencing
+  events, and available drill-down; calculations keep exact server precision.
+- Smoothing must not imply nonexistent values between points.
+- Series colors retain meaning across dashboard, forecast, and analytics.
 
-## Иконки
+## Icons
 
-- Один простой outline- или restrained filled-набор с единым визуальным весом.
-- Иконка дополняет текст, но не заменяет незнакомое финансовое понятие.
-- Тип операции может иметь иконку, знак и текст; одной стрелки недостаточно.
-- Иконки категорий и фондов возможны как средство сканирования, но не обязательны
-  для создания сущности и не подменяют название.
-- Декоративные иллюстрации допустимы в onboarding и пустых состояниях, если они
-  объясняют следующий шаг; в рабочих экранах приоритет у данных.
+- Use one simple outline or restrained filled set with consistent weight.
+- An icon supplements text but does not replace an unfamiliar financial
+  concept.
+- An operation type may use icon, sign, and text; one arrow is insufficient.
+- Category and fund icons may aid scanning but are not required to create an
+  entity and never replace its name.
+- Decorative illustrations are acceptable in onboarding and empty states when
+  they explain the next action; data takes priority on working screens.
 
-## Анимация
+## Motion
 
-Анимация подтверждает причинно-следственную связь, а не развлекает.
+Motion confirms cause and effect rather than entertaining.
 
-- Короткие переходы показывают появление панели, применение фильтра или
-  обновление результата.
-- После сохранения можно мягко выделить новую/изменённую строку.
-- Изменение суммы не должно «прокручиваться» так, чтобы затруднять проверку.
-- График не проигрывает длинную анимацию при каждом фильтре.
-- Учитывается системное предпочтение reduced motion; никакая информация не
-  зависит от движения.
+- Short transitions show a panel appearing, a filter applying, or a result
+  updating.
+- Saving may briefly highlight a new or changed row.
+- An amount must not roll through digits in a way that obstructs verification.
+- A chart does not replay a long animation for every filter change.
+- Honor reduced-motion preferences; no information depends on motion.
 
-## Светлая и тёмная темы
+## Light and dark themes
 
-Первый прототип и текущий приоритет — светлая тема. Тёмная тема отложена и не
-входит в обязательный объём ближайшего UI-проектирования.
+The first prototype and current priority use a light theme. Dark mode is
+deferred and outside the required scope of near-term UI design.
 
-Если потребность в ней появится позже, она должна сохранять семантику,
-иерархию и доступность светлой темы, строиться на нейтральных поверхностях и не
-копировать неоновое свечение концептуальных референсов.
+If it becomes necessary later, it must preserve the semantics, hierarchy, and
+accessibility of the light theme, use neutral surfaces, and avoid copying neon
+glow from conceptual references.
 
-## Что должно быть согласовано до дизайн-системы
+## Decisions required before a design system
 
-- допустимая плотность dashboard и таблиц;
-- конкретная типографика, оттенки нейтральной и зелёной палитры;
-- роль иллюстраций, категории/фонды с иконками и степень персонализации;
-- целевые размеры экранов и приоритет touch/mobile сценария.
+- acceptable dashboard and table density;
+- specific typography and neutral/green palette values;
+- the role of illustrations, category/fund icons, and personalization;
+- target screen sizes and priority of touch/mobile workflows.

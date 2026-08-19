@@ -1,232 +1,222 @@
 # Forecast
 
-## Статус
+## Status
 
-Реализованная композиция `0.4.0` утверждена владельцем 2026-08-18 как baseline
-первого публичного релиза, а политика расчёта согласована с доменным контрактом.
-Продуктовое направление «Оракул · Что если?» подтверждено, но его экран,
-доменный контракт и реализация остаются будущим release scope.
+The owner approved the implemented `0.4.0` composition on 2026-08-18 as the
+first-public-release baseline, and its calculation policy matches the domain
+contract. The “Oracle · What if?” product direction is confirmed, but its
+screen, domain contract, and implementation remain future release scope.
 
-## Цель экрана
+## Screen goal
 
-Показать вероятную траекторию денег и заранее объяснить риск недостатка средств.
-Прогноз — проверяемый baseline из текущего ledger-derived остатка и известных
-будущих событий, а не предсказание поведения пользователя. Он служит основой
-для будущего сравнения решений, а не графиком ради наблюдения.
+Show the probable trajectory of money and explain a potential shortfall early.
+The forecast is a verifiable baseline built from the current ledger-derived
+balance and known future events, not a prediction of user behavior. It exists as
+the foundation for future decision comparison, not as a chart to observe for
+its own sake.
 
-## Главные пользовательские задачи
+## Primary user jobs
 
-- выбрать один счёт или совместимый общий scope;
-- выбрать горизонт: две недели, месяц, квартал, полгода или год;
-- увидеть стартовый и конечный прогнозный остаток;
-- найти минимальный остаток и первую возможную отрицательную дату;
-- раскрыть события, влияющие на точку графика;
-- понять вклад доходов, расходов, переводов и обязательств;
-- перейти к ожидаемому событию для подтверждения, переноса или отмены;
-- запустить «Что если?» и сравнить временный сценарий с baseline, не меняя
-  фактический ledger или подтверждённый план.
+- choose one account or a compatible combined scope;
+- choose a horizon: two weeks, month, quarter, half-year, or year;
+- see starting and ending projected balance;
+- find the minimum balance and first possible negative date;
+- reveal events influencing a chart point;
+- understand contributions from income, expenses, transfers, and obligations;
+- open an expected event for confirmation, postponement, or cancellation;
+- launch “What if?” and compare a temporary scenario with the baseline without
+  changing the actual ledger or confirmed plan.
 
-## Важная информация
+## Important information
 
-- scope и валюта;
-- фактический starting balance с отметкой времени;
-- безопасная сумма, которую можно потратить без ухода известного прогноза ниже
-  нуля;
-- выбранный горизонт и granularity;
-- прогнозная серия;
-- минимальный остаток и дата;
-- первая возможная отрицательная дата;
-- список влияющих событий в хронологическом порядке;
-- статус и источник каждого будущего события;
-- правила включения/исключения событий, доступные без поиска в документации.
+- scope and currency;
+- actual starting balance with a time marker;
+- safe amount that can be spent without taking the known forecast below zero;
+- selected horizon and granularity;
+- forecast series;
+- minimum balance and date;
+- first possible negative date;
+- chronological list of influencing events;
+- status and source of each future event;
+- inclusion and exclusion rules available without searching documentation.
 
-## Второстепенная информация
+## Secondary information
 
-- суммарные ожидаемые входящие и исходящие деньги;
-- разбивка по типам событий;
-- календарное представление того же timeline;
-- archived/cancelled события в отдельном диагностическом режиме;
-- альтернативные сценарии, их assumptions и uncertainty после реализации
-  подтверждённого направления «Оракул · Что если?»;
-- историческая фактическая линия как контекст, если она не перегружает график.
+- total expected inflows and outflows;
+- breakdown by event type;
+- a calendar view of the same timeline;
+- archived and cancelled events in a separate diagnostic mode;
+- alternative scenarios, assumptions, and uncertainty after the confirmed
+  “Oracle · What if?” direction is implemented;
+- the historical actual line as context when it does not overload the chart.
 
-## Реализованная композиция
+## Implemented composition
 
-1. Единая строка scope счёта, horizon и режима свободных/всех средств.
-2. Единая горизонтальная строка decision KPI: можно потратить сейчас, минимум,
-   конец периода и чистый поток. Cash-gap не дублируется отдельной KPI-карточкой.
-3. Основной график с фактической стартовой точкой, прогнозной линией и
-   risk-aware нулевой границей.
-4. Синхронизированные timeline и детали выбранного дня/интервала.
-5. Компактная колонка рисков и итогов периода.
-6. Contextual disclosure о границе free-money модели.
+1. One row for account scope, horizon, and free/all-money mode.
+2. One horizontal row of decision KPIs: safe to spend now, minimum, period end,
+   and net flow. Cash gap is not duplicated in another KPI card.
+3. The primary chart with an actual starting point, forecast line, and
+   risk-aware zero boundary.
+4. Synchronized timeline and details for the selected day or interval.
+5. A compact column of risks and period totals.
+6. Contextual disclosure of the free-money model boundary.
 
-График и список точки являются двумя представлениями одной расчётной модели.
-Доступные под графиком кнопки выбирают точную дату и раскрывают её события,
-opening balance, net change и closing balance.
+The chart and point list are two views of one calculation model. Buttons below
+the chart select an exact date and reveal its events, opening balance, net
+change, and closing balance.
 
-## Основные действия
+## Primary actions
 
-- изменить scope и горизонт;
-- выбрать точку или диапазон;
-- открыть влияющее событие;
-- подтвердить, перенести или отменить ожидаемое событие в соответствующем
-  scheduling flow;
-- перейти к конкретному счёту;
-- сбросить фильтры;
-- в будущем открыть «Что если?» с текущими scope и horizon.
+- change scope and horizon;
+- select a point or range;
+- open an influencing event;
+- confirm, postpone, or cancel an expected event in its Scheduling workflow;
+- open a specific account;
+- reset filters;
+- in the future, open “What if?” with the current scope and horizon.
 
-Будущий сценарный flow подробно описан в [Оракул · Что если?](scenarios.md).
+The future scenario flow is documented in [Oracle · What if?](scenarios.md).
 
-## Представление графика
+## Chart presentation
 
-- Фактический starting point с подписью «Сейчас» визуально отличается от
-  прогнозных closing points и обязательно участвует в масштабе Y.
-- Y-domain строится по фактическому диапазону series с округлённым padding.
-  Ноль не включается в безопасный положительный диапазон автоматически, но
-  обязательно появляется при отрицательном или близком к нулю остатке.
-- Все доступные closing points остаются keyboard-доступны, но визуальный акцент
-  получают только события, выбор, минимум и риск; график не превращается в
-  равнозначную ленту точек.
-- Daily end balance может быть базовым отображением, но same-day ordering должен
-  иметь утверждённое правило.
-- Risk threshold имеет подпись и не кодируется только красной областью.
-- Tooltip показывает точную дату/интервал, closing balance и net change в общем
-  двухзначном UI-формате и число событий. Opening balance и сами события
-  раскрываются в синхронизированной панели деталей.
-- Aggregate transfer между включёнными счетами не меняет общий итог; в
-  single-account scope он показывается как исходящее/входящее движение.
-- Длинный горизонт агрегирует визуальные точки, но drill-down сохраняет исходные
-  события. Если дневной cash-gap восстановился до месячного closing point,
-  отдельный подписанный risk-marker сохраняет его на графике и открывает детали
-  точного дня.
+- The actual starting point labeled “Now” is visually distinct from projected
+  closing points and always participates in the Y scale.
+- The Y domain follows the actual series range with rounded padding. Zero is not
+  automatically included in a safely positive range, but appears for a
+  negative or near-zero balance.
+- Every available closing point remains keyboard-accessible, while visual
+  emphasis is limited to events, selection, minimum, and risk; the chart does
+  not become a uniformly weighted strip of points.
+- Daily end balance may be the baseline display, but same-day ordering requires
+  an approved rule.
+- A risk threshold has a label and is not encoded only as a red area.
+- Tooltip shows exact date or interval, closing balance, net change in the shared
+  two-place UI format, and event count. Opening balance and events appear in the
+  synchronized detail panel.
+- A transfer between included accounts does not change the combined total. In
+  single-account scope it appears as an outgoing or incoming movement.
+- A long horizon aggregates visual points while drill-down preserves source
+  events. If a daily cash gap recovers before a monthly closing point, a
+  separate labeled risk marker preserves it and opens the exact day's details.
 
-## Возможные состояния
+## Possible states
 
-### Нет будущих событий
+### No future events
 
-Показать фактическую стартовую точку и текст «Нет известных событий в выбранном
-периоде». Горизонтальная линия не называется стабильным прогнозом без этого
-пояснения.
+Show the actual starting point and “No known events in the selected period”. A
+horizontal line is not called a stable forecast without this explanation.
 
-### Только ожидаемые события
+### Only expected events
 
-Все будущие точки имеют понятный плановый стиль. Факт не продлевается визуально
-в будущее.
+Every future point has a clear planned style. Actual data does not extend
+visually into the future.
 
-### Возможный дефицит
+### Possible shortfall
 
-Сводка показывает первую дату, минимум и затронутый scope. График фокусирует
-первый crossing, а рядом находятся конкретные события и возможные действия.
+The summary shows first date, minimum, and affected scope. The chart focuses the
+first crossing, with concrete events and possible actions nearby.
 
-### Просроченное ожидаемое событие
+### Overdue expected event
 
-Оно не переносится молча на текущую дату и не включается в расчёт. Экран
-показывает число исключённых событий в текущем scope и ведёт в календарь.
+It is neither silently moved to today nor included in calculation. The screen
+shows how many events were excluded in the current scope and links to Calendar.
 
-### Переводы
+### Transfers
 
-В общем scope перевод между включёнными счетами нейтрален, но остаётся доступен
-в explanation. При выборе одного счёта он влияет на линию этого счёта.
+A transfer between included accounts is neutral in combined scope but remains
+available in the explanation. It affects the selected account line in
+single-account scope.
 
-### Несовместимые валюты
+### Incompatible currencies
 
-Счета не суммируются без утверждённого курса и модели пересчёта. Пользователь
-получает отдельные прогнозы или явное ограничение scope, а не приблизительный
-скрытый итог.
+Accounts are not summed without an approved rate and conversion model. The
+owner receives separate forecasts or an explicit scope limitation rather than
+an approximate hidden total.
 
-### Большое число событий
+### Many events
 
-График агрегирует по масштабу, timeline использует виртуализацию/пагинацию и
-группировку по дню. Фильтр по типу не меняет расчёт незаметно: нужно различать
-«скрыть из списка» и «исключить из сценария».
+The chart aggregates according to scale. The timeline uses virtualization or
+pagination and day grouping. A type filter does not silently change the
+calculation: “hide from list” and “exclude from scenario” are distinct.
 
-### Ошибка части источников
+### Partial source failure
 
-Неполный прогноз не показывается как полный. Экран называет недоступный источник
-и предлагает повторить; фактический баланс может быть показан отдельно.
+An incomplete forecast is not presented as complete. The screen names the
+unavailable source and offers retry; actual balance may appear separately.
 
-## Ошибки UX, которых нужно избегать
+## UX failures to avoid
 
-- гладкая линия, создающая ложную точность между событиями;
-- прогноз без starting balance и перечня источников;
-- смешение confirmed actual operation и связанного expected occurrence;
-- скрытое исключение просроченных или postponed событий;
-- одинаковый стиль для факта, плана и приблизительной суммы;
-- aggregate transfer как расход всей системы;
-- выбор фильтра, который молча меняет финансовый сценарий;
-- общий итог по несовместимым валютам;
-- tooltip только с датой и суммой без объяснения изменения;
-- риск, обозначенный только красным цветом;
-- сложная fan chart/вероятностная модель без подтверждённых вероятностей.
+- a smooth line implying false precision between events;
+- a forecast without starting balance or source list;
+- mixing a confirmed actual operation with its linked expected occurrence;
+- silently excluding overdue or postponed events;
+- one style for fact, plan, and approximate amount;
+- treating a combined-scope internal transfer as system expense;
+- a filter that silently changes the financial scenario;
+- a combined total across incompatible currencies;
+- a tooltip with only date and amount but no explanation of change;
+- risk represented only by red;
+- a complex fan chart or probabilistic model without confirmed probabilities.
 
-## Реализованные решения до 0.4.0
+## Implemented decisions through 0.4.0
 
-- По умолчанию график показывает свободные средства (физический остаток минус
-  текущие резервы фондов). Явный переключатель включает все средства, в том
-  числе распределённые.
-- Под основным прогнозом показана перспектива фондов на том же горизонте:
-  крупная контрастная диаграмма долей конечного остатка и точные значения от
-  текущего до конечного. Учитываются только будущие переводы с явно включённым
-  процентным распределением. Manual-режим применяет сохранённые проценты, а
-  dynamic-режим пересчитывает их последовательно перед каждым пополнением из
-  проектируемых остатков фондов.
-- В free-режиме будущие расходы не выбирают резерв автоматически, а перевод с
-  явно включённым процентным распределением уменьшает свободный прогноз на
-  точную распределяемую сумму. В total-режиме этот же внутренний перевод
-  остаётся нейтральным.
-- По умолчанию открываются все счета и календарный месяц.
-- Прогноз использует точный дневной closing balance без intraday-модели.
-- Просроченные события исключаются явно; postponed с будущей датой включаются.
-- Приблизительные суммы, диапазоны и what-if сценарии не добавлены.
-- Единый forecast view-model выводит current/end/minimum/first-negative,
-  суммарные доходы и расходы, net flow и `safeToSpend`. Безопасная сумма равна
-  `max(0, minimumBalance)`, поэтому при прогнозном дефиците интерфейс не советует
-  тратить текущий остаток.
-- Decision KPI, график, лента ближайших событий, риски и итоги периода используют
-  один dataset и один набор derived metrics. Отдельные карточки показывают
-  минимум и дату, конец периода и первый кассовый разрыв; пустой risk-state не
-  резервирует место.
-- Для single-account scope итоги отдельно показывают net effect переводов, если
-  он ненулевой; поэтому доходы, расходы и общий net flow арифметически
-  объяснимы. В all-accounts scope внутренние переводы нейтральны для total-
-  режима; в free-режиме распределяемая часть показана как уменьшение свободных
-  средств.
-- Основной desktop layout использует горизонтальную строку четырёх KPI и
-  полноширинный график. Риски и итоги расположены под ним в двух колонках; на
-  узком экране они складываются вертикально, а KPI становятся сеткой или
-  горизонтальной лентой.
-- Рядом с графиком раскрывается список событий выбранной точки; действия над
-  событиями остаются в календаре. Лента ближайших событий и элементы риска
-  выбирают ту же дату на графике.
-- График использует `Number` только для экранных координат. Все отображаемые и
-  доменные суммы приходят готовыми точными decimal-строками с backend.
-- X-координата отражает календарное расстояние между датами, а не порядковый
-  номер события. Во время смены scope/периода старая серия скрывается до ответа,
-  чтобы новые controls не подписывали старые суммы.
-- Каждое событие имеет точный переход в соответствующий месяц календаря с
-  фокусом на исходном occurrence.
-- Шкала Y использует округлённые денежные деления и адаптивный domain с запасом
-  сверху и снизу. При безопасном прогнозе она фокусируется на реальном диапазоне;
-  при приближении к нулю или отрицательном остатке включает 0. Область ниже нуля
-  получает лёгкий красный tint, а отрицательный отрезок и точки становятся
-  красными, поэтому риск не кодируется одним цветом.
-- X-axis прореживает подписи по горизонту без потери исходной точности. Выбор
-  точки выполняется непосредственно на графике и раскрывает объяснение ниже.
-- Две недели, месяц, квартал и полгода показывают отдельную точку каждого дня;
-  год группируется по календарным месяцам. Точки и подписи прореживаются в
-  пределах responsive chart viewport; внутренней прокрутки у графика нет.
-- Наведение мыши или keyboard-focus показывает рассчитанный из точных данных
-  закрывающий баланс в общем двухзначном UI-формате, дату, изменение и число
-  событий выбранной точки. Клик сохраняет точку и раскрывает её операции в
-  объяснении под графиком.
-- График оставляет отдельный верхний запас под tooltip; у точек в верхней зоне
-  подсказка автоматически раскрывается вниз и не обрезается scroll-контейнером.
-- Значимые события подчёркиваются точками, но постоянные подписи всех операций
-  не загромождают линию. Trend/recommendation слой удалён: он не помогает
-  объяснить известные плановые операции и не является утверждённой моделью.
-- Интерактивные точки, timeline и risk items имеют focus-state и текстовые
-  accessibility labels; знак суммы присутствует в тексте и не заменяется цветом.
-  Серия forecast points использует roving tabindex: `Tab` входит в неё один
-  раз, а `ArrowLeft`/`ArrowRight`, `Home` и `End` перемещают выбор между
-  точками. Точный monthly risk-marker остаётся отдельным редким действием.
+- By default, the chart shows free money: physical balance minus current fund
+  reserves. An explicit switch includes all money, including allocated money.
+- Below the primary forecast, a fund perspective covers the same horizon: a
+  large high-contrast chart of ending-balance shares and exact current-to-end
+  values. It includes only future transfers explicitly configured for
+  percentage allocation. Manual mode uses stored percentages; dynamic mode
+  recalculates them sequentially before each top-up from projected fund
+  balances.
+- In free mode, future expenses do not choose a reserve automatically. A
+  transfer explicitly configured for percentage allocation reduces the free
+  forecast by the exact allocated amount. The same internal transfer remains
+  neutral in total mode.
+- The default selection is all accounts and one calendar month.
+- Forecast uses exact daily closing balance with no intraday model.
+- Overdue events are explicitly excluded; postponed future events are included.
+- Approximate amounts, ranges, and what-if scenarios are not implemented.
+- One forecast view model derives current, end, minimum, first-negative, total
+  income and expense, net flow, and `safeToSpend`. Safe to spend is
+  `max(0, minimumBalance)`, so a projected shortfall never leads the interface
+  to recommend spending the current balance.
+- Decision KPIs, chart, upcoming-event feed, risks, and period totals use one
+  dataset and one set of derived metrics. Separate cards show minimum and date,
+  period end, and first cash gap; an empty risk state reserves no space.
+- Single-account totals separately show nonzero net transfer effect so income,
+  expenses, and overall net flow remain arithmetically explainable. Internal
+  transfers are neutral in all-accounts total mode; their allocated portion
+  appears as a decrease in free money in free mode.
+- The primary desktop layout uses a horizontal row of four KPIs and a full-width
+  chart. Risks and totals sit below it in two columns; narrow screens stack them
+  vertically, and KPIs become a grid or horizontal strip.
+- An event list for the selected point appears beside the chart; event actions
+  remain in Calendar. Upcoming events and risk items select the same chart date.
+- The chart uses `Number` only for screen coordinates. Every displayed and
+  domain amount arrives as an exact decimal string from the backend.
+- X coordinates represent calendar distance between dates rather than event
+  order. During a scope or period change, the old series disappears until the
+  response arrives so new controls never label old amounts.
+- Every event links to its exact calendar month with source-occurrence focus.
+- The Y scale uses rounded monetary ticks and an adaptive domain with upper and
+  lower padding. A safe forecast focuses on its real range; a near-zero or
+  negative balance includes zero. The area below zero has a light red tint, and
+  the negative segment and points become red, so risk is not color-only.
+- The X axis thins labels by horizon without losing source precision. Point
+  selection happens directly on the chart and reveals an explanation below.
+- Two weeks, month, quarter, and half-year show a point for each day; year groups
+  by calendar month. Points and labels thin within a responsive chart viewport;
+  the chart has no internal scrolling.
+- Mouse hover or keyboard focus shows closing balance calculated from exact data
+  in the shared two-place UI format, date, change, and event count. Click keeps
+  the point selected and reveals its operations below.
+- The chart reserves upper space for tooltips. A point near the top opens its
+  tooltip downward so the scroll container does not clip it.
+- Significant events use points, while permanent labels for every operation do
+  not clutter the line. The trend/recommendation layer was removed because it
+  did not explain known planned operations and had no approved model.
+- Interactive points, timeline, and risk items have focus states and text
+  accessibility labels. The amount sign appears in text rather than only color.
+  Forecast points use roving tabindex: `Tab` enters once, while `ArrowLeft`,
+  `ArrowRight`, `Home`, and `End` move selection. The exact monthly risk marker
+  remains a separate infrequent action.

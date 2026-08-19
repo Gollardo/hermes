@@ -38,7 +38,7 @@ events merely because they are within the next 30 days.
 - An actionable occurrence exposes its confirmation amount so an approximate
   template amount can be corrected without editing the rule.
 - A fund-allocating transfer names that side effect beside the action and uses
-  the explicit action label “Перевести и распределить”.
+  an explicit transfer-and-allocate action.
 - Disabling a rule explains that untouched future occurrences are cancelled;
   manual and confirmed decisions are preserved.
 - Editing a rule on a narrow screen moves focus context to the existing form;
@@ -69,4 +69,4 @@ events merely because they are within the next 30 days.
 - Notification delivery outside the application.
 - Forecast balances or insufficiency projections inside calendar cells.
 - Final decision whether Calendar and Forecast share a permanent top-level
-  «План» container.
+  “Plan” container.

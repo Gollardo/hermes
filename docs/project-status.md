@@ -1,8 +1,8 @@
-# Project Status
+# Project status
 
-Этот документ содержит фактический снимок реализованных и проверенных
-возможностей. Стратегическая последовательность находится в
-[roadmap.md](./roadmap.md), карта документации — в [index.md](./index.md).
+This document is the factual snapshot of implemented and verified capabilities.
+The strategic sequence lives in [roadmap.md](./roadmap.md), and the documentation
+map lives in [index.md](./index.md).
 
 ## Last updated
 
@@ -10,619 +10,604 @@
 
 ## Current phase
 
-**Внутренняя версия приложения `0.4.0` — реализация завершена, публичный release
-gate ещё не закрыт.** Предыдущие номера были development-вехами владельца и не
-публиковались как GitHub Releases или публичные git-теги.
+**Internal application version `0.4.0` is implemented, but the public release
+gate remains open.** Previous version numbers were owner development milestones
+and were not published as GitHub Releases or public git tags.
 
-Следующий шаг: owner acceptance динамического распределения и последовательного
-прогноза `0.4.0` на реальных данных, затем решение о первом публичном теге.
-Owner decision 2026-08-18 подтверждает политику версий: текущая серия `0.x`
-остаётся внутренней обкаткой, первым стабильным публичным релизом будет `1.0.0`
-только по отдельному решению владельца, а крупные продуктовые поколения
-продолжатся как `2.0.0`, `3.0.0` и далее. Промежуточные доработки получают
-minor/patch номера. Scope этих будущих поколений пока остаётся предложенным;
-отдельная feasibility-программа Hermes Online не входит в текущий release gate.
-Owner decision 2026-08-18 также меняет долгосрочную north star: Hermes должен
-в первую очередь отвечать «что будет, если я сейчас приму это финансовое
-решение?». Будущая способность называется «Оракул», а её основной сценарный
-режим — «Что если?». Направление подтверждено, но не является реализованной
-возможностью `0.4.0` и не расширяет текущий release gate.
-Политика запрета отрицательного остатка из ADR 0001, фондовые rounding/archive
-rules из ADR 0002 и recurrence-ограничения из ADR 0003 подтверждены владельцем
-для текущего релиза. Отдельный audit trail текущему single-owner продукту не
-требуется.
+The next action is owner acceptance of `0.4.0` dynamic allocation and sequential
+forecasting on real data, followed by a decision on the first public tag.
 
-Подтверждённая граница развёртывания первого релиза — защищённый контур:
-loopback или доверенная сеть, для удалённого доступа VPN либо HTTPS reverse
-proxy. Прямое размещение экземпляра в публичном интернете не поддерживается.
+The owner confirmed the version policy on 2026-08-18: the current `0.x` series
+remains internal testing, the first stable public release will be `1.0.0` only
+after a separate owner decision, and major product generations continue as
+`2.0.0`, `3.0.0`, and so on. Intermediate improvements use minor and patch
+numbers. The scopes of those future generations remain proposals. The separate
+Hermes Online feasibility program is outside the current release gate.
+
+The owner also changed the long-term north star on 2026-08-18. Hermes should
+primarily answer: “What will happen if I make this financial decision now?”. The
+future capability is named Oracle, and its primary scenario mode is What if?.
+The direction is confirmed but not implemented in `0.4.0` and does not expand
+the current release gate.
+
+The owner confirmed the ADR 0001 no-negative-balance policy, ADR 0002 fund
+rounding and archive rules, and ADR 0003 recurrence constraints for the current
+release. The current single-owner product does not require a separate audit
+trail.
+
+The confirmed first-release deployment boundary is a protected environment:
+loopback or a trusted network, with VPN or an HTTPS reverse proxy for remote
+access. Direct public-internet exposure is unsupported.
 
 ## Product and UI/UX foundation
 
-- В `docs/ui-ux/` зафиксированы vision, UX-принципы, предварительное визуальное
-  направление, information architecture и направления ключевых экранов.
-- Владелец подтвердил P0-фокус: dashboard обзорный, свободные деньги являются
-  primary, быстрое создание операции остаётся доступным, а аналитика отвечает
-  на вопросы о будущем остатке и крупнейших расходах.
-- Для первого прототипа подтверждены light neutral premium-minimalism,
-  приглушённый зелёный акцент и Quixotic как главный визуальный ориентир;
-  тёмная тема отложена.
-- Текущий Angular frontend приведён к этому направлению: access/setup,
-  адаптивная shell-навигация, обзор, счета, категории, настройки и системные
-  состояния и журнал используют общую иерархию поверхностей и действий. Фонды
-  и прогноз представлены рабочими вертикальными сценариями.
-- Владелец 2026-08-18 утвердил текущий реализованный интерфейс `0.4.0` как
-  baseline первого публичного релиза. Это утверждение не превращает текущие
-  CSS-значения в окончательную дизайн-систему и не утверждает будущие экраны.
-- Owner feedback 2026-08-12 реализован как UX-stabilization: sidebar можно
-  скрыть с сохранением выбора, entity composers открываются modal-слоями,
-  суммы имеют единый формат с группировкой тысяч, категории разделены на
-  доходы/расходы, а обзор показывает фактическую краткую сводку вместо
-  onboarding/release-карточек.
-- Forecast redesign 2026-08-15 превращает прежний график в decision-making
-  экран: единый forecast view-model синхронизирует safe-to-spend, минимум,
-  cash-gap, конец периода, график, события, риски и итоговый поток. Desktop и
-  mobile состояния сверены с концептуальным референсом; рекомендации без
-  доменной модели не добавлялись.
-- Визуальная корректировка фондов 2026-08-17 отделяет основные денежные итоги
-  от вторичных процентов, раскрывает редкие переносы по запросу и показывает
-  фонды плотным сравнительным списком. Существующие расчёты, формы и API не
-  изменены; desktop и mobile состояния проверены в браузере.
-- Owner feedback 2026-08-14 добавил на обзор три компактные круговые диаграммы:
-  расходы и доходы текущего месяца по корневым категориям и доли фондов в общей
-  сумме отложенных средств. Категории свёрнуты по умолчанию, одновременно
-  раскрывается один родитель каждого типа.
-- Owner feedback 2026-08-15 зафиксировал единый текстовый формат дат,
-  символы валют, 30-минутный idle-timeout и свободные средства как стартовый
-  режим графика прогноза.
-- Owner decision 2026-08-18 задаёт единый UI-контракт чисел: все суммы
-  и проценты показываются с пробелами между тысячами и ровно двумя знаками после
-  запятой (`100 000,00`, `12,50%`); поля принимают и запятую, и точку как
-  равнозначный десятичный разделитель. Контракт реализован общими frontend-
-  утилитами: точные значения форматируются `ROUND_HALF_UP`, а серверные
-  100%-разбиения визуально замыкаются методом наибольшего остатка без изменения
-  исходных данных.
-- Owner decision 2026-08-18 закрепляет decision-first направление «Оракул · Что
-  если?»: временные альтернативные сценарии сравниваются с baseline, не меняют
-  ledger/план и сохраняются только по желанию. Пользователь может задать
-  stop-loss, а Hermes — отдельно предложить объяснимую границу риска. Локальный
-  AI остаётся необязательным адаптером natural language → проверяемый черновик;
-  весь сценарий доступен без него, чат не пишет операции и не хранится по
-  умолчанию.
-- Для доходов и расходов подтверждены обязательная категория, дата
-  финансового факта без времени, серийный ручной ввод и отсутствие отдельного
-  payee в MVP. Posting model отдельно проверена и описана в ADR 0001; её
-  единый запрет отрицательного физического остатка подтверждён для текущего
-  релиза; overdraft отложен. Отдельная неизменяемая история правок и удалений
-  признана лишней для текущего single-owner scope.
+- `docs/ui-ux/` records the vision, UX principles, preliminary visual direction,
+  information architecture, and key-screen directions.
+- The owner confirmed the P0 focus: dashboard is an overview, free money is
+  primary, fast operation creation remains available, and analytics answer
+  questions about future balance and largest expenses.
+- The first-prototype direction is light neutral premium minimalism with a muted
+  green accent and Quixotic as the primary visual reference. Dark mode is
+  deferred.
+- The current Angular frontend follows that direction: access and setup,
+  adaptive shell navigation, overview, accounts, categories, settings, system
+  states, and journal use one hierarchy of surfaces and actions. Funds and
+  forecast are working vertical slices.
+- On 2026-08-18 the owner approved the implemented `0.4.0` interface as the
+  first-public-release baseline. This does not turn current CSS values into a
+  final design system or approve future screens.
+- Owner feedback from 2026-08-12 is implemented as UX stabilization: the
+  sidebar can be hidden with the choice preserved, entity composers open as
+  modal layers, amounts use one grouped format, categories are split into
+  income and expense, and Overview shows a factual summary instead of onboarding
+  or release cards.
+- The forecast redesign from 2026-08-15 turns the former chart into a decision-
+  making screen. One forecast view model synchronizes safe to spend, minimum,
+  cash gap, period end, chart, events, risks, and total flow. Desktop and mobile
+  states were compared with the conceptual reference; recommendations without a
+  domain model were not added.
+- The fund visual refinement from 2026-08-17 separates primary monetary totals
+  from secondary percentages, discloses rare transfers on request, and presents
+  funds as one dense comparison list. Existing calculations, forms, and API did
+  not change; desktop and mobile states were browser-verified.
+- Owner feedback from 2026-08-14 added three compact circular charts to
+  Overview: current-month expense and income by root category, and fund shares
+  of total saved money. Categories are collapsed by default, with one parent of
+  each type open at a time.
+- Owner feedback from 2026-08-15 established one textual date format, currency
+  symbols, a 30-minute idle timeout, and free money as the initial forecast
+  chart mode.
+- The owner decision from 2026-08-18 defines one numeric UI contract: every
+  amount and percentage groups thousands with spaces and shows exactly two
+  digits after a decimal comma (`100 000,00`, `12,50%`); fields accept comma and
+  dot as equivalent decimal separators. Shared frontend utilities implement the
+  contract with exact `ROUND_HALF_UP`; exact server-side 100% breakdowns close
+  visually by largest remainder without changing source data.
+- The owner decision from 2026-08-18 confirms the decision-first “Oracle · What
+  if?” direction. Temporary alternatives compare with a baseline, change neither
+  ledger nor plan, and persist only by choice. The owner may set a stop-loss,
+  while Hermes may separately suggest an explainable risk boundary. Local AI is
+  an optional natural-language-to-reviewed-draft adapter; the full workflow
+  works without it, chat writes no operation, and conversation is not stored by
+  default.
+- Income and expense require a category, use a fact date without time, support
+  batch manual entry, and have no separate MVP payee. ADR 0001 records the
+  posting model and current universal prohibition on negative physical balance.
+  Overdraft is deferred. A separate immutable edit and deletion history is
+  unnecessary in the current single-owner scope.
 
 ## Verified capabilities
 
 ### First run and access
 
-- Чистый экземпляр определяется через публичный setup-status и показывает
-  Angular-мастер первоначальной настройки.
-- Первым шагом setup предлагает выбрать JSON-backup прежней версии или чистый
-  старт. Для чистого старта владелец может отметить необязательные вопросы о
-  расходах: выбранные двухуровневые деревья и пять базовых категорий доходов
-  создаются атомарно вместе с владельцем; все вопросы можно пропустить.
-- Выбранный при первом запуске backup после создания нового мастер-пароля
-  проходит integrity, domain и post-write проверки в одной setup-транзакции;
-  при ошибке экземпляр остаётся неинициализированным, credential из backup не
-  импортируется.
-- Production-like Compose публикует чистый экземпляр только на loopback;
-  владелец завершает setup до намеренного LAN/remote exposure.
-- Setup атомарно создаёт единственного владельца, Argon2id-хеш мастер-пароля,
-  основную валюту, IANA timezone, throttle и первую сессию.
-- Повторный setup получает conflict и не может заменить credential или настройки.
-- Инициализированный экземпляр без сессии показывает вход по мастер-паролю.
-- Защищённая оболочка и settings API недоступны без действующей серверной сессии.
+- A clean instance is detected through public setup status and displays an
+  Angular first-run wizard.
+- The first setup step offers a previous-version JSON backup or a clean start.
+  For a clean start, the owner may select optional expense questions; selected
+  two-level trees and five baseline income categories are created atomically
+  with the owner. Every question may be skipped.
+- A backup selected on first run undergoes integrity, domain, and post-write
+  checks in one setup transaction after a new master password is created. On
+  failure the instance remains uninitialized, and backup credentials are not
+  imported.
+- Production-like Compose publishes a clean instance on loopback only; the
+  owner completes setup before deliberate LAN or remote exposure.
+- Setup atomically creates the sole owner, Argon2id master-password hash, base
+  currency, IANA timezone, login throttle, and first session.
+- Repeated setup receives a conflict and cannot replace credentials or settings.
+- An initialized instance without a session displays master-password login.
+- The protected shell and Settings API are inaccessible without a valid server
+  session.
 
 ### Authentication and sessions
 
-- Случайный идентификатор сессии передаётся в HttpOnly, SameSite=Lax cookie;
-  PostgreSQL хранит только SHA-256 digest.
-- Изменяющие cookie-authenticated запросы дополнительно защищены per-session
-  double-submit CSRF token.
-- Поддержаны текущая сессия, logout, logout всех сессий и семидневный абсолютный
-  срок жизни по умолчанию.
-- Browser shell завершается после 30 минут без взаимодействия; клавиатура,
-  движение или нажатие указателя, touch и scroll продлевают локальный deadline
-  и вызывают редкий CSRF-защищённый heartbeat. Backend независимо отклоняет
-  idle-сессию.
-- Смена мастер-пароля требует текущий пароль и завершает остальные сессии.
-- Persistent login throttle по умолчанию блокирует вход на 15 минут после пяти
-  ошибок в 15-минутном окне.
-- Public API ограничен health, setup status, двумя setup-командами и login; прикладные роутеры
-  подключены через общий authentication dependency.
-- Транзакционная dependency завершается до отправки успешного HTTP-ответа и
-  session cookies.
+- A random session identifier travels in an HttpOnly, SameSite=Lax cookie;
+  PostgreSQL stores only its SHA-256 digest.
+- Mutating cookie-authenticated requests also require a per-session double-
+  submit CSRF token.
+- Current session, logout, logout-all, and a default seven-day absolute lifetime
+  are supported.
+- The browser shell expires after 30 minutes without interaction. Keyboard,
+  pointer movement or press, touch, and scroll extend the local deadline and
+  trigger a rate-limited CSRF-protected heartbeat. The backend independently
+  rejects an idle session.
+- Changing the master password requires the current password and terminates
+  other sessions.
+- Persistent login throttling blocks login for 15 minutes by default after five
+  failures in a 15-minute window.
+- Public API is limited to health, setup status, two setup commands, and login;
+  application routers share one authentication dependency.
+- The transactional dependency completes before a successful HTTP response and
+  session cookies are sent.
 
 ### Settings
 
-- Владелец может просматривать и менять timezone до создания первого
-  регулярного правила.
-- Основную валюту можно менять до первого счёта или денежной операции.
-- `settings.lock_base_currency()` является публичным транзакционным контрактом
-  будущих финансовых модулей; после lock смена валюты запрещена. Scheduling
-  отдельно блокирует смену timezone после появления первого правила.
-- Currency/timezone update и соответствующие locks сериализуются row-level lock
-  на singleton settings, включая конкурентные транзакции.
-- Backend валидирует трёхбуквенный currency code и IANA timezone независимо от UI.
-- Настройка «Счёт по умолчанию» принимает только активный счёт и автоматически
-  подставляет его только в новые доходы/расходы; выбор остаётся изменяемым, а
-  архивирование или удаление счёта очищает настройку атомарно.
-- Настройка режима фондов переключает ручные и динамические проценты. Включение
-  динамики требует целей у всех неархивных фондов; возврат в ручной режим
-  атомарно сохраняет текущие вычисленные проценты.
+- The owner may view and change timezone before the first recurrence rule.
+- Base currency may change before the first account or monetary operation.
+- `settings.lock_base_currency()` is the public transactional contract for
+  future financial modules. After lock, currency change is forbidden.
+  Scheduling separately locks timezone after the first rule.
+- Currency and timezone updates and their locks serialize through a row lock on
+  singleton settings, including concurrent transactions.
+- Backend validates a three-letter currency code and IANA timezone independently
+  of UI.
+- Default account accepts only an active account and preselects it only for new
+  income and expense. The choice remains editable; account archive or deletion
+  clears the setting atomically.
+- Fund mode switches between manual and dynamic percentages. Enabling dynamic
+  mode requires targets for all non-archived funds. Returning to manual mode
+  atomically preserves current calculated percentages.
 
 ### Schema and delivery
 
-- Первая публичная миграция `0001_first_run_access` создаёт owner credential,
-  sessions, login throttle и application settings; следующая миграция
-  `0002_harden_access_invariants` добавляет database checks с сохранением
-  инициализированных данных.
-- Production image содержит Angular build и FastAPI, запускает Alembic до Uvicorn
-  и сохраняет один HTTP entrypoint.
-- Миграция `0011_dynamic_fund_allocation` добавляет глобальный режим с безопасным
-  backfill `manual`, database check и обратимым downgrade до `0010`.
-- Runtime-параметры сессии, throttling и Secure-cookie доступны через
-  `HERMES_*`; development Compose явно использует non-Secure cookie только для
-  локального HTTP.
-- Alembic выполняет исторические ревизии отдельными транзакциями: чистый upgrade
-  commit-ит PostgreSQL enum additions до зависящих CHECK constraints.
-- Миграция `0008_session_idle_timeout` добавляет activity timestamp с database
-  checks и сохраняет существующие сессии при upgrade, инициализируя его временем
-  создания сессии.
+- The first public migration, `0001_first_run_access`, creates owner credential,
+  sessions, login throttle, and application settings. Migration
+  `0002_harden_access_invariants` adds database checks while preserving
+  initialized data.
+- The production image contains the Angular build and FastAPI, runs Alembic
+  before Uvicorn, and exposes one HTTP entry point.
+- Migration `0011_dynamic_fund_allocation` adds the global mode with safe
+  `manual` backfill, a database check, and reversible downgrade to `0010`.
+- Session, throttling, and Secure-cookie runtime parameters use `HERMES_*`.
+  Development Compose explicitly uses a non-Secure cookie only for local HTTP.
+- Alembic executes historical revisions as separate transactions: clean upgrade
+  commits PostgreSQL enum additions before dependent check constraints.
+- Migration `0008_session_idle_timeout` adds server-side activity timestamp and
+  checks while preserving existing sessions by initializing from creation time.
 
 ### Backup and restore
 
-- Settings содержит JSON-export schema 1 с SHA-256 integrity, decimal-строками
-  и идентификаторами всех settings, ledger, fund и scheduling записей.
-- Проверка checksum сохраняет canonical shape старого schema-1 документа:
-  добавленные позднее необязательные поля не ломают импорт ранее созданной копии.
-- Preview проверяет формат, версию, checksum и ссылки до записи и показывает сводку.
-- Restore требует CSRF, мастер-пароль назначения и точную фразу подтверждения;
-  exclusive locks, одна транзакция и post-write checks исключают частичную замену.
-- Credential, login throttle и sessions не экспортируются; restore проходит
-  через общий throttle, сохраняет текущую сессию и завершает остальные.
+- Settings provides JSON export schema 1 with SHA-256 integrity, decimal
+  strings, and identifiers for all settings, ledger, fund, and Scheduling data.
+- Checksum verification preserves the canonical shape of an old schema-1
+  document; later optional fields do not break import of an earlier copy.
+- Preview checks format, version, checksum, and references before any write and
+  shows a summary.
+- Restore requires CSRF, the destination master password, and an exact
+  confirmation phrase. Exclusive locks, one transaction, and post-write checks
+  prevent partial replacement.
+- Credential, login throttle, and sessions are not exported. Restore uses the
+  shared throttle, preserves the current session, and terminates the others.
 
 ### Accounts and balances
 
-- Владелец может создавать, просматривать и редактировать счета типов `cash`,
-  `debit`, `savings`, архивировать и восстанавливать их.
-- Начальный ненулевой остаток атомарно создаёт `balance_adjustment` и движение;
-  текущий остаток вычисляется суммой `NUMERIC(20,4)`-движений и возвращается строкой.
-- API не принимает `float` для денег и ограничивает alpha-scale четырьмя знаками.
-- Счёт без движений можно удалить; наличие истории возвращает conflict и требует архивации.
-- Первый account write в той же транзакции фиксирует основную валюту; создание
-  currency-independent категории оставляет её изменяемой.
+- The owner can create, view, and edit `cash`, `debit`, and `savings` accounts,
+  and archive or restore them.
+- A nonzero initial balance atomically creates a `balance_adjustment` and
+  movement. Current balance is the sum of `NUMERIC(20,4)` movements and is
+  returned as a string.
+- The API rejects `float` for money and limits alpha scale to four places.
+- An account without movements may be deleted. History returns a conflict and
+  requires archiving.
+- The first account write locks base currency in the same transaction. Creating
+  a currency-independent category leaves it editable.
 
 ### Categories
 
-- Владелец может создавать и редактировать раздельные деревья категорий доходов
-  и расходов; UI оптимизирован под категорию и подкатегорию.
-- Родитель обязан быть активным и иметь тот же тип; циклы запрещены.
-- API и UI поддерживают ровно два уровня; третий уровень отклоняется.
-- Активные дети блокируют архивирование родителя, а архивный родитель — восстановление ребёнка.
-- Архивные категории остаются читаемыми для истории; публичный validation-контракт
-  запрещает их для новых операций и имеет явный historical-read режим.
-- Тип категории неизменяем, пока на неё ссылается финансовая операция;
-  application use case проверяет operations-owned history contract.
-- Мутации дерева и проверка новой operation reference сериализуются общей
-  transaction-level advisory-блокировкой.
+- The owner can create and edit separate income and expense trees; UI is
+  optimized for category and subcategory.
+- A parent must be active and have the same type; cycles are forbidden.
+- API and UI support exactly two levels; a third level is rejected.
+- Active children block parent archiving, and an archived parent blocks child
+  restoration.
+- Archived categories remain readable in history. The public validation
+  contract rejects them for new operations and has an explicit historical-read
+  mode.
+- Category type is immutable while a financial operation references it; the
+  application use case checks the Operations-owned history contract.
+- Tree mutations and validation of a new operation reference serialize through
+  one transaction-level advisory lock.
 
 ### Financial schema
 
-- Миграция `0003_accounts_categories` добавляет `accounts`, `categories`,
-  `financial_operations`, `account_movements` и PostgreSQL enum-типы.
-- Миграция `0004_financial_operations` добавляет общие типы операций, calendar
+- Migration `0003_accounts_categories` adds `accounts`, `categories`,
+  `financial_operations`, `account_movements`, and PostgreSQL enum types.
+- Migration `0004_financial_operations` adds common operation types, calendar
   date, category reference, adjustment reason, optimistic version, journal
-  indexes и уникальность движения операции по счёту. Старые timestamps
-  преобразуются в дату через timezone приложения; downgrade заполняет обязательное
-  legacy-описание для записей alpha.3.
-- Миграция `0005_virtual_funds` добавляет определения фондов, события,
-  виртуальные движения, source checks, внешние ключи и history indexes.
-- Миграция `0006_recurring_operations` добавляет регулярные правила, ожидаемые
-  экземпляры, recurrence/status enum-типы, уникальный identity правила/даты,
-  confirmation link и calendar indexes.
-- Миграция `0007_fund_targets_recurrence` добавляет необязательные цели фондов,
-  интервалы/дни недели регулярных правил и тип виртуального перевода между фондами.
-- Миграция `0008_session_idle_timeout` добавляет серверный idle-timeout сессий,
-  `0009_scheduled_fund_allocation` — признак распределения для планового
-  перевода, `0010_default_account` — необязательный счёт по умолчанию.
-- Текущая единственная head-ревизия — `0011_dynamic_fund_allocation`.
+  indexes, and movement uniqueness per operation/account. Old timestamps
+  convert to date through application timezone; downgrade supplies a required
+  legacy description for alpha.3 rows.
+- Migration `0005_virtual_funds` adds fund definitions, events, virtual
+  movements, source checks, foreign keys, and history indexes.
+- Migration `0006_recurring_operations` adds recurrence rules, expected
+  occurrences, recurrence/status enums, unique rule/date identity,
+  confirmation link, and calendar indexes.
+- Migration `0007_fund_targets_recurrence` adds optional fund targets,
+  recurrence intervals and weekdays, and a virtual transfer type between funds.
+- Migration `0008_session_idle_timeout` adds server idle timeout,
+  `0009_scheduled_fund_allocation` adds planned-transfer allocation, and
+  `0010_default_account` adds an optional default account.
+- The single current head is `0011_dynamic_fund_allocation`.
 
 ### Financial operations and journal
 
-- Владелец может создавать, просматривать, редактировать и удалять доходы,
-  расходы, переводы и корректировки до ожидаемого остатка; composer вычисляет
-  точный signed delta для журнала.
-- Кнопка создания раскрывает четыре типа операции и сразу открывает composer
-  выбранного типа, сохраняя единый сценарий ввода и редактирования.
-- Доход и расход требуют активную категорию соответствующего типа; перевод
-  использует два разных активных счёта и остаётся одной операцией с двумя
-  противоположными движениями.
-- Создание, полная замена движений и удаление выполняются в транзакции запроса.
-  Затронутые счета блокируются в UUID-порядке, версия защищает от lost update.
-- Консервативная alpha-политика запрещает результат ниже нуля; неуспешная
-  проверка не сохраняет заголовок или часть перевода.
-- Журнал фильтруется по периоду, счёту, типу и категории, имеет server-side
-  пагинацию, стабильный порядок, раскрываемую деталь, transfer direction,
-  full-selection net total и локализованные ошибки.
-- Выбор счетов и категорий в журнале, регулярных правилах, фондах, прогнозе и
-  дереве категорий использует общий searchable combobox: prefix-поиск и до пяти
-  последних вариантов при пустом запросе.
-- Общий combobox поддерживает выбор клавиатурой и мышью; денежные поля принимают
-  точку или запятую и при потере фокуса нормализуются либо показывают ошибку.
-- Панель фильтров журнала по умолчанию свёрнута, активные условия остаются
-  видимыми chips.
-- Удаление счёта блокирует identity до проверки истории, поэтому конкурентное
-  проведение не превращается в необработанную FK-ошибку.
+- The owner can create, view, edit, and delete income, expense, transfer, and
+  expected-balance adjustment operations. The composer calculates the exact
+  signed journal delta.
+- The creation button reveals four types and immediately opens the selected
+  composer while keeping one entry/editing pattern.
+- Income and expense require an active matching category. Transfer uses two
+  different active accounts and remains one operation with two opposite
+  movements.
+- Creation, full movement replacement, and deletion occur in the request
+  transaction. Affected accounts lock in UUID order, and version protects
+  against lost update.
+- The conservative alpha policy rejects a result below zero. A failed check
+  stores neither a header nor half of a transfer.
+- Journal filters by period, account, type, and category. It has server-side
+  pagination, stable order, expandable details, transfer direction,
+  full-selection net total, and localized errors.
+- Account and category selection in journal, recurrence rules, funds, forecast,
+  and category tree uses one searchable combobox: prefix search and up to five
+  recent options for an empty query.
+- The shared combobox supports keyboard and mouse. Money fields accept dot or
+  comma and normalize on blur or show an error.
+- The journal filter panel is collapsed by default, while active conditions
+  remain visible as chips.
+- Account deletion locks identity before checking history, so a concurrent post
+  does not become an unhandled foreign-key error.
 
 ### Reports and fund perspective
 
-- Раздел «Отчёты» строит доходы или расходы за календарный месяц либо
-  произвольный период, показывает большую диаграмму категорий, точные итоги и
-  сгруппированный список операций с переходом в журнал.
-- В «Плане» отдельная перспектива фондов показывает диаграмму конечных долей и
-  линии остатков на горизонте основного прогноза. Текущие активные проценты
-  применяются только к actionable переводам с явным `allocate_to_funds`.
-- Оба read model используют публичные контракты модулей-владельцев и точную
-  decimal-арифметику; fund perspective не блокирует основной прогноз при своей
-  ошибке загрузки.
+- Reports builds income or expenses for a calendar month or custom period,
+  showing a large category chart, exact totals, and grouped operations linked
+  to the journal.
+- Plan has a separate fund perspective with an ending-share chart and balance
+  lines over the primary forecast horizon. Current active percentages apply
+  only to actionable transfers with explicit `allocate_to_funds`.
+- Both read models use public owner-module contracts and exact decimal
+  arithmetic. Fund-perspective loading failure does not block the primary
+  forecast.
 
 ### Virtual funds
 
-- Владелец может создавать, редактировать, архивировать и восстанавливать фонды;
-  активные проценты атомарно ограничены суммой 100%.
-- Остатки восстанавливаются из виртуального журнала и показаны общим итогом, по
-  счетам и через равенство physical = reserved + free.
-- Preview использует точную decimal-арифметику и округление вниз до четырёх
-  знаков; ручная коррекция и свободный remainder видимы до commit.
-- Расход может списать выбранный фонд или остаться без фонда. Перевод может
-  перенести одну виртуальную часть; перераспределение не меняет физические деньги.
-- CRUD fund-linked операции заменяет оба журнала в одной транзакции и повторно
-  проверяет coverage и non-negative positions.
-- История объединяет allocations, redistributions, expenses и transfers.
-- Экран явно различает выделение свободных денег, перенос уже существующего
-  назначения без физического движения и атомарный физический перевод с
-  последующим процентным распределением на счёте назначения.
-- ADR 0002 отдельно фиксирует posting model, lock order, rounding и archive policy.
-- Фонд имеет необязательную целевую сумму с точным прогрессом; экран показывает
-  прогресс каждого фонда и общий прогресс всех заданных целей.
-- Создание фонда может атомарно выделить сумму только ему. Перевод между двумя
-  фондами на одном счёте сохраняет физический баланс и общий reserved.
-- В динамическом режиме незаполненные неархивные фонды получают гарантированную
-  долю до 5% и пропорциональную абсолютному остатку часть. Проценты и денежное
-  распределение точно замыкаются на 100%, пересчитываются перед каждым
-  пополнением и допускают превышение цели без перераспределения внутри операции.
-- Заполненные и архивные фонды получают 0%; расход или восстановление
-  автоматически возвращает фонд в следующий расчёт, если он снова ниже цели.
-- Перспектива фондов последовательно пересчитывает динамические проценты после
-  каждого запланированного пополнения и явно показывает заблокированные события.
+- The owner can create, edit, archive, and restore funds. Active percentages
+  are atomically capped at a combined 100%.
+- Balances derive from the virtual journal and appear as total, by account, and
+  through physical = reserved + free.
+- Preview uses exact decimal arithmetic and rounds down to four places. Manual
+  correction and free remainder remain visible before commit.
+- An expense may consume a selected fund or remain fundless. A transfer may
+  move one virtual portion; redistribution changes no physical money.
+- CRUD for a fund-linked operation replaces both ledgers in one transaction and
+  rechecks coverage and non-negative positions.
+- History combines allocations, redistributions, expenses, and transfers.
+- The screen distinguishes reserving free money, moving an existing assignment
+  without physical movement, and an atomic physical transfer followed by
+  percentage allocation on the destination account.
+- ADR 0002 records posting model, lock order, rounding, and archive policy.
+- A fund has an optional target amount with exact progress; the screen shows
+  per-fund and combined progress.
+- Creating a fund may atomically reserve money only for it. Moving money between
+  two funds on one account preserves physical balance and total reserved.
+- In dynamic mode, incomplete non-archived funds receive a guaranteed share up
+  to 5% plus a portion proportional to absolute remaining target. Percentages
+  and money close exactly to 100%, recalculate before each top-up, and allow
+  target overshoot without redistribution within the same event.
+- Filled and archived funds receive 0%. Expense or restoration returns a fund
+  to the next calculation when it is below target again.
+- Fund perspective recalculates dynamic percentages sequentially after each
+  planned top-up and explicitly reports blocked events.
 
 ### Recurring rules and calendar
 
-- Владелец может создавать и редактировать регулярные доходы, расходы и
-  переводы с `daily`, `weekly`, `monthly` или `yearly` периодичностью, датой
-  начала и необязательной включительной датой окончания.
-- Явная materialization-команда синхронизирует экземпляры от текущей даты на
-  один календарный год вперёд. Rule lock и unique `(rule_id, scheduled_on)`
-  делают повторный и конкурентный запуск идемпотентным.
-- Изменение или отключение правила затрагивает только текущие/будущие
-  нетронутые экземпляры. Подтверждённые, перенесённые, вручную отменённые и
-  просроченные экземпляры не исчезают.
-- Подтверждение создаёт ровно одну фактическую операцию и записывает связь в той
-  же транзакции. Перенос и отмена не создают физических движений.
-- Календарь показывает месяц, фильтры по счёту и типу, а также быстрые
-  confirm/postpone/cancel действия только для событий текущего дня и overdue.
-- Месячная сетка загружает все страницы ограниченного диапазона; список действий
-  честно показывает первые 12 и полный размер выборки. Подтверждённый экземпляр
-  открывает точную связанную операцию, а mobile сначала показывает action list.
-- Rule edit блокирует экземпляры до category/account references; confirmation
-  берёт те же reference locks после экземпляра. Гонка сериализуется, а stale
-  confirmation получает optimistic conflict вместо проведения старого снимка.
-- Monthly правила ограничены днями 1–28, yearly не принимает 29 февраля;
-  после первого правила timezone заблокирован, а домен хранит calendar date без
-  времени.
-- Weekly правила выбирают несколько дней недели и интервал 1–3 недели; monthly
-  поддерживает интервал 1–3 месяца.
-- Правило без даты окончания продолжает скользящую материализацию на год вперёд,
-  а не завершается через год. Подтверждённая история защищена от rule edit.
-- При подтверждении можно скорректировать сумму одного экземпляра. Плановый
-  перевод может атомарно распределить поступление по активным фондам согласно
-  их заблокированному на время confirmation снимку процентов; ошибка
-  распределения откатывает перевод и confirmation link.
-- ADR 0003 фиксирует recurrence, materialization, synchronization и
+- The owner can create and edit recurring income, expense, and transfer with
+  `daily`, `weekly`, `monthly`, or `yearly` frequency, start date, and optional
+  inclusive end date.
+- An explicit materialization command synchronizes occurrences from today
+  through one calendar year. Rule lock and unique `(rule_id, scheduled_on)` make
+  repeated and concurrent execution idempotent.
+- Editing or disabling a rule affects only untouched current and future
+  occurrences. Confirmed, postponed, manually cancelled, and overdue
+  occurrences remain.
+- Confirmation creates exactly one actual operation and records the link in the
+  same transaction. Postponement and cancellation create no physical movement.
+- Calendar shows one month, account and type filters, and quick confirm,
+  postpone, and cancel actions only for today's and overdue events.
+- The month grid loads every page in the bounded range. The action list honestly
+  shows the first 12 and the full selection size. A confirmed occurrence opens
+  its exact operation, and mobile places the action list before the grid.
+- Rule edit locks occurrences before category and account references;
+  confirmation takes the same reference locks after the occurrence. The race
+  serializes, and stale confirmation receives an optimistic conflict rather
+  than posting an old snapshot.
+- Monthly rules permit days 1–28; yearly rules reject February 29. Timezone is
+  locked after the first rule, and the domain stores calendar dates without
+  time.
+- Weekly rules select multiple weekdays and intervals of 1–3 weeks. Monthly
+  supports intervals of 1–3 months.
+- A rule without end date continues rolling one-year materialization rather
+  than ending after one year. Confirmed history is protected from rule edits.
+- Confirmation may adjust one occurrence amount. A planned transfer may
+  atomically allocate its incoming money by the active-fund percentage snapshot
+  locked during confirmation; allocation failure rolls back transfer and link.
+- ADR 0003 records recurrence, materialization, synchronization, and
   confirmation policies.
 
 ### Balance forecasting
 
-- Владелец может открыть общий прогноз или выбрать конкретный, в том числе
-  архивный, счёт и горизонт: две недели, месяц, квартал, полгода или год.
-- Стартовая точка полностью выводится из фактического ledger. В будущую линию
-  входят только `pending` и `postponed` экземпляры с датой от сегодня до
-  включительного конца горизонта; confirmed/cancelled исключаются.
-- По умолчанию старт равен текущим свободным средствам: Funds одним batch-read
-  вычитает резервы по каждому счёту из physical ledger. Переключатель `total`
-  возвращает полный физический остаток, включая распределённые средства.
-- Будущий расход пока не выбирает фонд, поэтому free-режим применяет его к
-  текущей свободной стартовой точке без скрытого предположения об источнике
-  резерва. Переводы с явным процентным распределением показаны отдельно в
-  перспективе фондов.
-- События агрегируются в детерминированные daily closing points с точными
-  Decimal-суммами. Ответ содержит конец периода, минимум, первую возможную
-  отрицательную дату и точный closing balance этого дня; годовая визуальная
-  агрегация поэтому не теряет сумму первого daily cash-gap.
-- В общем scope внутренний перевод имеет нулевой net effect, но остаётся в
-  explanation. Для одного счёта тот же перевод является исходящим или входящим.
-- Просроченные события не сдвигаются молча: их scoped count показан отдельно с
-  переходом в календарь.
-- Один frontend view-model выводит safe-to-spend как `max(0, minimumBalance)`,
-  конец, минимум/дату, первый cash-gap/дату, доходы, расходы и net flow. KPI,
-  график, timeline, risk panel и period summary не пересчитывают эти значения
-  независимо.
-- Экран выделяет нулевую границу, отрицательную зону и risk-отрезок не только
-  цветом; Y-axis использует округлённые денежные деления, а tooltip сохраняет
-  точную сумму, изменение и число операций.
-- Фактический starting balance включён в шкалу и отмечен отдельной точкой
-  «Сейчас». Годовой monthly-график добавляет точный risk-marker, если дневной
-  cash-gap успел восстановиться к закрытию месяца; marker раскрывает операции
-  именно этого дня.
-- Single-account summary отдельно показывает ненулевой net effect переводов,
-  поэтому его общий поток объясним через доходы, расходы и transfer flow.
-- До полугода API и экран дают ежедневные closing points; год агрегируется по
-  месячным интервалам без потери исходных событий и точности daily risk checks.
-  Каждая точка имеет hover/focus tooltip с точным балансом, клик раскрывает её
-  события; timeline и risk items синхронно выбирают ту же дату. Неутверждённые
-  regression/recommendation слои в интерфейс не входят.
-- Forecasting — read-only модуль без таблиц и фоновой materialization; новая
-  миграция для beta.2 не добавлялась.
-- Forecast snapshot берёт shared locks на ожидаемые экземпляры и account
-  identities в том же порядке Scheduling → Accounts, что и confirmation.
-  Free-прогноз выбранного счёта делает один глобальный schedule snapshot и
-  фильтрует его в памяти: это сохраняет единую последовательность динамических
-  пополнений без повторного захвата occurrence locks.
-  Конкурентное подтверждение поэтому не может попасть одновременно в фактический
-  starting balance и плановую часть одного ответа.
-- Экран перед чтением прогноза синхронизирует rolling one-year materialization,
-  поэтому дальняя граница не зависит от того, когда последний раз открывался
-  календарь; сам forecast GET остаётся read-only.
+- The owner can open a combined forecast or select a specific account,
+  including archived, and choose two weeks, month, quarter, half-year, or year.
+- Starting point derives completely from the actual ledger. Only `pending` and
+  `postponed` occurrences dated from today through the inclusive horizon enter
+  the future line; confirmed and cancelled are excluded.
+- By default, start is current free money: one Funds batch read subtracts
+  per-account reserves from the physical ledger. `total` mode restores full
+  physical balance including allocated money.
+- Future expense does not yet select a fund, so free mode applies it to the
+  current free starting point without a hidden reserve-source assumption.
+  Transfers with explicit percentage allocation appear separately in fund
+  perspective.
+- Events aggregate into deterministic daily closing points with exact Decimal
+  amounts. Response includes period end, minimum, first possible negative date,
+  and exact closing balance for that day; annual visual aggregation therefore
+  does not lose the first daily cash-gap amount.
+- An internal transfer has zero net effect in combined scope but remains in the
+  explanation. For one account it is outgoing or incoming.
+- Overdue events never shift silently; their scoped count appears separately
+  with a Calendar link.
+- One frontend view model derives safe to spend as `max(0, minimumBalance)`, end,
+  minimum/date, first cash gap/date, income, expenses, and net flow. KPIs, chart,
+  timeline, risk panel, and period summary do not recalculate them separately.
+- The screen marks zero boundary, negative zone, and risk segment without color
+  alone. Y axis uses rounded monetary ticks; tooltip preserves exact amount,
+  change, and operation count.
+- Actual starting balance participates in scale and has a separate “Now” point.
+  The annual monthly chart adds an exact risk marker when a daily cash gap
+  recovers before month close; the marker opens that day's operations.
+- Single-account summary separately shows nonzero net transfer effect, so its
+  total flow is explainable through income, expenses, and transfer flow.
+- Through half-year, API and screen return daily closing points. Year aggregates
+  monthly without losing source events or daily-risk precision. Every point has
+  exact hover/focus tooltip; click reveals events, and timeline and risk items
+  select the same date. Unapproved regression/recommendation layers are absent.
+- Forecasting is a read-only module with no tables or background
+  materialization; beta.2 added no migration.
+- Forecast snapshot takes shared locks on expected occurrences and account
+  identities in the same Scheduling → Accounts order as confirmation. A
+  selected-account free forecast takes one global schedule snapshot and filters
+  in memory, preserving one dynamic-top-up sequence without retaking occurrence
+  locks. Concurrent confirmation therefore cannot enter both actual starting
+  balance and planned part of one response.
+- Before reading forecast, the screen synchronizes rolling one-year
+  materialization, so the far boundary does not depend on the last Calendar
+  visit. Forecast GET itself remains read-only.
 
 ## Verification snapshot
 
-- Документационный аудит и последующая реализация numeric UI-контракта
-  2026-08-18 подтвердили 70 passed и 53 PostgreSQL-сценария skipped без opt-in
-  для `make test-backend`, 109/109
-  frontend-тестов в 20 файлах, `make lint`, `make typecheck`, `make docs-check`
-  и production Angular build. PostgreSQL-сценарии были запрошены через
-  `make test`, но sandbox запретил соединение с `127.0.0.1:5432` (`Operation not
-  permitted`); Docker build и браузерные сценарии в этом повторном прогоне не
-  запускались. Последний полный снимок этих проверок приведён ниже.
-- Для `0.4.0` пройдены 70 non-PostgreSQL backend-тестов, 54/54 PostgreSQL
-  integration-теста и 109/109 frontend-тестов. Отдельно проверены формула для
-  1/20/21/25 фондов, точное замыкание процентов и денег, overshoot, пересчёт
-  после одного фонда, archive/restore, отсутствие активных целей, atomic
-  rollback, фиксация dynamic → manual, backup round trip и последовательный
-  прогноз. Ruff, mypy, Angular lint, Prettier, TypeScript, docs-check,
-  production Angular build и production Docker Compose build прошли. Code-review
-  hardening отдельно фиксирует единственный глобальный schedule snapshot для
-  account free forecast и восстановление dynamic backup, в котором неиспользуемая
-  сумма ручных процентов больше 100%.
-- На временной чистой PostgreSQL-базе пройдены `upgrade head`, `alembic check`,
-  `downgrade 0011 → 0010` и повторный `upgrade 0010 → 0011`; временная база
-  после проверки удалена.
-- Последний успешный сетевой audit 2026-08-17: `npm audit --omit=dev` сообщил 0
-  production vulnerabilities, а полный dev graph — high advisory для build-only
-  `nanoid 3.3.17`, зафиксированного существующим override. Повтор 2026-08-18 не
-  получил доступ к npm registry в sandbox; это состояние не выдается за
-  актуально перепроверенное.
-
-- `rc.1`: 97 backend-сценариев (52 non-PostgreSQL passed, 45 skipped без opt-in);
-  полный PostgreSQL integration snapshot 46/46 passed, включая атомарный
-  first-run restore, transfer-and-allocation и их rollback, а также forecasting
-  snapshot с обновлённым series contract.
-  Frontend: 63/63 теста passed; lint/format/typecheck/docs passed.
-- Исторический полный `npm audit` после прежних overrides сообщал 0 advisories;
-  актуальный снимок для `0.4.0` приведён выше.
-- Поиск `float` в финансовом backend-коде нашёл только входной rejection guard
-  и docstring о запрете float arithmetic.
-- PostgreSQL scenarios: clean migration/setup, protected API, CSRF/logout/login,
-  password/session revocation, expired sessions, sequential and concurrent rate
-  limiting, serialized settings currency lock and upgrade initialized data from
-  `0001_first_run_access` до head и upgrade базы `alpha.2` с начальной
-  корректировкой; account lifecycle,
-  initial adjustment/history protection, category lifecycle и конкурентные
-  reparent/archive-create races; immutable historical category type, operation
-  CRUD, filters/totals, version conflict, concurrent expenses, concurrent
-  account deletion, insufficient balance и injected rollback после первого
-  движения перевода; fund lifecycle, deterministic allocation, manual remainder,
-  fund-aware CRUD, redistribution, history, concurrent allocation и concurrent
-  fund consumption, serialized concurrent percentage definitions; rollback
-  после первого виртуального движения, откат
-  физической операции при нарушении coverage, archive-инвариант, upgrade
-  существующей alpha.3 базы и downgrade схемы alpha.4. Проверены
-  timezone-boundary upgrade и data-bearing downgrade alpha.3; recurrence rule
-  lifecycle, exact bounded dates (включая 367-дневное leap-year окно), all
-  operation types, no-balance-before-confirm,
-  idempotent confirmation, protected manual edits, overdue preservation,
-  concurrent materialization, concurrent confirmation/rule edit, duplicate
-  confirmation, scheduling auth/CSRF, injected confirmation rollback, alpha.4
-  upgrade и beta.1 downgrade; полный backup round trip на clean initialized
-  target, rollback invalid restore, rate-limited re-authentication, other-session
-  revocation и 50 MiB request limit.
-  Setup отдельно проверяет выбранные category templates, отклонение повторных
-  групп и атомарный first-run restore: ошибка после создания owner откатывает
-  credential и оставляет экземпляр неинициализированным.
-- Новые PostgreSQL regression-сценарии проверяют rollback определения фонда при
-  недоступной начальной сумме, сохранение physical/reserved при переводе между
-  фондами, прогресс выше 100%, агрегацию подкатегории в корень и database checks
-  для уникальных weekdays и допустимых recurrence intervals.
-- Frontend Vitest: 63 теста для access shell, session expiry, setup, settings,
-  health UI, счетов, категорий и журнала, включая timezone default, expected-balance
-  adjustment, archived edit reference, transfer direction, loading continuity,
-  точный manual allocation preview, invalidation устаревшего preview, процентный
-  лимит и выбор позиции фонда на физическом счёте; monthly calendar, overdue
-  state, missing-day validation, exact rule payload, quick confirmation, полную
-  пагинацию месяца, честный upcoming count, archived-reference edit state и
-  exact-operation link; forecast risk/explanation, account/horizon switches,
-  stale-loading, event-free state и календарную шкалу X.
-  Дополнительно проверены dashboard drill-down и частичная ошибка аналитики,
-  exact fund progress, optional decimal normalisation, recurrence weekdays и
-  скрытая/resettable панель фильтров журнала.
-  Settings дополнительно проверяет preview, полную replacement summary, точную
-  destructive phrase, restore payload и очистку пароля после ошибки. Новые
-  проверки фиксируют atomic first-run restore, disabled setup action при
-  невалидном/несовпадающем пароле, выбор onboarding templates, строго последние
-  варианты combobox, emoji-prefix search и устойчивость к повреждённому
-  localStorage; также сохранение скрытого sidebar и точный строковый формат денег.
-
-- Beta.1 calendar flow проверен в браузере на desktop и mobile: все пункты
-  narrow-навигации видимы, action list предшествует календарной сетке, статусы
-  выражены текстом, ограниченный список показывает `12 из 30`, а переход из
-  confirmed occurrence открывает точную операцию в начале страницы.
-- Ruff, Ruff format, strict mypy, ESLint, Prettier, strict TypeScript и docs check.
-- `alembic check` не обнаруживает drift между model metadata и схемой head;
-  migration env явно загружает Operations, Funds и Scheduling indexes/constraints.
-- Production Angular build 2026-08-18 и ранее проверенный production Docker
-  image build проходят; `npm ci` внутри образа сообщал 0 vulnerabilities.
-  Текущий Angular build предупреждает о превышении `anyComponentStyle` budget:
-  `forecast.css` 5.71 KiB, `funds.css` 6.86 KiB, `scheduling.css` 5.92 KiB,
-  `forecast-chart.css` 5.65 KiB, `app.css` 4.89 KiB и два скомпилированных
-  использования общего `directory.css` 6.86/4.35 KiB при пороге 4 KiB. Это не
-  блокирует сборку, но требует последующей декомпозиции общих стилей.
-- Production-like Compose e2e на отдельном clean volume: setup → authenticated
-  shell → settings update → logout → login; browser console без ошибок.
-- Settings/backup flow повторно проверен screenshot-аудитом на 1440 px и 390 px:
-  release label согласован с текущей версией, horizontal overflow отсутствует, destructive
-  flow раскрывается только после валидного preview, статусы имеют текст и ARIA role.
-- UX-stabilization 2026-08-12 проверена в production-like Compose через браузер:
-  setup action действительно заблокирован до совпадения валидных паролей; sidebar
-  скрывается и восстанавливается; composers счетов, операций, категорий и фондов
-  отсутствуют в исходном layout и открываются dialog-слоем; на момент проверки
-  суммы отображались как `100 000.00`, что больше не соответствует принятому
-  контракту `100 000,00`; категории разделены на доходы/расходы; overview показывает
-  фактические итоги. Сценарий `4 000.00` между счетами при доле фонда 25% атомарно
-  дал `1 000.00` нового назначения. Годовой forecast сохранил layout, показывает
-  оси «Сумма · RUB»/«Дата» и не содержит прежней нижней ленты сумм.
-- Redesign forecast проверен в браузере на 1440 × 1000 и 390 × 844: free/all
-  переключает series и safe-to-spend, клик по риску или событию выбирает точную
-  дату, body-level horizontal overflow отсутствует, график и timeline получают
-  собственную прокрутку на mobile, а roving tabindex оставляет одну keyboard
-  остановку на forecast-point series; browser console без ошибок. Финальное
-  сравнение с референсом зафиксировано в `design-qa.md` со статусом `passed`.
-- Композиционная итерация forecast убрала левую KPI-колонку: четыре decision KPI
-  собраны над рабочей областью, а риски и итоги перенесены под полноширинный
-  график. Chart viewport больше не имеет
-  собственной прокрутки; adaptive Y-domain исключает далёкий ноль для безопасной
-  положительной series и возвращает zero-line/tint при приближении к дефициту.
-  Area fill ослаблен, обычные markers скрыты до interaction, tooltip сокращён.
-- Free forecast учитывает будущие переводы с процентным распределением как
-  уменьшение свободных средств на точную распределяемую сумму; total forecast
-  сохраняет физическую нейтральность перевода. Нижняя ось графика не обрезается.
-- В обзоре круговая диаграмма показывается и для единственной категории. В
-  перспективе фондов удалён неинформативный line chart, а диаграмма структуры
-  увеличена и использует более контрастные цвета с точной текстовой легендой.
-- Меню добавления операции ограничено доступной шириной на узких экранах.
-- Для предыдущего `0.2.0` diff пройдены Ruff, backend format, mypy, Angular lint, Prettier,
-  TypeScript typecheck, docs-check, production Angular build,
-  61 non-PostgreSQL backend-тест, 96 frontend-тестов и 51/51 PostgreSQL
-  integration-сценариев. Интеграционный
-  прогон отдельно подтвердил idle-timeout/heartbeat, upgrade существующих сессий
-  от `0001`, free/total forecast с реальным резервом, бессрочные шаблоны,
-  подтверждение с корректировкой суммы и атомарное распределение перевода по
-  фондам вместе с прежними транзакционными сценариями финансовых модулей.
-- Для исправлений `0.3.0` пройдены 62 non-PostgreSQL backend-теста, 97 frontend-
-  тестов, 51/51 PostgreSQL integration-тест, Ruff, mypy,
-  Angular lint, Prettier, TypeScript typecheck, docs-check и production Angular
-  build. Сохраняются известные non-blocking предупреждения style budget.
+- Documentation audit and subsequent numeric UI implementation on 2026-08-18
+  confirmed 70 passed backend tests with 53 PostgreSQL scenarios skipped without
+  opt-in, 109/109 frontend tests across 20 files, `make lint`, `make typecheck`,
+  `make docs-check`, and production Angular build. `make test` requested the
+  PostgreSQL scenarios, but the sandbox blocked `127.0.0.1:5432` with
+  `Operation not permitted`; Docker build and browser scenarios were not rerun
+  in that pass. The latest complete snapshots are below.
+- For `0.4.0`, 70 non-PostgreSQL backend tests, 54/54 PostgreSQL integration
+  tests, and 109/109 frontend tests passed. Dedicated cases cover 1/20/21/25
+  funds, exact percentage and money closure, overshoot, recalculation after one
+  fund, archive and restore, no active targets, atomic rollback, dynamic to
+  manual freezing, backup round trip, and sequential forecast. Ruff, mypy,
+  Angular lint, Prettier, TypeScript, docs check, production Angular build, and
+  production Docker Compose build passed. Review hardening separately covers one
+  global schedule snapshot for account free forecast and restoration of a
+  dynamic backup whose unused manual percentages exceed 100%.
+- A temporary clean PostgreSQL database passed `upgrade head`, `alembic check`,
+  `downgrade 0011 → 0010`, and re-upgrade `0010 → 0011`, then was removed.
+- Latest successful network audit on 2026-08-17: `npm audit --omit=dev` reported
+  zero production vulnerabilities; the full development graph had a high
+  advisory for build-only `nanoid 3.3.17`, pinned by an existing override. The
+  2026-08-18 rerun could not reach the npm registry in the sandbox and is not
+  represented as current re-verification.
+- `rc.1`: 97 backend scenarios (52 non-PostgreSQL passed, 45 skipped without
+  opt-in); full PostgreSQL snapshot 46/46 passed, including atomic first-run
+  restore, transfer-and-allocation and rollback, and forecasting snapshot with
+  the updated series contract. Frontend 63/63 passed; lint, format, typecheck,
+  and docs passed.
+- A historical full `npm audit` after prior overrides reported zero advisories;
+  the current `0.4.0` state is described above.
+- Searching backend financial code for `float` found only the input rejection
+  guard and a docstring prohibiting float arithmetic.
+- PostgreSQL scenarios cover clean migration and setup, protected API,
+  CSRF/logout/login, password and session revocation, expiry, sequential and
+  concurrent throttling, serialized currency lock, and initialized upgrade from
+  `0001_first_run_access` to head; alpha.2 upgrade with an initial adjustment;
+  account and category lifecycles and concurrent races; immutable historical
+  category type; operation CRUD, filters and totals, conflicts, concurrent
+  expense and account deletion, insufficient balance, and injected transfer
+  rollback; fund lifecycle, deterministic allocation, manual remainder,
+  fund-aware CRUD, redistribution, history, concurrent allocation and
+  consumption, percentage-definition serialization, virtual rollback, coverage
+  rollback, archive invariant, alpha.3 upgrade, and alpha.4 downgrade; timezone
+  boundary, recurrence lifecycle, exact dates including a 367-day leap-year
+  window, every operation type, no balance before confirmation, idempotency,
+  protected manual edits, overdue preservation, concurrent materialization and
+  confirmation/edit, duplicate confirmation, scheduling auth/CSRF, injected
+  rollback, alpha.4 upgrade, beta.1 downgrade, full clean-target backup round
+  trip, invalid-restore rollback, throttled reauthentication, other-session
+  revocation, and the 50 MiB request limit. Setup separately covers selected
+  category templates, duplicate-group rejection, and atomic first-run restore.
+- New PostgreSQL regressions cover rollback of a fund definition when its
+  initial amount is unavailable, preservation of physical/reserved totals when
+  moving between funds, progress above 100%, child-category aggregation into
+  root, and database checks for unique weekdays and valid recurrence intervals.
+- Frontend Vitest historically covered 63 access-shell, session-expiry, setup,
+  settings, health, account, category, and journal cases; timezone default,
+  expected-balance adjustment, archived edit references, transfer direction,
+  loading continuity, exact manual allocation preview and invalidation,
+  percentage limit, physical-account fund position, monthly calendar, overdue
+  state, missing-day validation, exact rule payload, quick confirmation, full
+  month pagination, honest upcoming count, archived references, exact operation
+  links, forecast risk and explanations, scope/horizon switches, stale loading,
+  no-event state, and calendar X scale. Additional cases cover dashboard drill-
+  down and partial analytics failure, exact fund progress, optional decimal
+  normalization, recurrence weekdays, resettable journal filters, backup
+  preview and destructive confirmation, first-run restore, password validation,
+  onboarding templates, recent combobox options, emoji-prefix search, damaged
+  localStorage, hidden sidebar persistence, and exact money strings.
+- Beta.1 Calendar browser flow passed on desktop and mobile: all narrow-
+  navigation items were visible, action list preceded the grid, statuses used
+  text, the limited list showed `12 of 30`, and a confirmed occurrence opened
+  the exact operation at page start.
+- Ruff, Ruff format, strict mypy, ESLint, Prettier, strict TypeScript, and docs
+  check pass.
+- `alembic check` found no drift between model metadata and head schema;
+  migration environment explicitly loads Operations, Funds, and Scheduling
+  indexes and constraints.
+- Production Angular build on 2026-08-18 and the previously checked production
+  Docker image build pass; `npm ci` inside the image reported zero
+  vulnerabilities. Angular warns that `forecast.css` 5.71 KiB, `funds.css`
+  6.86 KiB, `scheduling.css` 5.92 KiB, `forecast-chart.css` 5.65 KiB,
+  `app.css` 4.89 KiB, and compiled `directory.css` uses of 6.86/4.35 KiB exceed
+  the 4 KiB `anyComponentStyle` warning budget. This is non-blocking but needs
+  later shared-style decomposition.
+- Production-like Compose e2e on a separate clean volume passed setup →
+  authenticated shell → settings update → logout → login with no browser-console
+  errors.
+- Settings and backup were screenshot-audited again at 1440 px and 390 px:
+  release label matched current version, no horizontal overflow existed,
+  destructive flow appeared only after valid preview, and statuses had text and
+  ARIA roles.
+- UX stabilization from 2026-08-12 was browser-checked in production-like
+  Compose: setup stayed disabled until valid passwords matched; sidebar hid and
+  restored; account, operation, category, and fund composers were absent from
+  baseline layout and opened as dialogs; values then rendered as `100 000.00`,
+  which no longer matches the accepted `100 000,00` contract; categories split
+  into income/expense; Overview showed actual totals. A `4 000.00` transfer
+  between accounts at a 25% fund share atomically created `1 000.00` of new
+  assignment. Annual forecast preserved layout, showed “Amount · RUB” and
+  “Date” axes, and removed the former amount strip.
+- Forecast redesign passed browser checks at 1440 × 1000 and 390 × 844: free/all
+  changed series and safe to spend, risk/event click selected the exact date,
+  body had no horizontal overflow, chart and timeline had mobile scrolling, and
+  roving tabindex left one keyboard stop in forecast points. Console was clean;
+  final reference comparison is `passed` in `design-qa.md`.
+- The forecast composition iteration removed the left KPI column: four decision
+  KPIs now sit above the workspace, with risks and totals below the full-width
+  chart. Chart viewport no longer scrolls. Adaptive Y domain excludes distant
+  zero for a safely positive series and restores zero line and tint near a
+  shortfall. Area fill is lighter, normal markers hide until interaction, and
+  tooltip is shorter.
+- Free forecast treats future percentage-allocated transfers as an exact
+  decrease in free money; total forecast keeps physical transfer neutrality.
+  The lower chart axis is not clipped.
+- Overview renders a circular chart even for one category. Fund perspective
+  removed an uninformative line chart; its composition chart is larger and uses
+  higher-contrast colors with an exact text legend.
+- The operation-add menu is constrained to available narrow-screen width.
+- The previous `0.2.0` diff passed Ruff, backend format, mypy, Angular lint,
+  Prettier, TypeScript, docs check, production Angular build, 61 non-PostgreSQL
+  backend tests, 96 frontend tests, and 51/51 PostgreSQL scenarios. Integration
+  separately confirmed idle timeout and heartbeat, session upgrade from `0001`,
+  free/total forecast with real reserves, open-ended templates, confirmation
+  with amount adjustment, and atomic transfer allocation.
+- The `0.3.0` corrections passed 62 non-PostgreSQL backend tests, 97 frontend
+  tests, 51/51 PostgreSQL integration tests, Ruff, mypy, Angular lint, Prettier,
+  TypeScript, docs check, and production Angular build. Known non-blocking style
+  budget warnings remain.
 
 ## Release assumptions and technical debt
 
-- По последнему успешному audit 2026-08-17 build-only dependency
-  `nanoid 3.3.17` имел high advisory, а runtime production graph был чист.
-  Нужны новый сетевой audit, отдельный совместимый dependency update и полный
-  повтор проверок, чтобы не расширять функциональный diff этого релиза.
-- Style-budget warnings остаются для `funds.css`, `forecast.css`,
-  `forecast-chart.css`, `scheduling.css`, `directory.css` и `app.css`; новый UI
-  режима увеличил `funds.css` до 6.86 KiB при warning-пороге 4 KiB.
-
-- Срок сессии, password policy и throttle являются документированными alpha
-  defaults, а не окончательно утверждённой долгосрочной политикой.
-- Password recovery отсутствует; потеря мастер-пароля не должна переоткрывать
-  обычный setup.
-- Нет «remember me» и фонового cleanup истёкших сессий; absolute и idle cleanup
-  выполняется при следующем успешном login, а guard отклоняет их до удаления.
-- Throttle глобален для экземпляра, а не IP: это надёжно за неизвестным proxy,
-  но позволяет локальный denial-of-service серией неверных попыток.
-- Currency validation проверяет форму ISO 4217-style кода, но не использует
-  внешний реестр. Currency-specific scale и exchange rates не спроектированы;
-  фонды используют документированный общий alpha-scale 4.
-- Currency lock требует вызова публичного settings-контракта в транзакции первого
-  monetary/account write; account creation выполняет этот контракт через
-  application-layer use case, category creation не блокирует валюту.
-- `NUMERIC(20,4)` — единый alpha-envelope, а не утверждённая currency-specific
-  политика precision/rounding.
-- Список счетов вычисляет остаток отдельным агрегатным запросом на счёт; при
-  большом количестве счетов потребуется batch read model.
-- Journal response пока разрешает имена отдельными запросами на операцию; перед
-  большими объёмами нужен batch read model.
-- Fund summary и объединённая history используют несколько агрегатных запросов
-  и Python-side pagination; при измеренном росте нужен read projection.
-- Alpha.4 поддерживает один фонд на расход/перевод и распределение на одном
-  счёте; автоматическое распределение дохода намеренно отсутствует.
-- Редактирование заменяет движения и увеличивает version. Отдельная неизменяемая
-  история прежних значений и удалений (`audit trail`) намеренно не требуется в
-  текущем single-owner scope. Описание обычной операции остаётся опциональным.
-- Запрет отрицательного остатка подтверждён для всех типов счетов текущего
-  релиза. Account-specific overdraft требует отдельной будущей модели и UI.
-- Advisory lock намеренно сериализует редкие мутации всего category tree; при
-  доказанной необходимости высокой write-concurrency потребуется более узкая схема блокировок.
-- HTTPS reverse-proxy configurations и CSP не проверены внешним security audit.
-- Backup schema 1 имеет строгую совместимость и 50 MiB request limit. SHA-256
-  защищает от случайной порчи, но не аутентифицирует источник; шифрование и
-  цифровая подпись backup остаются вне MVP.
-- Frontend lock временно фиксирует MCP SDK, `hono` и `nanoid` через `overrides`
-  внутри Angular build tooling. Нельзя считать старый pin автоматически
-  безопасным: overrides нужно пересматривать вместе с сетевым audit и
-  обновлением Angular toolchain.
-- Upgrade существующей `0004 → 0005` и schema downgrade `0005 → 0004` проверены.
-  Downgrade удаляет фондовые данные, поэтому production rollback требует backup
-  и явного принятия потери alpha.4 ledger.
-- Материализация запускается календарём или явным API-вызовом; background worker
-  намеренно отсутствует. Если календарь долго не открывать, новый дальний край
-  годового окна появится при следующем запуске, а ранее созданные overdue
-  экземпляры сохранятся.
-- Rule/occurrence responses пока разрешают имена отдельными запросами; перед
-  большим числом ежедневных правил потребуется batch calendar read model.
-- Архивация счёта или категории не отключает правило автоматически. При
-  подтверждении такого экземпляра backend вернёт понятную invalid-reference
-  ошибку; автоматическая lifecycle policy отложена.
-- Timezone migration расписания не реализована: после первого правила смена
-  timezone отклоняется, а явный migration flow отложен.
-- Годовой forecast возвращает все explaining events и удерживает shared locks на
-  выбранных occurrences/accounts до завершения запроса. При измеренном росте
-  правил потребуется консистентная read projection, но молчаливое усечение
-  объяснений не допускается.
+- At the latest successful audit on 2026-08-17, build-only `nanoid 3.3.17` had
+  a high advisory while the runtime production graph was clean. A fresh network
+  audit, compatible dependency update, and full recheck are required without
+  expanding this release's functional diff.
+- Style-budget warnings remain for `funds.css`, `forecast.css`,
+  `forecast-chart.css`, `scheduling.css`, `directory.css`, and `app.css`.
+- Session lifetime, password policy, and throttle are documented alpha defaults,
+  not approved long-term policy.
+- Password recovery is absent; losing the master password must not reopen normal
+  setup.
+- There is no remember-me or background expired-session cleanup. Absolute and
+  idle cleanup occurs on next successful login, while guards reject expired
+  sessions before deletion.
+- Throttle is instance-wide rather than per-IP. This is reliable behind an
+  unknown proxy but permits local denial of service through repeated failures.
+- Currency validation checks an ISO-4217-style shape without an external
+  registry. Currency-specific scale and exchange rates are undesigned; funds
+  use documented shared alpha scale 4.
+- Currency lock relies on financial modules calling the public Settings contract
+  in the first monetary/account write transaction. Account creation does so
+  through the application use case; category creation does not lock currency.
+- `NUMERIC(20,4)` is one alpha envelope, not an approved currency-specific
+  precision/rounding policy.
+- Account list performs one aggregate balance query per account; many accounts
+  will require a batch read model.
+- Journal responses may resolve names through per-operation queries; larger
+  volumes require a batch read model.
+- Fund summary and combined history use several aggregate queries and Python-
+  side pagination; measured growth will require a read projection.
+- Alpha.4 supports one fund per expense/transfer and allocation on one account;
+  automatic income allocation is intentionally absent.
+- Editing replaces movements and increments version. A separate immutable
+  history of previous values and deletions is intentionally unnecessary in the
+  current single-owner scope. Ordinary operation description remains optional.
+- Negative balance is forbidden for every current account type. Account-
+  specific overdraft needs a separate future model and UI.
+- One advisory lock intentionally serializes rare mutations of the entire
+  category tree. Proven high write concurrency may require narrower locking.
+- HTTPS reverse-proxy configurations and CSP have no external security audit.
+- Backup schema 1 has strict compatibility and a 50 MiB request limit. SHA-256
+  detects accidental corruption but does not authenticate the source;
+  encryption and signature remain outside MVP.
+- Frontend lock temporarily pins MCP SDK, `hono`, and `nanoid` through Angular
+  build-tool overrides. An old pin is not automatically safe; review overrides
+  with a network audit and Angular toolchain update.
+- Existing `0004 → 0005` upgrade and `0005 → 0004` schema downgrade were tested.
+  Downgrade removes fund data, so production rollback needs a backup and
+  explicit acceptance of alpha.4 ledger loss.
+- Materialization runs from Calendar or explicit API; no background worker is
+  intentional. If Calendar stays closed, the new far edge of the one-year
+  window appears at next run while existing overdue occurrences remain.
+- Rule and occurrence responses may resolve names through individual queries;
+  many daily rules will require a batch Calendar read model.
+- Archiving an account or category does not disable a rule automatically.
+  Confirmation returns a clear invalid-reference error; automatic lifecycle
+  policy is deferred.
+- Schedule timezone migration is absent. Timezone change is rejected after the
+  first rule; an explicit migration flow is deferred.
+- Annual forecast returns every explaining event and holds shared locks on
+  selected occurrences/accounts for the request. Measured growth may require a
+  consistent read projection, but explanations must never be silently truncated.
 
 ## Outside current scope
 
-- Поиск, saved filters, running balance и bulk actions.
-- Account-specific overdraft, pending bank transactions, полноценный
-  reconciliation workflow и currency-specific precision/rounding.
-- Автоматическое/мультисчётное распределение, несколько фондов на одну операцию
-  и target dates.
-- Liabilities, debts и их будущие платежи в прогнозе.
-- What-if сценарии, stop-loss, системная граница риска, сохранённые сравнения и
-  локальный AI-adapter «Оракул».
-- Recurrence intervals за пределами 1–3, дни месяца 29–31, leap-day policy,
-  drag-and-drop, уведомления и background materialization.
-- Импорт CSV/Excel, совместимость backup-схем после schema 1 и password recovery.
-- Несколько пользователей, роли, permissions, organizations и tenants.
-- Внешняя инфраструктура, Redis, broker, background workers и cloud identity.
+- Search, saved filters, running balance, and bulk actions.
+- Account-specific overdraft, pending bank transactions, full reconciliation,
+  and currency-specific precision/rounding.
+- Automatic or multi-account allocation, several funds per operation, and
+  target dates.
+- Liabilities, debts, and their future forecast payments.
+- What-if scenarios, stop-loss, system-suggested risk boundary, saved
+  comparisons, and the local Oracle AI adapter.
+- Recurrence intervals outside 1–3, month days 29–31, leap-day policy, drag and
+  drop, notifications, and background materialization.
+- CSV/Excel import, backup compatibility after schema 1, and password recovery.
+- Multiple users, roles, permissions, organizations, and tenants.
+- External infrastructure, Redis, broker, background workers, and cloud
+  identity.
 
 ## Recommended next action
 
-Провести owner acceptance: восстановить реальный backup на отдельном экземпляре
-и начать период ежедневного использования; затем обновить Angular toolchain и
-проверить, можно ли удалить временные dependency overrides.
+Perform owner acceptance: restore a real backup into a separate instance and
+begin a period of daily use. Then update the Angular toolchain and determine
+whether temporary dependency overrides can be removed.

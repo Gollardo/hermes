@@ -1,212 +1,213 @@
 # Transactions
 
-## Статус
+## Status
 
-В `0.1.0-alpha.4` журнал дополнен виртуальными движениями фонда: серверные фильтры по
-периоду, счёту, типу и категории, пагинация, раскрываемая деталь, редактирование
-и удаление. Активные фильтры видимы как chips; количество и чистое изменение
-относятся ко всей выборке. Desktop использует плотные карточки, а не таблицу;
-эта текущая композиция утверждена владельцем 2026-08-18 как baseline первого
-публичного релиза. Документ не утверждает tags, saved filters, поиск или bulk
-edit до соответствующих решений; отдельная immutable change history признана
-лишней для текущего single-owner продукта.
+In `0.1.0-alpha.4`, the journal gained virtual fund movements, server filters by
+period, account, type, and category, pagination, expandable detail, editing, and
+deletion. Active filters appear as chips; count and net change apply to the
+whole selection. Desktop uses dense cards rather than a table. The owner
+approved this composition on 2026-08-18 as the first-public-release baseline.
+This document does not approve tags, saved filters, search, or bulk editing
+before their respective decisions. A separate immutable change history is
+unnecessary for the current single-owner product.
 
-Визуальная корректировка 2026-08-17 сохраняет раскрываемый alpha-список, но
-убирает вложенные карточки: записи сгруппированы по датам, показывают валюту и
-физический счёт, фильтры встроены в заголовок журнала, а раскрытие обозначено
-компактным индикатором. Деталь явно разделяет тип, физические и виртуальные
-движения. Таблица и отдельный detail-layer остаются возможными будущими
-альтернативами, а не требованиями первого релиза.
+The visual refinement on 2026-08-17 preserves the expandable alpha list while
+removing nested cards. Entries group by date, show currency and physical
+account, filters live in the journal header, and a compact indicator marks
+disclosure. Detail clearly separates type, physical movements, and virtual
+movements. A table and separate detail layer remain future alternatives rather
+than first-release requirements.
 
-## Цель экрана
+## Screen goal
 
-Быть точным и быстрым рабочим журналом фактических финансовых операций: ввести
-серию фактов, принять проверенный импорт, найти операцию, проверить её эффект,
-исправить ошибку и перейти к связанному контексту.
+Serve as a precise, fast working journal of actual financial operations: enter
+a series of facts, accept a reviewed import, find an operation, verify its
+effect, correct a mistake, and open related context.
 
-## Главные пользовательские задачи
+## Primary user jobs
 
-- просмотреть операции в устойчивом хронологическом порядке;
-- найти операцию по тексту, сумме или связанным сущностям;
-- отфильтровать по периоду, счёту, типу и категории;
-- открыть доход, расход, перевод или корректировку;
-- увидеть все физические и виртуальные эффекты одной операции;
-- редактировать или удалить операцию атомарно;
-- создать новую операцию в текущем контексте;
-- последовательно создать несколько операций за день;
-- после реализации import scope запустить отдельный preview/confirmation flow;
-- перейти к счёту, категории или фонду.
+- browse operations in stable chronological order;
+- find an operation by text, amount, or related entities;
+- filter by period, account, type, and category;
+- open income, expense, transfer, or adjustment;
+- see every physical and virtual effect of one operation;
+- edit or delete an operation atomically;
+- create a new operation in current context;
+- create several operations for one day in sequence;
+- after import scope exists, use its separate preview and confirmation flow;
+- open the related account, category, or fund.
 
-## Важная информация
+## Important information
 
-Базовая desktop-строка содержит:
+A baseline desktop row contains:
 
-- дату;
-- понятный смысл: описание либо утверждённое основное текстовое поле;
-- тип операции;
-- затронутый счёт или направление перевода;
-- категорию для дохода/расхода;
-- фонд, если он участвует;
-- точную сумму и валюту;
-- явный признак архивной ссылки, если он важен для понимания истории.
+- date;
+- understandable meaning: description or another approved primary text field;
+- operation type;
+- affected account or transfer direction;
+- category for income or expense;
+- participating fund, if any;
+- exact amount and currency;
+- explicit archived-reference marker where it matters to history.
 
-Для account-scoped регистра полезен running balance после операции, если
-ordering semantics позволяют рассчитать его однозначно. В общем журнале такой
-столбец может вводить в заблуждение и не должен появляться автоматически.
+An account-scoped register may benefit from running balance after each operation
+when ordering semantics make it unambiguous. That column may mislead in the
+combined journal and must not appear automatically.
 
-## Второстепенная информация
+## Secondary information
 
-- точное время и timezone после утверждения модели дат;
-- причина корректировки;
-- ссылка на ожидаемое событие;
-- created/updated metadata и история версий после решения audit model;
-- технические движения и идентификаторы в раскрытой детали;
-- заметки, если описание останется опциональным, и tags только после утверждения
-  этих понятий;
-- дополнительные selection totals и bulk actions как развитие доказанного
-  сценария; чистое изменение всей отфильтрованной выборки уже реализовано.
+- exact time and timezone after the date model is approved;
+- adjustment reason;
+- expected-event link;
+- created/updated metadata and version history after an audit-model decision;
+- technical movements and identifiers in expanded detail;
+- notes if description remains optional, and tags only after approval;
+- additional selection totals and bulk actions as a proven workflow develops;
+  net change across the full filtered selection already exists.
 
-## Управление большим количеством данных
+## Managing large data volumes
 
-### Фильтры
+### Filters
 
-- Базовые: период, счёт, тип, категория.
-- Панель фильтров по умолчанию свёрнута и раскрывается явной кнопкой; активные
-  chips и сброс остаются видимыми без открытия панели.
-- Участвующий фонд и его движения показаны в раскрываемых деталях.
-- Активные условия видимы как chips и отражаются в заголовке результата.
-- Сброс возвращает явный default текущего экрана — весь журнал без фильтров, а
-  не неизвестное состояние.
-- Количество и чистое изменение результатов относятся ко всей выборке, а не
-  только к странице. Без фильтра счёта это сумма всех физических движений и
-  перевод даёт ноль; с фильтром — сумма движений выбранного счёта.
-- Сохранённые фильтры остаются в backlog после `0.4.0` до наблюдения
-  повторяющихся запросов.
+- Baseline filters: period, account, type, and category.
+- The filter panel is collapsed by default and opens with an explicit button;
+  active chips and reset remain visible without opening it.
+- Participating fund and movements appear in expandable details.
+- Active conditions appear as chips and in the result heading.
+- Reset returns to the screen's explicit default—the entire unfiltered journal,
+  not an unknown state.
+- Result count and net change apply to the whole selection rather than one
+  page. Without an account filter, this is the sum of all physical movements
+  and a transfer nets to zero; with a filter, it is the movement sum for that
+  account.
+- Saved filters remain backlog after `0.4.0` until repeated queries are
+  observed.
 
-### Поиск
+### Search
 
-Поиск работает по утверждённым текстовым полям и не маскирует активные фильтры.
-Результат объясняет, где найдено совпадение. Точный поиск по сумме должен
-учитывать формат валюты и decimal, а не преобразовывать значение через `float`.
+Search covers approved text fields and never hides active filters. A result
+explains where the match occurred. Exact amount search respects currency and
+decimal formats instead of converting through `float`.
 
-### Сортировка и пагинация
+### Sorting and pagination
 
-Default ordering определяется доменной политикой date/time и стабильным
-tie-breaker. Пользовательская сортировка допустима для понятных колонок. При
-возврате из детали сохраняются страница, scroll, фильтры и selection.
+Default ordering follows domain date/time policy and a stable tie-breaker. User
+sorting is acceptable for understandable columns. Returning from details
+preserves page, scroll position, filters, and selection.
 
-Server-side pagination является базовой гипотезой roadmap. Infinite scroll не
-подходит как единственный режим: он затрудняет возврат, totals и ощущение
-границы выборки.
+Server-side pagination is the baseline roadmap hypothesis. Infinite scrolling
+is unsuitable as the only mode because it obstructs return, totals, and a sense
+of selection boundaries.
 
-### Desktop и mobile
+### Desktop and mobile
 
-Текущий alpha-прототип использует адаптивные плотные карточки и на desktop, и на
-mobile: смысл и сумма находятся в первой строке, дата/счёт/категория — рядом или
-ниже в зависимости от ширины. Таблица и отдельный detail-layer остаются
-направлением следующей проверки, а не описанием реализованного экрана.
+The current alpha prototype uses adaptive dense cards on desktop and mobile:
+meaning and amount occupy the first row, while date, account, and category sit
+beside or below them according to width. A table and separate detail layer
+remain directions for future validation rather than descriptions of the
+implemented screen.
 
-## Основные действия
+## Primary actions
 
-- создать операцию;
-- создать серию через «Сохранить и добавить ещё»;
-- импортировать операции после реализации отдельного import pipeline;
-- открыть деталь;
-- редактировать;
-- удалить с конкретным объяснением последствий;
-- применить/снять фильтр;
-- перейти к связанному счёту, категории или фонду;
-- повторить/создать по образцу после отдельного решения по backlog;
-- выбрать несколько строк и выполнить утверждённое bulk action в будущем.
+- create an operation;
+- create a series through “Save and add another”;
+- import operations after the separate import pipeline exists;
+- open details;
+- edit;
+- delete with a concrete explanation of consequences;
+- apply or remove a filter;
+- open a related account, category, or fund;
+- duplicate or create from a template after a separate backlog decision;
+- select several rows and perform an approved future bulk action.
 
-## Деталь операции
+## Operation details
 
-Detail view показывает одну пользовательскую операцию, а не отдельные ledger
-rows как самостоятельные факты:
+Detail presents one user operation, not individual ledger rows as independent
+facts:
 
-- тип, дата, сумма и описание;
-- исходный/целевой счёт;
-- категория;
-- физические движения;
-- виртуальные движения фонда;
-- связь с ожидаемым событием;
-- итоговый эффект;
-- lifecycle/audit metadata, если оно будет утверждено.
+- type, date, amount, and description;
+- source and destination accounts;
+- category;
+- physical movements;
+- virtual fund movements;
+- expected-event link;
+- total effect;
+- lifecycle or audit metadata if later approved.
 
-На desktop предпочтительна side panel для чтения без потери списка. Сложное
-редактирование может открываться в полноценном composer. На mobile деталь может
-быть отдельным route с сохранением контекста возврата.
+A side panel is preferable on desktop for reading without losing the list.
+Complex editing may open a full composer. On mobile, detail may be a separate
+route with return context preserved.
 
-## Возможные состояния
+## Possible states
 
-### Пустой журнал
+### Empty journal
 
-Объяснить, что баланс формируется операциями, и предложить создать первую.
-Начальная корректировка может быть показана как отдельный явно названный тип.
+Explain that operations form the balance and offer creation of the first one.
+An initial adjustment may appear as a separately named type.
 
-### Нет результатов фильтра
+### No filter results
 
-Показать активные условия, быстрый сброс и отсутствие совпадений. Не предлагать
-создать новую операцию как будто журнал пуст глобально.
+Show active conditions, quick reset, and no matches. Do not suggest a new
+operation as though the global journal were empty.
 
-### Много операций в один день
+### Many operations on one day
 
-Группировка по дню допустима, но не заменяет устойчивое ordering. Итог дня
-отделяется от итогов всей выборки.
+Day grouping is acceptable but does not replace stable ordering. A day total is
+distinct from full-selection totals.
 
-### Перевод
+### Transfer
 
-Одна строка с направлением и одной пользовательской суммой. В детали видны оба
-движения. Нельзя показывать перевод как независимые расход и доход в общем
-журнале.
+Show one row with direction and one user amount. Details expose both movements.
+Do not show a transfer as independent expense and income rows in the combined
+journal.
 
-### Корректировка
+### Adjustment
 
-Отдельный тип с причиной и изменением остатка. Он не маскируется под обычный
-доход/расход.
+Use a separate type with reason and balance change. Do not disguise it as
+ordinary income or expense.
 
-### Архивные сущности
+### Archived entities
 
-Исторические названия остаются читаемыми и имеют ненавязчивую отметку «в
-архиве». Клик может открыть read-only контекст или восстановление, если оно
-допустимо.
+Historical names remain readable with a quiet “Archived” marker. Selection may
+open read-only context or restoration when allowed.
 
-### Удаление или редактирование с фондом
+### Deleting or editing with a fund
 
-Detail/confirmation показывает физический и виртуальный эффект. После commit
-список, totals и связанный dashboard обновляются согласованно.
+Detail or confirmation shows physical and virtual effects. After commit, list,
+totals, and related dashboard update coherently.
 
-### Загрузка следующей страницы
+### Loading another page
 
-Текущие строки не исчезают без необходимости; loading state не меняет ширину
-колонок. Ошибка следующей страницы сохраняет уже загруженные данные и даёт retry.
+Current rows remain visible where possible; loading does not alter column
+widths. A next-page failure preserves already loaded data and offers retry.
 
-### Конкурентное изменение
+### Concurrent change
 
-Операция не перезаписывается молча. Пользователь видит актуальную версию,
-сохраняет свой черновик и повторно подтверждает последствия.
+The operation is never silently overwritten. The owner sees the current
+version, keeps their draft, and reconfirms consequences.
 
-## Ошибки UX, которых нужно избегать
+## UX failures to avoid
 
-- отдельные строки расхода и дохода для одного перевода;
-- отсутствие текущих фильтров на экране;
-- total только по видимой странице без подписи;
-- смешение ожидаемых и фактических операций;
-- непредсказуемый порядок операций с одинаковой датой;
-- скрытый fund effect;
-- редактирование balance из строки счёта вместо корректировки;
-- бесконечный scroll без стабильного возврата;
-- горизонтально обрезанная desktop-таблица на mobile;
-- иконка/цвет вместо текстового типа;
-- удаление из row action без объяснения пересчёта;
-- сброс фильтров после возврата из детали;
-- преждевременные payee, tags и bulk patterns до утверждения модели.
+- separate expense and income rows for one transfer;
+- invisible current filters;
+- an unlabeled total covering only the visible page;
+- mixing expected and actual operations;
+- unstable ordering for operations sharing a date;
+- hidden fund effect;
+- editing account balance directly instead of creating an adjustment;
+- endless scrolling without stable return;
+- a horizontally clipped desktop table on mobile;
+- icon or color replacing textual type;
+- deletion from a row action without explaining recalculation;
+- resetting filters after returning from details;
+- premature payee, tag, and bulk patterns before model approval.
 
-## Вопросы для проверки прототипа
+## Questions for prototype validation
 
-- Достаточно ли описания, категории и суммы для поиска обычной операции?
-- Нужен ли account register отдельно от общего журнала или достаточно одного
-  экрана с scope?
-- Какие фильтры используются ежедневно и какие можно скрыть в «Ещё»?
-- Нужен ли running balance в account-scoped режиме?
-- Какой объём данных считать нормальным для desktop и mobile теста?
+- Are description, category, and amount sufficient to find an ordinary
+  operation?
+- Is a separate account register necessary, or is one journal with scope
+  sufficient?
+- Which filters are used daily, and which belong under “More”?
+- Is running balance needed in account-scoped mode?
+- What data volume is normal for desktop and mobile tests?

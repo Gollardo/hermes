@@ -1,226 +1,225 @@
 # Operation entry
 
-## Статус
+## Status
 
-Основной UX-фокус подтверждён владельцем 2026-08-02. После owner review
-2026-08-12 composer перенесён из постоянной колонки журнала в modal-слой. Он использует
-alpha-модель ADR 0001: отрицательный остаток блокируется, конфликт версии не
-перезаписывается молча, отдельная неизменяемая история правок текущему продукту
-не требуется, а currency-specific rounding остаётся открытым. Тип изначально не
-выбран, primary action включается только для
-полной формы, а дата по умолчанию вычисляется в timezone приложения.
+The owner confirmed the primary UX focus on 2026-08-02. After owner review on
+2026-08-12, the composer moved from a permanent journal column to a modal layer.
+It uses the ADR 0001 alpha model: negative balance is blocked, a version
+conflict never overwrites silently, the current product does not require a
+separate immutable edit history, and currency-specific rounding remains open.
+No type is selected initially, the primary action is enabled only for a
+complete form, and the default date is calculated in the application timezone.
 
-Для fund-aware расхода или перевода список зависит от выбранного счёта
-списания: показывается доступная позиция фонда именно на этом счёте, а не общий
-остаток фонда. Архивный фонд сохраняется при открытии связанной операции на
-редактирование, но результат всё равно обязан сохранить archive-инвариант.
+For a fund-aware expense or transfer, available funds depend on the selected
+source account: the interface shows the fund position on that account rather
+than the fund's combined balance. An archived fund remains visible when editing
+a linked operation, but the result must still preserve the archive invariant.
 
-Modal вызывается из заголовка журнала или контекстного редактирования и не
-уменьшает ширину журнала в состоянии просмотра.
-Главное действие является доступным с клавиатуры выпадающим меню четырёх типов;
-выбор сразу открывает composer нужного типа. Для нового дохода или расхода
-активный счёт из настройки подставляется автоматически, но остаётся изменяемым.
+The modal opens from the journal header or contextual editing and does not
+reduce journal width while browsing. The primary action is a keyboard-accessible
+dropdown of four types; selecting one immediately opens the matching composer.
+For new income or expense, the configured active default account is prefilled
+but remains editable.
 
-Текущий composer использует одинаковую геометрию native и searchable controls,
-двухколоночную группировку связанных полей на широком экране и одну колонку на
-узком. Заголовок и action footer остаются видимыми при прокрутке длинного типа
-операции. Необязательное описание раскрывается по запросу; обязательная причина
-корректировки остаётся видимой сразу.
+The current composer uses the same geometry for native and searchable controls,
+a two-column grouping of related fields on wide screens, and one column on
+narrow screens. The title and action footer remain visible while a long
+operation form scrolls. Optional description appears on request; the required
+adjustment reason is visible immediately.
 
-## Цель экрана
+## Screen goal
 
-Позволить быстро и приятно зафиксировать один или серию финансовых фактов,
-заранее показав их эффект на счета и, при необходимости, фонды.
+Record one or a series of financial facts quickly and pleasantly while showing
+their account and, where relevant, fund effects in advance.
 
-Текущий modal для обычной операции утверждён владельцем 2026-08-18 как
-release-baseline. Side panel может исследоваться позже только как возможная
-альтернатива, а не как требование первого публичного релиза.
+The owner approved the current modal for ordinary operations on 2026-08-18 as
+the release baseline. A side panel may be explored later only as an alternative,
+not a first-public-release requirement.
 
-## Главные пользовательские задачи
+## Primary user jobs
 
-- выбрать тип операции;
-- для дохода/расхода сначала выбрать обязательную категорию;
-- затем ввести точную сумму;
-- указать затронутый счёт или пару счетов;
-- при расходе выбрать источник фонда или свободные деньги;
-- проверить дату факта и при необходимости описание;
-- понять итоговое влияние и сохранить;
-- быстро перейти к следующей операции при пакетном ручном вводе.
+- select operation type;
+- for income or expense, choose the required category first;
+- enter the exact amount;
+- specify the affected account or account pair;
+- for an expense, choose a fund source or free money;
+- verify the fact date and optional description;
+- understand the total effect and save;
+- move quickly to the next operation during batch manual entry.
 
-## Модель по типам
+## Model by type
 
-### Доход
+### Income
 
-Обязательные данные: сумма, целевой счёт, дата и категория дохода согласно
-утверждённой модели. Описание остаётся доступным, но его обязательность нужно
-решить отдельно.
+Required data: amount, destination account, date, and income category under the
+approved model. Description remains available, but whether it must be required
+is a separate decision.
 
-После появления фондов доход не распределяется автоматически без явного
-owner-confirmed правила. Можно предложить отдельное действие «Сохранить и
-распределить», если сценарий будет утверждён.
+After funds exist, income is not allocated automatically without an explicit
+owner-confirmed rule. A separate “Save and allocate” action may be proposed if
+that workflow is approved.
 
-### Расход
+### Expense
 
-Обязательные данные: сумма, счёт, дата и категория расхода. Источник покрытия
-должен быть явным: свободные деньги или конкретный фонд на этом счёте.
+Required data: amount, account, date, and expense category. The coverage source
+is explicit: free money or a specific fund position on that account.
 
-Для обычных доходов/расходов MVP отдельный payee не требуется. Контрагент
-остаётся отдельным понятием исходящих долгов и не должен преждевременно
-переноситься в каждую операцию.
+Ordinary MVP income and expense do not require a separate payee. Counterparty
+remains a concept for outgoing debts and must not be prematurely added to every
+operation.
 
-### Перевод
+### Transfer
 
-Обязательные данные: сумма, исходный счёт, целевой счёт и дата. Категория обычно
-не применяется, пока домен не решит иначе. Счета не могут совпадать.
+Required data: amount, source account, destination account, and date. Category
+normally does not apply unless the domain later decides otherwise. Source and
+destination cannot match.
 
-Если переносится виртуальная часть фонда, форма показывает её отдельно и не
-позволяет принять виртуальное движение за дополнительный физический перевод.
+When a virtual fund portion moves, the form shows it separately and does not
+allow the virtual movement to look like another physical transfer.
 
-### Корректировка
+### Adjustment
 
-Используется для приведения ledger-derived остатка к известному факту. В форме
-видны текущий остаток, новый ожидаемый остаток, рассчитанная разница и причина.
-Пользователь не редактирует баланс как поле счёта и не вводит signed delta:
-composer точно рассчитывает движение журнала из ожидаемого остатка.
+An adjustment brings the ledger-derived balance to a known fact. The form shows
+current balance, new expected balance, calculated difference, and reason. The
+owner neither edits an account balance field nor enters a signed delta; the
+composer calculates the journal movement from the expected balance exactly.
 
-## Важная информация
+## Important information
 
-- тип операции как явно выбранное состояние;
-- сумма с валютным контекстом и без двусмысленного знака;
-- счёт или направление перевода;
-- дата факта в timezone приложения без отдельного времени;
-- категория для дохода/расхода;
-- фонд/свободные деньги, если фонды участвуют;
-- краткое резюме эффекта до сохранения;
-- ошибки, привязанные к полю и финансовому последствию.
+- operation type as an explicit selected state;
+- amount with currency context and no ambiguous sign;
+- account or transfer direction;
+- fact date in the application timezone with no separate time;
+- category for income or expense;
+- fund or free money when funds participate;
+- concise effect summary before saving;
+- errors tied to a field and financial consequence.
 
-## Второстепенная информация
+## Secondary information
 
-- описание/заметка;
-- связь с ожидаемым событием;
-- история изменений при будущем audit-подходе;
-- шаблон, повтор или дополнительные сохранённые defaults — только после
-  отдельного решения по backlog после `0.4.0`;
-- технический идентификатор операции в detail/debug-контексте, не в основной
-  форме.
+- description or note;
+- link to an expected event;
+- change history under any future audit approach;
+- templates, duplication, or additional saved defaults only after a separate
+  backlog decision after `0.4.0`;
+- technical operation identifier in detail or debug context, not the primary
+  form.
 
-## Порядок взаимодействия
+## Interaction order
 
-1. Открытие из глобального или контекстного действия.
-2. Выбор типа непосредственно в меню быстрого создания.
-3. Для дохода/расхода выбор обязательной категории — «на что/откуда».
-4. Ввод суммы.
-5. Выбор счёта и проверка видимой даты факта.
-6. Progressive disclosure описания и дополнительных полей.
-7. Inline-проверка по мере заполнения без преждевременной ошибки до первого
-   взаимодействия.
-8. Видимое резюме эффекта без отдельного confirmation обычного создания.
-9. Атомарное сохранение и однозначный результат.
-10. При серийном вводе — следующий composer с безопасно сохранённым контекстом.
+1. Open from a global or contextual action.
+2. Select a type directly in the quick-create menu.
+3. For income or expense, select the required category: purpose or source.
+4. Enter amount.
+5. Select account and verify the visible fact date.
+6. Progressively disclose description and additional fields.
+7. Validate inline as fields are completed without premature errors before
+   first interaction.
+8. Show an effect summary without a separate confirmation for ordinary
+   creation.
+9. Save atomically with an unambiguous result.
+10. For batch entry, open the next composer with only safe preserved context.
 
-## Основные действия
+## Primary actions
 
-- сохранить;
-- сохранить и добавить ещё одну там, где это ускоряет серийный ввод;
-- отменить без потери неожиданно большого черновика;
-- переключить тип до ввода зависимых полей или после ясного предупреждения;
-- открыть полную форму;
-- при редактировании — удалить с объяснением пересчёта;
-- из ожидаемого события — подтвердить с уже заполненными данными.
+- save;
+- save and add another where it accelerates batch entry;
+- cancel without unexpectedly losing a substantial draft;
+- switch type before dependent input, or after a clear warning;
+- open the full form;
+- while editing, delete with a recalculation explanation;
+- from an expected event, confirm with prefilled data.
 
-## Defaults и ускорение
+## Defaults and acceleration
 
-- Текущая дата может быть default, но всегда видима.
-- Счёт/фонд из контекста страницы может быть подставлен, но не скрыт.
-- Последняя категория или предложение по истории допустимы только как
-  изменяемая подсказка, а не непрозрачное автоприменение.
-- Создание новой категории внутри финансовой формы следует рассматривать
-  осторожно: оно ускоряет первый ввод, но усложняет category tree и ошибки.
-- Keyboard shortcut и корректный tab order обязательны для desktop-прототипа.
-- Черновик защищает от случайного закрытия; политика его хранения должна
-  учитывать чувствительность финансовых данных.
-- Будущий импорт использует отдельный preview/confirmation pipeline, но его
-  результат должен попадать в тот же понятный журнал. Импорт не усложняет
-  ручной composer полями сопоставления.
+- Current date may be the default but remains visible.
+- An account or fund from page context may be preselected but never hidden.
+- The last category or a history-based suggestion is acceptable only as an
+  editable hint, not opaque automatic application.
+- Creating a category inside a financial form requires caution: it accelerates
+  first entry but complicates the category tree and error handling.
+- Keyboard shortcut and correct tab order are mandatory in a desktop prototype.
+- A draft protects against accidental close; its retention policy must consider
+  financial-data sensitivity.
+- Future import uses a separate preview and confirmation pipeline, but its result
+  enters the same understandable journal. Mapping fields do not complicate the
+  manual composer.
 
-## Возможные состояния
+## Possible states
 
-### Начальное
+### Initial
 
-Тип и defaults видимы; primary action недоступно до достаточного набора данных,
-но интерфейс не показывает красные ошибки до взаимодействия.
+Type and defaults are visible. The primary action remains disabled until enough
+data exists, but the interface shows no red errors before interaction.
 
-### Неполные данные
+### Incomplete data
 
-Показывается, что именно осталось заполнить. Фокус переводится к первому
-проблемному полю только после попытки сохранения.
+State exactly what remains. Move focus to the first problematic field only
+after a save attempt.
 
-### Недостаточный остаток
+### Insufficient balance
 
-Backend блокирует мутацию, которая оставила бы затронутый счёт ниже нуля, а UI
-показывает локализованное объяснение. Это консервативная alpha-политика, а не
-окончательная overdraft-модель.
+The backend blocks a mutation that would leave an affected account below zero,
+and the UI shows a localized explanation. This is a conservative alpha policy,
+not the final overdraft model.
 
-### Недостаточно денег в фонде
+### Insufficient fund money
 
-Показаны доступная виртуальная сумма на выбранном счёте и альтернативы:
-уменьшить расход из фонда, выбрать свободные деньги или изменить распределение,
-если домен это разрешает. Нельзя незаметно списать недостающее из другого
-источника.
+Show the available virtual amount on the selected account and alternatives:
+reduce the expense from the fund, choose free money, or change allocation when
+the domain permits it. Never silently take the difference from another source.
 
-### Архивная ссылка
+### Archived reference
 
-Старая операция продолжает показывать архивный счёт/категорию. При создании
-архивная сущность не предлагается. При редактировании существующая архивная
-ссылка видима с отметкой «в архиве» и может быть сохранена, но выбрать другую
-архивную сущность нельзя.
+An old operation continues to show its archived account or category. Archived
+entities are unavailable for creation. During editing, the existing archived
+reference remains visible with an “Archived” label and may be preserved, but a
+different archived entity cannot be selected.
 
-### Конфликт редактирования
+### Edit conflict
 
-Введённые значения не теряются. Интерфейс сообщает, что исходные данные
-изменились, показывает актуальный эффект и предлагает повторное осознанное
-применение.
+Input is not lost. State that source data changed, show the current effect, and
+offer an intentional retry.
 
-### Сохранение
+### Saving
 
-Primary action защищено от двойной отправки. Успех показывается только после
-подтверждённого commit; ошибка не закрывает форму и не очищает поля.
+The primary action prevents duplicate submission. Success appears only after a
+confirmed commit; failure neither closes nor clears the form.
 
-### Успех
+### Success
 
-Показывается созданная операция и её эффект. Для обычного одиночного ввода слой
-закрывается; для «добавить ещё» сохраняются только безопасные согласованные
-defaults.
+Show the created operation and effect. Close the layer for ordinary single
+entry; “add another” preserves only approved safe defaults.
 
-### Удаление или изменение операции с фондом
+### Deleting or editing an operation with a fund
 
-Подтверждение объясняет, что физические и виртуальные движения будут изменены
-атомарно и какие текущие остатки пересчитаются.
+Confirmation explains that physical and virtual movements change atomically and
+which current balances will be recalculated.
 
-## Ошибки UX, которых нужно избегать
+## UX failures to avoid
 
-- одна сумма со знаком вместо явного выбора типа;
-- два независимых сохранения для физической и фондовой частей;
-- автоматическое распределение дохода без preview и подтверждённого правила;
-- скрытый исходный/целевой счёт перевода;
-- default даты или счёта, который нельзя заметить;
-- очистка формы после неуспешного запроса;
-- успешный toast до фактического commit;
-- все возможные поля в одной длинной форме;
-- обязательный modal confirmation для каждой обычной операции;
-- создание архивной категории из старого значения;
-- денежный input через бинарный `float` или форматирование, меняющее введённую
-  точность;
-- keyboard shortcut без видимого доступного mouse/touch действия.
+- one signed amount instead of an explicit type;
+- two independent saves for physical and fund portions;
+- automatic income allocation without preview and an approved rule;
+- hidden transfer source or destination;
+- an invisible date or account default;
+- clearing the form after a failed request;
+- a success toast before commit;
+- every possible field in one long form;
+- mandatory modal confirmation for every ordinary operation;
+- creating an archived category from an old value;
+- money input through binary `float`, or formatting that changes entered
+  precision;
+- a keyboard shortcut with no visible mouse or touch action.
 
-## Вопросы для проверки прототипа
+## Questions for prototype validation
 
-- Нужен ли default типа или форма должна явно предлагать доход и расход на
-  равных?
-- Обязательно ли описание?
-- Должен ли один adaptive overlay отображаться как modal или side panel в
-  зависимости от контекста/viewport?
-- Должен ли черновик переживать перезагрузку, logout и переход между
-  устройствами, и как долго его хранить?
-- Как часто расход связан с фондом и должен ли выбор фонда находиться в основном
-  слое формы?
+- Should a type have a default, or should income and expense be equally
+  explicit choices?
+- Must description be required?
+- Should one adaptive overlay appear as a modal or side panel depending on
+  context and viewport?
+- Should a draft survive reload, logout, and device changes, and how long should
+  it persist?
+- How often is an expense linked to a fund, and does fund selection belong in
+  the primary form layer?
