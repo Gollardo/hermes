@@ -135,10 +135,14 @@ physical money is already in funds.
 ### Dynamic mode
 
 Every non-archived fund requires a target. The list shows the current calculated
-percentage and explains zero for a filled or archived fund. Percentage is not
-editable in the fund form. With no incomplete funds, preview and atomic transfer
-state that allocation is unavailable. Archiving excludes a fund; restoring it
-returns it to the next calculation.
+percentage and explains zero for a filled or archived fund. The dynamic pool is
+weighted by each goal's relative unfilled share, so equal completion levels
+receive equal shares regardless of target size. When 20 or more funds are
+active, the guaranteed equal base consumes the complete percentage and the UI
+must explain that relative progress no longer differentiates them. Percentage
+is not editable in the fund form. With no incomplete funds, preview and atomic
+transfer state that allocation is unavailable. Archiving excludes a fund;
+restoring it returns it to the next calculation.
 
 ### Attempt to exceed 100%
 

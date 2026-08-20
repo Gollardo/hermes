@@ -69,6 +69,8 @@ events merely because they are within the next 30 days.
 - Description is optional and used as the human calendar title.
 - Omitting the end date means recurrence continues indefinitely; only the next
   year is materialized at any given time.
+- Long checkbox choices retain their native control size and align the control
+  with the first text line when the label wraps on a narrow screen.
 
 ## Deliberately deferred
 

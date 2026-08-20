@@ -143,8 +143,9 @@ destination or introduce automatic income allocation.
 
 Funds reads the global allocation mode while holding its definition snapshot.
 Manual mode uses stored percentages. Dynamic mode derives percentages from
-current ledger balances and targets before each command; filled and archived
-funds are excluded. If no incomplete active fund exists, the whole composed
+current ledger balances and relative unfilled target progress before each
+command; filled and archived funds are excluded. If no incomplete active fund
+exists, the whole composed
 transfer is rejected and rolled back.
 
 ## Expected occurrence to actual operation

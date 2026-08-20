@@ -10,7 +10,7 @@ detailed design system remains future work. The owner approved the implemented
 
 ## Implemented shared patterns in the current frontend
 
-The direction first applied in `0.1.0-alpha.2` now covers the current `0.4.5`
+The direction first applied in `0.1.0-alpha.2` now covers the current `0.4.6`
 interface. Its approved release foundation remains the `0.4.0` owner decision,
 not a final design system:
 

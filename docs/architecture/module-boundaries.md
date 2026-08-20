@@ -22,7 +22,7 @@
 
 `scenarios`, `assistant`, `liabilities`, `debts` and `imports` are planned
 ownership reservations. Only the last three currently have placeholder
-packages; none exposes runtime routes, tables or use cases in `0.4.5`. Their
+packages; none exposes runtime routes, tables or use cases in `0.4.6`. Their
 arrows below describe intended dependency direction, not current Python
 imports. All other rows are implemented boundaries.
 

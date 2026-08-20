@@ -25,6 +25,10 @@ Later revisions extend the same linear history:
 `0012_recurring_series_shift` is the current single head. Revision identifiers,
 rather than migration filenames, are the stable Alembic chain.
 
+Release `0.4.6` adds no revision: its dynamic fund percentages are derived from
+the existing target and movement ledger, and its Scheduling change is CSS-only.
+Creating an empty marker migration would not represent schema evolution.
+
 Downgrading below `0012_recurring_series_shift` removes the rule policy, stored
 offsets and cancelled-occurrence preservation markers. Untouched occurrence
 dates are normalized back to their source dates; take a backup before rollback

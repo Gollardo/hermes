@@ -183,6 +183,78 @@ def test_dynamic_mode_recalculates_and_archive_restore_changes_eligibility(
         } == before_percentages
 
 
+def test_dynamic_distribution_uses_relative_progress_across_different_targets(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        source = _account(client, headers, "Main", "2000")
+        destination = _account(client, headers, "Savings", "0")
+        first = _fund(client, headers, "Small", "0", "100")
+        second = _fund(client, headers, "Large", "0", "1000")
+
+        allocated = client.post(
+            "/api/v1/funds/allocations",
+            headers=headers,
+            json={
+                "account_id": source,
+                "amount": "550",
+                "occurred_on": "2026-08-20",
+                "allocations": [
+                    {"fund_id": first["id"], "amount": "50"},
+                    {"fund_id": second["id"], "amount": "500"},
+                ],
+            },
+        )
+        assert allocated.status_code == 201
+        enabled = client.put(
+            "/api/v1/settings/fund-allocation-mode",
+            headers=headers,
+            json={"mode": "dynamic"},
+        )
+        assert enabled.status_code == 200
+
+        summary = client.get("/api/v1/funds/summary").json()
+        percentages = {item["id"]: item["allocation_percentage"] for item in summary["funds"]}
+        assert percentages == {first["id"]: "50.0000", second["id"]: "50.0000"}
+
+        preview = client.post(
+            "/api/v1/funds/allocation-preview",
+            headers=headers,
+            json={"account_id": source, "amount": "100"},
+        )
+        assert preview.status_code == 200
+        assert {
+            item["fund_id"]: (item["allocation_percentage"], item["amount"])
+            for item in preview.json()["allocations"]
+        } == {
+            first["id"]: ("50.0000", "50.0000"),
+            second["id"]: ("50.0000", "50.0000"),
+        }
+
+        distributed = client.post(
+            "/api/v1/funds/transfer-and-allocate",
+            headers=headers,
+            json={
+                "source_account_id": source,
+                "destination_account_id": destination,
+                "amount": "100",
+                "occurred_on": "2026-08-20",
+            },
+        )
+        assert distributed.status_code == 201
+        assert {
+            item["fund_id"]: item["amount"]
+            for item in distributed.json()["allocation"]["movements"]
+        } == {first["id"]: "50.0000", second["id"]: "50.0000"}
+
+        after = client.get("/api/v1/funds/summary").json()
+        percentages = {item["id"]: item["allocation_percentage"] for item in after["funds"]}
+        assert percentages == {first["id"]: "0", second["id"]: "100.0000"}
+
+
 def test_dynamic_mode_requires_targets_for_every_non_archived_fund(
     postgres_database_settings: Settings,
 ) -> None:

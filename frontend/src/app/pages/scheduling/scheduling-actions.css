@@ -71,11 +71,19 @@
 
 .allocation-choice {
   grid-template-columns: 1fr;
+  min-width: 0;
 }
 
-.allocation-choice label {
+.weekday-picker.allocation-choice label {
+  align-items: flex-start;
   min-width: 0;
   width: 100%;
+}
+
+.allocation-choice input {
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+  padding: 0;
 }
 
 .confirmation-action,

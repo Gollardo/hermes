@@ -7,7 +7,7 @@ fund may span physical accounts. Funds owns definitions, percentages, events
 and per-account virtual movements; Operations owns physical movements. The
 posting model is recorded in [ADR 0002](../decisions/0002-virtual-fund-ledger.md).
 
-## Implemented model through 0.4.0
+## Implemented model through 0.4.6
 
 - A fund has a name, optional description, optional positive target amount,
   exact allocation percentage, lifecycle state and optimistic version. A target
@@ -58,9 +58,9 @@ each distribution, active funds are those with `balance < target`; archived or
 filled funds receive zero. For `N` active funds:
 
 ```text
-remaining_i = target_i - balance_i
+relative_gap_i = (target_i - balance_i) / target_i
 base = min(5, 100 / N)
-percent_i = base + (100 - N * base) * remaining_i / sum(remaining)
+percent_i = base + (100 - N * base) * relative_gap_i / sum(relative_gap)
 ```
 
 Percentages use four decimal places and a deterministic largest-remainder
@@ -68,6 +68,11 @@ correction in UUID order so active percentages total exactly 100. The same
 correction assigns every `0.0001` of an incoming amount; overshooting a target
 is allowed and is not redistributed within that operation. If no active fund
 exists, allocation is unavailable and the surrounding transfer rolls back.
+Funds at the same completion percentage receive equal dynamic shares even when
+their target amounts differ. While `N < 20`, a less-complete fund receives more
+of the non-base dynamic pool; target size by itself is not an implicit priority.
+At `N >= 20`, `base = 100 / N` consumes the complete percentage, so every active
+fund receives the same share apart from deterministic `0.0001` closure units.
 The next preview, transfer or forecast event recomputes from current/projected
 balances. Direct replenishment, spending, archival and restoration therefore
 affect the next calculation without a stored percentage cache.
@@ -104,7 +109,7 @@ mode, requires a target. Editing or deleting
 an older linked operation cannot make an archived fund non-zero. Reserved money
 is never silently released or moved.
 
-## Deliberately outside 0.4.0
+## Deliberately outside 0.4.6
 
 - automatic allocation while posting income;
 - per-transfer mode overrides or custom dynamic formulas;

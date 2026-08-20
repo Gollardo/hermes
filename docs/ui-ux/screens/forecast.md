@@ -167,7 +167,7 @@ unavailable source and offers retry; actual balance may appear separately.
   values. It includes only future transfers explicitly configured for
   percentage allocation. Manual mode uses stored percentages; dynamic mode
   recalculates them sequentially before each top-up from projected fund
-  balances.
+  balances using each goal's relative unfilled share.
 - In free mode, future expenses do not choose a reserve automatically. A
   transfer explicitly configured for percentage allocation reduces the free
   forecast by the exact allocated amount. The same internal transfer remains

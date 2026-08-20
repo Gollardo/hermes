@@ -12,7 +12,7 @@ in [index.md](./index.md). The actual version history is in
 [CHANGELOG.md](../CHANGELOG.md): the roadmap must not assign an already-used
 version number to a new future scope.
 
-Versions through `0.4.5` are the owner's internal development milestones, not
+Versions through `0.4.6` are the owner's internal development milestones, not
 published GitHub Releases. The first public tag starts the normal release
 process; its version is selected separately after the current release gate is
 closed.
@@ -539,8 +539,8 @@ owner acceptance on real data and the public-tag decision remain the release
 gate.**
 
 - [x] Switch between manual and dynamic modes in settings.
-- [x] Calculate dynamic percentages from each remaining amount to target while
-  guaranteeing a base share.
+- [x] Calculate the initial dynamic percentages from each absolute remaining
+  amount to target while guaranteeing a base share.
 - [x] Exclude completed and archived funds, and include restored funds again.
 - [x] Recalculate after actual and sequential planned allocations.
 - [x] Preserve currently calculated percentages when returning to manual mode.
@@ -571,7 +571,30 @@ gate.**
 
 ---
 
-# Proposed global plan after 0.4.5
+# 0.4.6 — relative fund progress and scheduling control alignment
+
+**Status: implemented on 2026-08-20; owner acceptance on real data remains.**
+
+- [x] Weight dynamic fund percentages by relative unfilled target progress so
+  equal completion levels receive equal shares regardless of target size.
+- [x] Preserve the existing equal guaranteed-base behavior when 20 or more
+  funds are active and document that relative progress cannot differentiate
+  shares once that base consumes the complete percentage.
+- [x] Reuse the same exact calculator for previews, committed transfer
+  allocations, manual-mode snapshots and sequential forecast projections.
+- [x] Preserve the existing base share, exact largest-remainder closure,
+  filled/archive eligibility, reactivation and target-overshoot behavior.
+- [x] Correct long recurring-rule checkbox alignment without changing the
+  series-shift workflow or adding a new interface pattern.
+- [x] Cover the new policy and layout contract with unit, integration and
+  frontend tests, and update current product documentation.
+- [x] Advance the internal application version to `0.4.6`.
+- [x] Confirm that no database migration is required because the dynamic
+  percentages are derived and the persisted schema is unchanged.
+
+---
+
+# Proposed global plan after 0.4.6
 
 This plan is a product hypothesis for discussion, not an approved detailed
 design or calendar commitment. A version number marks a convenient boundary of
@@ -595,7 +618,7 @@ An unfinished item is never moved silently into the next release.
 
 ## Before 1.0.0 — trial use and stable self-hosted core preparation
 
-- [ ] Perform owner acceptance of `0.4.5` on a restored copy of real data.
+- [ ] Perform owner acceptance of `0.4.6` on a restored copy of real data.
 - [ ] Define supported PostgreSQL, Python, Node, Docker, and browser versions.
 - [ ] Verify upgrades and backup/restore between public versions.
 - [ ] Add automated local backups, validation, and limited rotation.
@@ -814,7 +837,7 @@ prematurely on multi-tenant or cloud infrastructure.
 
 # Version and release policy
 
-- The entire `0.x` series is for internal trial use. Versions `0.1.0`–`0.4.5`
+- The entire `0.x` series is for internal trial use. Versions `0.1.0`–`0.4.6`
   and subsequent numbers before a separate owner decision are not stable public
   releases.
 - The first stable public release will be `1.0.0`. The owner announces its

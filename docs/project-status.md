@@ -6,15 +6,15 @@ map lives in [index.md](./index.md).
 
 ## Last updated
 
-2026-08-19
+2026-08-20
 
 ## Current phase
 
-**Internal application version `0.4.5` is implemented, but the public release
+**Internal application version `0.4.6` is implemented, but the public release
 gate remains open.** Previous version numbers were owner development milestones
 and were not published as GitHub Releases or public git tags.
 
-The next action is owner acceptance of `0.4.5` on restored real data, followed
+The next action is owner acceptance of `0.4.6` on restored real data, followed
 by a decision on the first public tag.
 
 The owner confirmed the version policy on 2026-08-18: the current `0.x` series
@@ -27,7 +27,7 @@ Hermes Online feasibility program is outside the current release gate.
 The owner also changed the long-term north star on 2026-08-18. Hermes should
 primarily answer: “What will happen if I make this financial decision now?”. The
 future capability is named Oracle, and its primary scenario mode is What if?.
-The direction is confirmed but not implemented in `0.4.5` and does not expand
+The direction is confirmed but not implemented in `0.4.6` and does not expand
 the current release gate.
 
 The owner confirmed the ADR 0001 no-negative-balance policy, ADR 0002 fund
@@ -87,6 +87,10 @@ access. Direct public-internet exposure is unsupported.
   addition/subtraction expressions on blur and before submission. Recurring
   rules may also opt into shifting untouched later occurrences when one event
   is postponed; confirmed and manually changed occurrences remain fixed.
+- Version `0.4.6` weights dynamic fund allocations by each goal's relative
+  unfilled share. Equal completion progress therefore produces equal dynamic
+  shares regardless of target size. Long recurring-rule checkbox labels also
+  keep natural control sizing and align from their first text line.
 - The owner decision from 2026-08-18 confirms the decision-first “Oracle · What
   if?” direction. Temporary alternatives compare with a baseline, change neither
   ledger nor plan, and persist only by choice. The owner may set a stop-loss,
@@ -241,7 +245,8 @@ access. Direct public-internet exposure is unsupported.
 - Migration `0008_session_idle_timeout` adds server idle timeout,
   `0009_scheduled_fund_allocation` adds planned-transfer allocation, and
   `0010_default_account` adds an optional default account.
-- The single current head is `0011_dynamic_fund_allocation`.
+- Migration `0011_dynamic_fund_allocation` introduced the allocation mode;
+  `0012_recurring_series_shift` is the single current head.
 
 ### Financial operations and journal
 
@@ -305,9 +310,12 @@ access. Direct public-internet exposure is unsupported.
 - Creating a fund may atomically reserve money only for it. Moving money between
   two funds on one account preserves physical balance and total reserved.
 - In dynamic mode, incomplete non-archived funds receive a guaranteed share up
-  to 5% plus a portion proportional to absolute remaining target. Percentages
-  and money close exactly to 100%, recalculate before each top-up, and allow
-  target overshoot without redistribution within the same event.
+  to 5% plus a portion proportional to their relative unfilled target share.
+  Equal progress produces equal shares regardless of target size. At 20 or more
+  active funds, the equal guaranteed base consumes the complete percentage, so
+  relative progress does not differentiate their shares. Percentages and money
+  close exactly to 100%, recalculate before each top-up, and allow target
+  overshoot without redistribution within the same event.
 - Filled and archived funds receive 0%. Expense or restoration returns a fund
   to the next calculation when it is below target again.
 - Fund perspective recalculates dynamic percentages sequentially after each
@@ -406,17 +414,29 @@ access. Direct public-internet exposure is unsupported.
 
 ## Verification snapshot
 
-- For the current `0.4.5` worktree, 72 non-PostgreSQL backend tests, 58/58
-  PostgreSQL integration tests and 114/114 frontend tests pass. The PostgreSQL
-  run covers migration to head, the explicit cancelled-occurrence constraint,
-  backup round trip, rollback on calendar overflow, and cancellation of shifted
-  boundary events beyond the creation horizon. Ruff, Python formatting,
+- For the current `0.4.6` worktree, 75 non-PostgreSQL backend tests, 59/59
+  PostgreSQL integration tests and 115/115 frontend tests pass. Dedicated fund
+  cases prove that equal relative completion receives equal dynamic shares even
+  when targets differ by an order of magnitude, that the less complete target
+  receives the larger dynamic share while a dynamic pool exists, that 21 active
+  funds use only the equal guaranteed base, and that sequential forecast
+  allocation uses the same calculator. A frontend geometry case protects the long
+  series-shift checkbox from shrinking or reverting to centered label
+  alignment. Alembic reports the current and only head as
+  `0012_recurring_series_shift`, and `alembic check` detects no schema changes;
+  release `0.4.6` therefore adds no empty migration. Ruff, Python formatting,
   Angular lint, Prettier, mypy, TypeScript, documentation checks and the
-  production Angular and Docker Compose builds pass. The containerized coverage
-  report emits source-path warnings because coverage metadata uses the host
-  workspace path; test execution itself completes successfully. npm reports the
-  already tracked high-severity advisory in the development dependency graph
-  during image construction.
+  production Angular build pass. The containerized integration coverage report
+  emits source-path warnings because coverage metadata uses the host workspace
+  path; test execution itself completes successfully. The browser smoke check
+  reaches the local authentication screen, but the authenticated Calendar
+  geometry was not manually rechecked without owner credentials. The aggregate
+  host `make test` cannot connect with its default `hermes` PostgreSQL role in
+  this environment; the same complete PostgreSQL suite passes inside the dev
+  Compose network against disposable databases. Two production Docker Compose
+  build attempts reached the locked frontend dependency install and then failed
+  with npm registry `ECONNRESET`; this external network failure leaves the image
+  build unverified in this pass.
 - Documentation audit and subsequent numeric UI implementation on 2026-08-18
   confirmed 70 passed backend tests with 53 PostgreSQL scenarios skipped without
   opt-in, 109/109 frontend tests across 20 files, `make lint`, `make typecheck`,
@@ -447,7 +467,7 @@ access. Direct public-internet exposure is unsupported.
   the updated series contract. Frontend 63/63 passed; lint, format, typecheck,
   and docs passed.
 - A historical full `npm audit` after prior overrides reported zero advisories;
-  the current `0.4.5` state is described above.
+  the current `0.4.6` state is described above.
 - Searching backend financial code for `float` found only the input rejection
   guard and a docstring prohibiting float arithmetic.
 - PostgreSQL scenarios cover clean migration and setup, protected API,

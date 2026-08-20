@@ -3,8 +3,8 @@
 ## Owner-confirmed behavior
 
 Forecast horizons are two weeks, month, quarter, half-year and year. A forecast
-can target one account or all accounts combined. The implemented `0.4.0` inputs
-are:
+can target one account or all accounts combined. The implemented inputs through
+`0.4.6` are:
 
 - current actual balance;
 - expected income and expense;
@@ -43,7 +43,11 @@ configured manual or dynamic mode. In dynamic mode it recalculates percentages
 before every planned replenishment from projected balances, in `(due_on,
 occurrence_id)` order. Confirmed and cancelled occurrences are excluded;
 current fund balances remain the starting point and every amount stays an exact
-decimal string.
+decimal string. The shared Funds calculator weights each incomplete fund by its
+relative unfilled target share, so target size alone does not become a hidden
+forecast priority while a non-base dynamic pool exists. With 20 or more active
+funds, the guaranteed equal base consumes 100% and the projected shares are
+equal apart from deterministic closure units.
 
 ## Boundary and flow
 
@@ -57,7 +61,7 @@ structured events, but an AI adapter cannot supply authoritative balances or
 bypass Forecasting's exact arithmetic. Baseline and alternative must share the
 same snapshot, scope, horizon, currency and ordering rules.
 
-## Implemented policy (beta.2 baseline, extended through 0.4.0)
+## Implemented policy (beta.2 baseline, extended through 0.4.6)
 
 - The series starts with today's ledger-derived actual balance. It includes
   actionable `pending` and `postponed` occurrences from today through the

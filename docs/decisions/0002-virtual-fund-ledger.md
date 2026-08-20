@@ -61,11 +61,15 @@ transaction-level advisory lock. Changing percentages does not move money.
 The global application setting selects manual or dynamic allocation. Dynamic
 percentages are derived, not persisted: incomplete non-archived funds receive a
 base `min(5%, 100% / N)` plus a share of the remaining pool proportional to the
-absolute amount still missing from their target. Exact four-decimal percentages
-sum to 100 through deterministic largest-remainder allocation. Filled and
-archived funds receive zero. Switching back to manual snapshots those effective
-values atomically; switching to dynamic is rejected while any non-archived fund
-lacks a positive target.
+relative unfilled part `(target - balance) / target` of their own goal. Funds at
+equal progress therefore receive equal shares regardless of target size, while
+a less-complete goal receives more of the dynamic pool when fewer than 20 funds
+are active. At 20 or more active funds, the equal guaranteed base consumes the
+complete 100%. Exact four-decimal percentages sum to 100 through deterministic
+largest-remainder allocation.
+Filled and archived funds receive zero. Switching back to manual snapshots
+those effective values atomically; switching to dynamic is rejected while any
+non-archived fund lacks a positive target.
 
 Percentage preview computes each active fund independently as
 `amount * percentage / 100`, rounded down to four decimal places. The sum of

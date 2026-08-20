@@ -10,10 +10,10 @@ financial decision. The future **Oracle · What if?** capability will compare
 hypothetical scenarios with the deterministic baseline forecast; it is planned,
 not part of the current release.
 
-> **Current internal version:** `0.4.5` adds exact amount expressions and an
-> optional future-series shift when a planned occurrence is postponed. Versions
-> through `0.4.5` are development milestones; no public GitHub release has been
-> published yet.
+> **Current internal version:** `0.4.6` balances dynamic fund allocations by
+> relative target progress and corrects long recurring-rule checkbox alignment.
+> Versions through `0.4.6` are development milestones; no public GitHub release
+> has been published yet.
 
 ## Project priorities and contributions
 

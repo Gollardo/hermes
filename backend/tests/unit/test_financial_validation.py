@@ -132,6 +132,31 @@ def test_dynamic_percentages_apply_minimum_weights_and_exclude_filled_funds() ->
     assert all(value >= Decimal("5") for value in percentages.values())
 
 
+def test_dynamic_percentages_compare_relative_progress_not_target_size() -> None:
+    first = UUID("11000000-0000-0000-0000-000000000001")
+    second = UUID("11000000-0000-0000-0000-000000000002")
+
+    equal_progress = dict(
+        dynamic_percentages(
+            [
+                FundDistributionState(first, Decimal("50"), Decimal("100")),
+                FundDistributionState(second, Decimal("500"), Decimal("1000")),
+            ]
+        )
+    )
+    lower_progress = dict(
+        dynamic_percentages(
+            [
+                FundDistributionState(first, Decimal("0"), Decimal("100")),
+                FundDistributionState(second, Decimal("500"), Decimal("1000")),
+            ]
+        )
+    )
+
+    assert equal_progress == {first: Decimal("50.0000"), second: Decimal("50.0000")}
+    assert lower_progress == {first: Decimal("65.0000"), second: Decimal("35.0000")}
+
+
 @pytest.mark.parametrize("count", [1, 20, 21, 25])
 def test_dynamic_percentages_are_exact_for_any_active_count(count: int) -> None:
     states = [
@@ -148,6 +173,22 @@ def test_dynamic_percentages_are_exact_for_any_active_count(count: int) -> None:
         assert {percentage for _, percentage in percentages} == {Decimal("5.0000")}
     if count == 25:
         assert {percentage for _, percentage in percentages} == {Decimal("4.0000")}
+
+
+def test_dynamic_percentages_use_only_the_equal_base_when_more_than_twenty_are_active() -> None:
+    states = [
+        FundDistributionState(
+            UUID(f"21000000-0000-0000-0000-{index:012d}"),
+            Decimal(index),
+            Decimal("100"),
+        )
+        for index in range(1, 22)
+    ]
+
+    percentages = [percentage for _, percentage in dynamic_percentages(states)]
+
+    assert max(percentages) - min(percentages) == Decimal("0.0001")
+    assert sum(percentages, Decimal(0)) == Decimal("100.0000")
 
 
 def test_dynamic_money_rounding_distributes_the_complete_incoming_amount() -> None:

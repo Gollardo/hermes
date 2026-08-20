@@ -113,7 +113,7 @@ def _check_percentage(session: Session, value: Decimal, *, excluding: UUID | Non
 
 
 def dynamic_percentages(states: list[FundDistributionState]) -> list[tuple[UUID, Decimal]]:
-    """Calculate exact four-decimal percentages for incomplete funds."""
+    """Calculate exact percentages from each incomplete fund's relative target gap."""
     active = [
         state
         for state in states
@@ -121,17 +121,17 @@ def dynamic_percentages(states: list[FundDistributionState]) -> list[tuple[UUID,
     ]
     if not active:
         return []
-    remaining = {
-        state.fund_id: state.target_amount - state.balance
+    relative_gaps = {
+        state.fund_id: (state.target_amount - state.balance) / state.target_amount
         for state in active
         if state.target_amount is not None
     }
-    total_remaining = sum(remaining.values(), Decimal(0))
+    total_relative_gap = sum(relative_gaps.values(), Decimal(0))
     count = Decimal(len(active))
     base = min(MIN_DYNAMIC_PERCENTAGE, Decimal(100) / count)
     dynamic_pool = Decimal(100) - count * base
     raw = {
-        state.fund_id: base + dynamic_pool * remaining[state.fund_id] / total_remaining
+        state.fund_id: base + dynamic_pool * relative_gaps[state.fund_id] / total_relative_gap
         for state in active
     }
     rounded = {

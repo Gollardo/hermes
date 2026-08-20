@@ -37,8 +37,10 @@ change the base currency only while it is unlocked.
 - Fund allocation mode is `manual` or `dynamic`. Enabling dynamic mode requires
   a positive target for every non-archived fund. Returning to manual mode
   snapshots current effective percentages, including zero for filled and
-  archived funds, in the same transaction. The application use case observes
-  the common `Settings → Funds` lock order.
+  archived funds, in the same transaction. Dynamic effective percentages are
+  derived from relative unfilled target progress rather than persisted as
+  another setting. The application use case observes the common
+  `Settings → Funds` lock order.
 
 ## Explicit assumptions
 

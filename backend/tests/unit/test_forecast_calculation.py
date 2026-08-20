@@ -221,6 +221,76 @@ def test_dynamic_fund_forecast_recalculates_before_each_planned_replenishment() 
     assert projection.ending_percentages == {}
 
 
+def test_dynamic_fund_forecast_uses_relative_progress_for_different_targets() -> None:
+    first_id = UUID("41000000-0000-0000-0000-000000000001")
+    second_id = UUID("41000000-0000-0000-0000-000000000002")
+    now = datetime.now(UTC)
+    funds = [
+        FundResponse(
+            id=first_id,
+            name="Небольшая цель",
+            description=None,
+            allocation_percentage="50.0000",
+            manual_allocation_percentage="0",
+            allocation_mode=FundAllocationMode.DYNAMIC,
+            target_amount="100.0000",
+            total_balance="50.0000",
+            remaining_amount="50.0000",
+            distribution_status="active",
+            progress_percentage="50.00",
+            archived=False,
+            version=1,
+            created_at=now,
+            updated_at=now,
+        ),
+        FundResponse(
+            id=second_id,
+            name="Большая цель",
+            description=None,
+            allocation_percentage="50.0000",
+            manual_allocation_percentage="0",
+            allocation_mode=FundAllocationMode.DYNAMIC,
+            target_amount="1000.0000",
+            total_balance="500.0000",
+            remaining_amount="500.0000",
+            distribution_status="active",
+            progress_percentage="50.00",
+            archived=False,
+            version=1,
+            created_at=now,
+            updated_at=now,
+        ),
+    ]
+    occurrences = [
+        PlannedOccurrence(
+            id=UUID(f"51000000-0000-0000-0000-{index:012d}"),
+            rule_id=RULE,
+            due_on=date(2026, 8, 12 + index),
+            type=OperationType.TRANSFER,
+            amount=Decimal("100"),
+            description=None,
+            account_id=SOURCE,
+            destination_account_id=TARGET,
+            allocate_to_funds=True,
+            status=OccurrenceStatus.PENDING,
+        )
+        for index in (1, 2)
+    ]
+
+    projection = project_fund_allocations(funds, occurrences, FundAllocationMode.DYNAMIC)
+
+    assert projection.events[0].percentages == {
+        first_id: Decimal("50.0000"),
+        second_id: Decimal("50.0000"),
+    }
+    assert projection.events[1].percentages == {second_id: Decimal("100.0000")}
+    assert projection.ending_balances == {
+        first_id: Decimal("100.0000"),
+        second_id: Decimal("650.0000"),
+    }
+    assert projection.ending_percentages == {second_id: Decimal("100.0000")}
+
+
 def test_selected_free_forecast_uses_one_global_schedule_lock_snapshot(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

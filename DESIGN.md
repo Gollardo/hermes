@@ -13,7 +13,7 @@ component library, type scale, spacing scale, breakpoint set, or complete
 palette.
 
 The project owner approved the implemented `0.4.0` interface on 2026-08-18 as
-the first-public-release baseline. The current `0.4.5` changes extend its
+the first-public-release baseline. The current `0.4.6` changes extend its
 established patterns. Preserve the established
 navigation, modal composers, visual hierarchy and responsive behavior unless a
 later owner decision changes them. This approval does not promote incidental

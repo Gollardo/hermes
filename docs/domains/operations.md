@@ -5,7 +5,7 @@
 `income`, `expense`, `transfer`, `balance_adjustment`, `loan_disbursement`,
 `loan_payment`, `debt_issuance` and `debt_repayment`.
 
-The current `0.4.5` operation schema and API implement only `income`, `expense`,
+The current `0.4.6` operation schema and API implement only `income`, `expense`,
 `transfer` and `balance_adjustment`. The loan/debt names are owner-confirmed
 future vocabulary; they are not accepted enum values until those domains and
 their posting rules are designed.

@@ -230,6 +230,24 @@ describe('SchedulingPage recurrence editor', () => {
     flushOccurrenceRequests([]);
   });
 
+  it('keeps long allocation choices aligned with natural checkbox sizing', () => {
+    flushInitial([]);
+    clickButton('Добавить правило');
+
+    const checkbox = fixture.nativeElement.querySelector(
+      '.allocation-choice input[formControlName="shiftFutureOnPostpone"]',
+    ) as HTMLInputElement;
+    const label = checkbox.closest('label') as HTMLLabelElement;
+    const choice = checkbox.closest('.allocation-choice') as HTMLElement;
+    const checkboxStyle = getComputedStyle(checkbox);
+
+    expect(checkboxStyle.flexShrink).toBe('0');
+    expect(checkboxStyle.paddingTop).toBe('0px');
+    expect(checkboxStyle.paddingRight).toBe('0px');
+    expect(getComputedStyle(label).alignItems).toBe('flex-start');
+    expect(getComputedStyle(choice).minWidth).toBe('0px');
+  });
+
   it('quick confirmation posts the occurrence version and refreshes both views', () => {
     flushInitial([OCCURRENCE]);
     const confirm = [...fixture.nativeElement.querySelectorAll('button')].find(

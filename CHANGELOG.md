@@ -5,12 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project intends to follow [Semantic Versioning](https://semver.org/).
 
-Entries through `0.4.5` describe internal development milestones. They were not
+Entries through `0.4.6` describe internal development milestones. They were not
 published as GitHub Releases or public git tags. After the first public release,
 ongoing changes belong under `Unreleased` until a release version and date are
 assigned.
 
 ## [Unreleased]
+
+## [0.4.6] - 2026-08-20
+
+### Changed
+
+- Dynamic fund percentages now weight the unfilled relative share of each
+  target instead of its absolute missing amount, so equally completed goals
+  receive equal shares regardless of target size. With 20 or more active goals,
+  the guaranteed equal base consumes the complete percentage.
+- Actual previews, transfer allocations, manual-mode snapshots and sequential
+  forecast projections reuse the same exact relative-progress calculator.
+- Long recurring-rule checkbox labels keep natural control sizing and align
+  from the first line on narrow layouts.
+- Application version advanced to 0.4.6.
+
+### Migration
+
+- No database revision is required: allocation percentages remain derived from
+  existing balances and positive targets. `0012_recurring_series_shift` remains
+  the single schema head.
 
 ## [0.4.5] - 2026-08-19
 
