@@ -24,6 +24,7 @@ interface Account {
 }
 
 interface BackupPreview {
+  format: string;
   app_version: string;
   exported_at: string;
   base_currency: string;
@@ -33,7 +34,8 @@ interface BackupPreview {
 }
 
 interface BackupDocumentEnvelope {
-  exported_at: string;
+  exported_at?: string;
+  created_at?: string;
 }
 
 const CURRENCIES = ['RUB', 'USD', 'EUR', 'GBP', 'CNY', 'JPY', 'KZT', 'TRY', 'AED', 'CHF'];
@@ -77,6 +79,7 @@ export class SettingsPage implements OnInit {
   protected readonly backupBusy = signal(false);
   protected readonly backupError = signal<string | null>(null);
   protected readonly backupSuccess = signal<string | null>(null);
+  protected readonly backupRequiresPassword = signal(false);
   protected readonly restoreConfirmation = RESTORE_CONFIRMATION;
   protected readonly formatTimestamp = formatTextTimestamp;
   protected readonly currencyLabel = currencySymbol;
@@ -105,6 +108,11 @@ export class SettingsPage implements OnInit {
 
   protected readonly restoreForm = this.formBuilder.group({
     confirmation: ['', Validators.required],
+    masterPassword: ['', [Validators.required, Validators.maxLength(1024)]],
+    backupPassword: ['', Validators.maxLength(1024)],
+  });
+
+  protected readonly hermesExportForm = this.formBuilder.group({
     masterPassword: ['', [Validators.required, Validators.maxLength(1024)]],
   });
 
@@ -204,30 +212,50 @@ export class SettingsPage implements OnInit {
     });
   }
 
-  protected exportBackup(): void {
+  protected exportJsonBackup(): void {
     this.backupBusy.set(true);
     this.backupError.set(null);
     this.backupSuccess.set(null);
     this.http.get<BackupDocumentEnvelope>(`${environment.apiBaseUrl}/backup/export`).subscribe({
       next: (document) => {
         this.backupBusy.set(false);
-        const blob = new Blob([JSON.stringify(document, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = window.document.createElement('a');
-        link.href = url;
-        link.download = `hermes-backup-${new Date().toISOString().slice(0, 10)}.json`;
-        link.click();
-        URL.revokeObjectURL(url);
-        this.backupSuccess.set(
-          `Backup от ${formatTextTimestamp(document.exported_at)} сформирован и проверен. ` +
-            'Сохраните файл в защищённом месте.',
-        );
+        this.downloadBackup(document, 'json');
+        this.backupSuccess.set('Открытый JSON-backup создан. Храните его в защищённом месте.');
       },
       error: (error: unknown) => {
         this.backupBusy.set(false);
         this.backupError.set(apiErrorMessage(error, 'Не удалось создать backup.'));
       },
     });
+  }
+
+  protected exportHermesBackup(): void {
+    if (this.hermesExportForm.invalid) {
+      this.hermesExportForm.markAllAsTouched();
+      return;
+    }
+    this.backupBusy.set(true);
+    this.backupError.set(null);
+    this.backupSuccess.set(null);
+    this.http
+      .post<BackupDocumentEnvelope>(`${environment.apiBaseUrl}/backup/export/hermes`, {
+        master_password: this.hermesExportForm.controls.masterPassword.value,
+      })
+      .subscribe({
+        next: (document) => {
+          this.backupBusy.set(false);
+          this.hermesExportForm.reset();
+          this.downloadBackup(document, 'hermes');
+          this.backupSuccess.set(
+            'Защищённый Hermes-backup создан. Для восстановления потребуется текущий пароль.',
+          );
+        },
+        error: (error: unknown) => {
+          this.backupBusy.set(false);
+          this.hermesExportForm.reset();
+          this.backupError.set(apiErrorMessage(error, 'Не удалось создать защищённый backup.'));
+        },
+      });
   }
 
   protected chooseBackup(event: Event): void {
@@ -237,10 +265,11 @@ export class SettingsPage implements OnInit {
     this.backupDocument.set(null);
     this.backupError.set(null);
     this.backupSuccess.set(null);
+    this.backupRequiresPassword.set(false);
     this.restoreForm.reset();
     if (!file) return;
-    if (file.size > 50 * 1024 * 1024) {
-      this.backupError.set('Файл больше допустимых 50 МБ.');
+    if (file.size > 72 * 1024 * 1024) {
+      this.backupError.set('Файл больше допустимых 72 МБ.');
       return;
     }
     file
@@ -254,28 +283,30 @@ export class SettingsPage implements OnInit {
           this.backupError.set('Файл не является корректным JSON.');
           return;
         }
-        this.backupBusy.set(true);
-        this.http
-          .post<BackupPreview>(`${environment.apiBaseUrl}/backup/preview`, document)
-          .subscribe({
-            next: (preview) => {
-              if (sequence !== this.selectedBackupSequence) return;
-              this.backupBusy.set(false);
-              this.backupDocument.set(document);
-              this.backupPreview.set(preview);
-            },
-            error: (error: unknown) => {
-              if (sequence !== this.selectedBackupSequence) return;
-              this.backupBusy.set(false);
-              this.backupError.set(apiErrorMessage(error, 'Backup не прошёл проверку.'));
-            },
-          });
+        const format = this.backupFormat(document);
+        if (format === 'hermes-json-backup' && file.size > 50 * 1024 * 1024) {
+          this.backupError.set('Открытый JSON-backup больше допустимых 50 МБ.');
+          return;
+        }
+        this.backupDocument.set(document);
+        this.backupRequiresPassword.set(format === 'hermes');
+        if (format === 'hermes') return;
+        this.previewSelectedBackup(sequence);
       })
       .catch(() => {
         if (sequence !== this.selectedBackupSequence) return;
         this.backupBusy.set(false);
         this.backupError.set('Не удалось прочитать выбранный файл. Выберите его повторно.');
       });
+  }
+
+  protected previewEncryptedBackup(): void {
+    if (!this.restoreForm.controls.backupPassword.value) {
+      this.restoreForm.controls.backupPassword.markAsTouched();
+      this.backupError.set('Введите пароль защищённого backup.');
+      return;
+    }
+    this.previewSelectedBackup(this.selectedBackupSequence);
   }
 
   protected restoreBackup(): void {
@@ -295,6 +326,7 @@ export class SettingsPage implements OnInit {
         backup,
         confirmation: value.confirmation,
         master_password: value.masterPassword,
+        backup_password: this.backupRequiresPassword() ? value.backupPassword : null,
       })
       .subscribe({
         next: () => {
@@ -310,6 +342,48 @@ export class SettingsPage implements OnInit {
           );
         },
       });
+  }
+
+  private previewSelectedBackup(sequence: number): void {
+    const backup = this.backupDocument();
+    if (!backup) return;
+    this.backupBusy.set(true);
+    this.backupError.set(null);
+    this.http
+      .post<BackupPreview>(`${environment.apiBaseUrl}/backup/preview`, {
+        backup,
+        backup_password: this.backupRequiresPassword()
+          ? this.restoreForm.controls.backupPassword.value
+          : null,
+      })
+      .subscribe({
+        next: (preview) => {
+          if (sequence !== this.selectedBackupSequence) return;
+          this.backupBusy.set(false);
+          this.backupPreview.set(preview);
+        },
+        error: (error: unknown) => {
+          if (sequence !== this.selectedBackupSequence) return;
+          this.backupBusy.set(false);
+          this.restoreForm.controls.backupPassword.reset();
+          this.backupError.set(apiErrorMessage(error, 'Backup не прошёл проверку.'));
+        },
+      });
+  }
+
+  private backupFormat(document: unknown): string | null {
+    if (typeof document !== 'object' || document === null || !('format' in document)) return null;
+    return typeof document.format === 'string' ? document.format : null;
+  }
+
+  private downloadBackup(document: BackupDocumentEnvelope, extension: 'json' | 'hermes'): void {
+    const blob = new Blob([JSON.stringify(document, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement('a');
+    link.href = url;
+    link.download = `hermes-backup-${new Date().toISOString().slice(0, 10)}.${extension}`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   private loadSettings(): void {

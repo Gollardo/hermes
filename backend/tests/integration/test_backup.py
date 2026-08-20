@@ -202,6 +202,121 @@ def test_export_preview_and_transactional_restore_on_initialized_database(
         assert client.get("/api/v1/categories").json()[0]["id"] == category["id"]
 
 
+def test_protected_hermes_export_and_first_run_restore_use_separate_passwords(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP).status_code == 201
+        headers = csrf(client)
+        account = client.post(
+            "/api/v1/accounts",
+            headers=headers,
+            json={"type": "debit", "name": "Sensitive account", "initial_balance": "125.5000"},
+        ).json()
+
+        wrong_export_password = client.post(
+            "/api/v1/backup/export/hermes",
+            headers=headers,
+            json={"master_password": "wrong-master-password"},
+        )
+        assert wrong_export_password.status_code == 400
+        assert wrong_export_password.json()["detail"]["code"] == "current_password_invalid"
+
+        exported = client.post(
+            "/api/v1/backup/export/hermes",
+            headers=headers,
+            json={"master_password": MASTER_PASSWORD},
+        )
+        assert exported.status_code == 200
+        assert exported.headers["cache-control"] == "no-store"
+        assert exported.headers["content-disposition"].endswith('"hermes-backup.hermes"')
+        hermes = exported.json()
+        assert hermes["format"] == "hermes"
+        assert hermes["version"] == 1
+        assert hermes["kdf"]["algorithm"] == "argon2id"
+        assert hermes["key_encryption"]["algorithm"] == "xchacha20-poly1305-ietf"
+        assert "Sensitive account" not in exported.text
+        assert "125.5000" not in exported.text
+        assert "data" not in hermes
+
+        rejected = client.post(
+            "/api/v1/backup/preview",
+            headers=headers,
+            json={"backup": hermes, "backup_password": "wrong-backup-password"},
+        )
+        assert rejected.status_code == 400
+        assert rejected.json()["detail"]["code"] == "backup_authentication_failed"
+        preview = client.post(
+            "/api/v1/backup/preview",
+            headers=headers,
+            json={"backup": hermes, "backup_password": MASTER_PASSWORD},
+        )
+        assert preview.status_code == 200
+        assert preview.json()["format"] == "hermes"
+        assert preview.json()["counts"]["accounts"] == 1
+
+        extra_account = client.post(
+            "/api/v1/accounts",
+            headers=headers,
+            json={"type": "cash", "name": "Not in backup", "initial_balance": "10"},
+        ).json()
+        wrong_backup_password = client.post(
+            "/api/v1/backup/restore",
+            headers=headers,
+            json={
+                "backup": hermes,
+                "confirmation": "ЗАМЕНИТЬ ВСЕ ДАННЫЕ",
+                "master_password": MASTER_PASSWORD,
+                "backup_password": "wrong-backup-password",
+            },
+        )
+        assert wrong_backup_password.status_code == 400
+        assert wrong_backup_password.json()["detail"]["code"] == "backup_authentication_failed"
+        assert client.get(f"/api/v1/accounts/{extra_account['id']}").status_code == 200
+
+        wrong_destination_password = client.post(
+            "/api/v1/backup/restore",
+            headers=headers,
+            json={
+                "backup": hermes,
+                "confirmation": "ЗАМЕНИТЬ ВСЕ ДАННЫЕ",
+                "master_password": "wrong-current-password",
+                "backup_password": MASTER_PASSWORD,
+            },
+        )
+        assert wrong_destination_password.status_code == 400
+        assert wrong_destination_password.json()["detail"]["code"] == "current_password_invalid"
+
+        initialized_restore = client.post(
+            "/api/v1/backup/restore",
+            headers=headers,
+            json={
+                "backup": hermes,
+                "confirmation": "ЗАМЕНИТЬ ВСЕ ДАННЫЕ",
+                "master_password": MASTER_PASSWORD,
+                "backup_password": MASTER_PASSWORD,
+            },
+        )
+        assert initialized_restore.status_code == 200
+        assert client.get(f"/api/v1/accounts/{extra_account['id']}").status_code == 404
+        assert client.get(f"/api/v1/accounts/{account['id']}").status_code == 200
+
+        reset_to_uninitialized(app)
+        restored = client.post(
+            "/api/v1/setup/restore",
+            json={
+                "master_password": "new-destination-password",
+                "backup_password": MASTER_PASSWORD,
+                "backup": hermes,
+            },
+        )
+        assert restored.status_code == 201
+        restored_account = client.get(f"/api/v1/accounts/{account['id']}")
+        assert restored_account.status_code == 200
+        assert restored_account.json()["balance"] == "125.5000"
+
+
 def test_restore_complete_backup_into_clean_initialized_target(
     postgres_database_settings: Settings,
 ) -> None:

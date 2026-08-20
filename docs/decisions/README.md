@@ -16,6 +16,9 @@ accepted without an explicit project-owner decision.
 - [ADR 0003: Recurring rules and expected occurrences](0003-recurring-rules-and-occurrences.md)
   records the owner-confirmed recurrence limits, materialization, rule-edit and
   confirmation policies for the current release.
+- [ADR 0004: Encrypted Hermes backup envelope](0004-encrypted-backup-envelope.md)
+  records the owner-confirmed two-level key architecture, protected V1 format,
+  legacy JSON compatibility and untrusted-file limits.
 
 ## Template for a future ADR
 
@@ -178,7 +181,7 @@ decisions above. They are retained as discovery history, but ADR 0001, 0002 and
 - **Questions:** cache headers and compression; reverse-proxy guidance; CSP;
   whether FastAPI static serving remains adequate under measured load.
 
-### ADR-008 Versioned JSON backup format
+### ADR-010 Versioned JSON backup format
 
 - **Status:** proposed
 - **Context:** owners need cloud-independent, portable full export and atomic
@@ -191,5 +194,7 @@ decisions above. They are retained as discovery history, but ADR 0001, 0002 and
   transactional restore through module-owned persistence contracts.
 - **Known alternatives:** PostgreSQL-only dumps; per-domain files; unversioned
   JSON; archive containing JSON plus attachments.
-- **Questions:** compatibility beyond schema 1, archive/encryption support,
-  authenticity/signing and large-dataset streaming.
+- **Implemented extension:** ADR 0004 adds the encrypted `hermes` V1 envelope
+  while retaining explicit plaintext JSON export/import.
+- **Questions:** compatibility beyond payload schema 1, authenticity/signing
+  and large-dataset streaming.

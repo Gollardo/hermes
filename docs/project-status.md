@@ -6,7 +6,7 @@ map lives in [index.md](./index.md).
 
 ## Last updated
 
-2026-08-20
+2026-08-21
 
 ## Current phase
 
@@ -185,15 +185,25 @@ access. Direct public-internet exposure is unsupported.
 
 ### Backup and restore
 
-- Settings provides JSON export schema 1 with SHA-256 integrity, decimal
-  strings, and identifiers for all settings, ledger, fund, and Scheduling data.
+- Settings provides two explicit exports: recommended protected `.hermes` V1
+  and plaintext `hermes-json-backup` schema 1 for compatibility. Both preserve
+  exact decimal strings and identifiers for settings, ledger, fund, and
+  Scheduling data.
+- Hermes V1 derives a KEK with bounded Argon2id parameters, wraps a fresh random
+  256-bit DEK and authenticates the payload and wrapped key with independent
+  XChaCha20-Poly1305-IETF operations. Financial data does not appear in the
+  outer UTF-8 JSON envelope.
 - Checksum verification preserves the canonical shape of an old schema-1
   document; later optional fields do not break import of an earlier copy.
-- Preview checks format, version, checksum, and references before any write and
-  shows a summary.
+- Preview checks format, version, authentication or legacy checksum, payload
+  schema and domain references before any write and shows a summary. Unsafe KDF
+  values and malformed lengths are rejected before Argon2.
 - Restore requires CSRF, the destination master password, and an exact
   confirmation phrase. Exclusive locks, one transaction, and post-write checks
   prevent partial replacement.
+- Encrypted restore treats the backup password separately from the current
+  destination password or new first-run password. Wrong passwords and damaged
+  authenticated ciphertext share one non-diagnostic UI error.
 - Credential, login throttle, and sessions are not exported. Restore uses the
   shared throttle, preserves the current session, and terminates the others.
 
@@ -414,6 +424,27 @@ access. Direct public-internet exposure is unsupported.
 
 ## Verification snapshot
 
+- The Unreleased encrypted-backup slice passes 101 non-PostgreSQL backend tests,
+  60/60 PostgreSQL integration tests against an isolated PostgreSQL 17
+  container, and 120/120 frontend tests. Dedicated coverage proves Hermes V1
+  round trip, absence of known plaintext markers, fresh salts/wrapped keys and
+  independent nonces, one authentication failure for wrong passwords or either
+  damaged ciphertext, pre-Argon rejection of unsafe KDF parameters and unsafe
+  salt/nonce/ciphertext lengths, explicit unknown-version rejection, protected
+  restore into initialized and first-run targets with distinct source and
+  destination passwords, rollback on failed authentication, correct legacy
+  error classification, and continued plaintext JSON restore. No database
+  migration is required; `0012_recurring_series_shift` remains the schema head,
+  and `alembic check` reports no new upgrade operations. Ruff, Python formatting,
+  Angular lint, Prettier, mypy, TypeScript, documentation checks, dependency
+  consistency, the production Angular build, and the production Docker Compose
+  build pass. The production npm graph reports zero vulnerabilities. The full
+  development graph still reports two high-severity findings from the existing
+  build-only `nanoid 3.3.17` override. Existing non-blocking Angular style-budget
+  warnings also remain. The production image built successfully before the
+  review hardening; two post-review rebuild attempts were blocked while resolving
+  the already pinned Dockerfile frontend because Docker Hub returned `EOF`.
+
 - For the current `0.4.6` worktree, 79 non-PostgreSQL backend tests, 59/59
   PostgreSQL integration tests and 115/115 frontend tests pass. Dedicated fund
   cases prove that equal relative completion receives equal dynamic shares even
@@ -463,11 +494,9 @@ access. Direct public-internet exposure is unsupported.
 - The integration suite creates disposable databases and verifies upgrades to
   the current `0012_recurring_series_shift` head. A dedicated manual
   upgrade/check/downgrade cycle was not added to this pass.
-- Latest successful network audit on 2026-08-17: `npm audit --omit=dev` reported
-  zero production vulnerabilities; the full development graph had a high
-  advisory for build-only `nanoid 3.3.17`, pinned by an existing override. The
-  2026-08-18 rerun could not reach the npm registry in the sandbox and is not
-  represented as current re-verification.
+- The 2026-08-20 network audit reports zero production vulnerabilities. The full
+  development graph reports two high-severity findings for the same build-only
+  `nanoid 3.3.17` advisory, pinned by an existing override.
 - `rc.1`: 97 backend scenarios (52 non-PostgreSQL passed, 45 skipped without
   opt-in); full PostgreSQL snapshot 46/46 passed, including atomic first-run
   restore, transfer-and-allocation and rollback, and forecasting snapshot with
@@ -578,10 +607,10 @@ access. Direct public-internet exposure is unsupported.
 
 ## Release assumptions and technical debt
 
-- At the latest successful audit on 2026-08-17, build-only `nanoid 3.3.17` had
-  a high advisory while the runtime production graph was clean. A fresh network
-  audit, compatible dependency update, and full recheck are required without
-  expanding this release's functional diff.
+- At the latest successful audit on 2026-08-20, build-only `nanoid 3.3.17` had
+  two high-severity findings for one advisory while the runtime production graph
+  was clean. A compatible dependency update and full recheck are required
+  without expanding this feature's functional diff.
 - Style-budget warnings remain for `funds.css`, `forecast.css`,
   `forecast-chart.css`, shared `directory.css`, and `app.css`.
 - Session lifetime, password policy, and throttle are documented alpha defaults,
@@ -617,9 +646,10 @@ access. Direct public-internet exposure is unsupported.
 - One advisory lock intentionally serializes rare mutations of the entire
   category tree. Proven high write concurrency may require narrower locking.
 - HTTPS reverse-proxy configurations and CSP have no external security audit.
-- Backup schema 1 has strict compatibility and a 50 MiB request limit. SHA-256
-  detects accidental corruption but does not authenticate the source;
-  encryption and signature remain outside MVP.
+- Legacy backup schema 1 remains plaintext with a 50 MiB limit and SHA-256
+  accidental-corruption detection. Hermes V1 provides authenticated encryption
+  with a 72 MiB outer limit and 50 MiB plaintext-payload limit; signatures,
+  streaming and automatic rotation remain outside scope.
 - Frontend lock temporarily pins MCP SDK, `hono`, and `nanoid` through Angular
   build-tool overrides. An old pin is not automatically safe; review overrides
   with a network audit and Angular toolchain update.
@@ -656,7 +686,8 @@ access. Direct public-internet exposure is unsupported.
   comparisons, and the local Oracle AI adapter.
 - Recurrence intervals outside 1–3, month days 29–31, leap-day policy, drag and
   drop, notifications, and background materialization.
-- CSV/Excel import, backup compatibility after schema 1, and password recovery.
+- CSV/Excel import, backup compatibility after payload schema 1, password
+  recovery and protected-backup password rewrap UI.
 - Multiple users, roles, permissions, organizations, and tenants.
 - External infrastructure, Redis, broker, background workers, and cloud
   identity.

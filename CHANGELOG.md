@@ -12,8 +12,32 @@ assigned.
 
 ## [Unreleased]
 
+### Added
+
+- Versioned `.hermes` backup envelopes with Argon2id-derived KEKs, random
+  256-bit DEKs and independent XChaCha20-Poly1305-IETF operations for the DEK
+  and financial payload.
+- Protected export and restore flows with separate backup and destination
+  password roles, strict pre-Argon KDF/size validation and generic
+  authentication-failure messages.
+
+### Changed
+
+- Settings now offers both the recommended protected `.hermes` download and an
+  explicit plaintext JSON download. Legacy `hermes-json-backup` schema 1 remains
+  importable for backward compatibility.
+- The maximum outer backup request is 72 MiB so Base64 can carry the existing
+  50 MiB plaintext payload limit.
+
+### Migration
+
+- No database migration is required. PyNaCl 1.6.2 is the new locked runtime
+  dependency.
+
 ### Fixed
 
+- Malformed legacy JSON remains a legacy backup validation error instead of
+  being mislabeled as an invalid Hermes envelope.
 - Backup validation now distinguishes fund-to-fund transfers from
   redistributions between accounts, so valid schema-1 backups containing a
   `fund_transfer` event can be previewed and restored.

@@ -619,6 +619,8 @@ An unfinished item is never moved silently into the next release.
 ## Before 1.0.0 — trial use and stable self-hosted core preparation
 
 - [ ] Perform owner acceptance of `0.4.6` on a restored copy of real data.
+- [x] Add protected `.hermes` V1 export/restore while retaining explicit legacy
+  plaintext JSON export/import.
 - [ ] Define supported PostgreSQL, Python, Node, Docker, and browser versions.
 - [ ] Verify upgrades and backup/restore between public versions.
 - [ ] Add automated local backups, validation, and limited rotation.
@@ -803,7 +805,7 @@ release if they do not dilute its acceptance criteria:
 - a more convenient calendar and further mobile adaptation;
 - additional export formats;
 - PWA and limited offline mode;
-- encrypted backups and extended diagnostics.
+- extended backup diagnostics and password-only protected-backup rewrap.
 
 ---
 

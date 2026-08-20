@@ -49,7 +49,8 @@ and the maintainer's available time.
   and exact explanations for every changing date;
 - income/expense reports for a month or custom period, with category drill-down;
 - an optional default account for new income and expense operations;
-- full versioned JSON export, preview and transactional restore.
+- protected `.hermes` and explicit plaintext JSON export, preview and
+  transactional restore.
 
 ## Planned directions
 
@@ -58,7 +59,7 @@ and the maintainer's available time.
 - simplified loans, installment plans and two-way debts;
 - staged CSV/Excel import with preview and duplicate review;
 - operation templates, improved search and saved filters;
-- automatic, rotated and optionally encrypted local backups;
+- automatic and rotated local backups;
 - release hardening for upgrades, reverse proxies and published container images.
 
 ## Stack

@@ -22,8 +22,9 @@ flowchart LR
 ```
 
 First-run backup restore is an alternative branch of the same setup
-transaction: validate backup integrity and domain invariants, create the new
-destination credential/session, replace settings and financial data, run
+transaction: identify legacy JSON or Hermes V1, authenticate/decrypt an
+encrypted payload before writes, validate integrity and domain invariants,
+create the new destination credential/session, replace settings and financial data, run
 post-write checks, then commit. Any validation or insertion failure rolls back
 the credential as well as restored data.
 

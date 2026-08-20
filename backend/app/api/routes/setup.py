@@ -11,7 +11,16 @@ from app.modules.auth.contracts import AlreadyInitializedError, IssuedSession, i
 from app.modules.auth.cookies import set_auth_cookies
 from app.modules.auth.dependencies import get_runtime_settings
 from app.modules.auth.schemas import SessionResponse, SetupRequest, validate_new_master_password
-from app.modules.backup.contracts import BackupDocument, BackupIntegrityError, BackupInvariantError
+from app.modules.backup.contracts import (
+    BackupAuthenticationFailed,
+    BackupIntegrityError,
+    BackupInvariantError,
+    BackupTooLarge,
+    InvalidBackupPayload,
+    InvalidHermesFile,
+    InvalidKdfParameters,
+    UnsupportedHermesVersion,
+)
 from app.modules.categories.contracts import OnboardingExpenseGroup
 
 
@@ -32,7 +41,8 @@ class RestoreSetupRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=False)
 
     master_password: SecretStr
-    backup: BackupDocument
+    backup: dict[str, object]
+    backup_password: SecretStr | None = Field(default=None, max_length=1024)
 
     @field_validator("master_password")
     @classmethod
@@ -81,6 +91,11 @@ def restore_setup(
             settings,
             master_password=payload.master_password.get_secret_value(),
             backup=payload.backup,
+            backup_password=(
+                payload.backup_password.get_secret_value()
+                if payload.backup_password is not None
+                else None
+            ),
         )
     except AlreadyInitializedError as error:
         raise already_initialized() from error
@@ -111,6 +126,28 @@ def already_initialized() -> HTTPException:
 
 
 def invalid_backup(error: ValueError) -> HTTPException:
+    if isinstance(error, BackupTooLarge):
+        return HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail={"code": "backup_too_large", "message": str(error)},
+        )
+    if isinstance(error, BackupAuthenticationFailed):
+        return HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "backup_authentication_failed", "message": str(error)},
+        )
+    codes = {
+        UnsupportedHermesVersion: "unsupported_hermes_version",
+        InvalidKdfParameters: "invalid_kdf_parameters",
+        InvalidBackupPayload: "invalid_backup_payload",
+        InvalidHermesFile: "invalid_hermes_file",
+    }
+    for error_type, code in codes.items():
+        if isinstance(error, error_type):
+            return HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={"code": code, "message": str(error)},
+            )
     return HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         detail={"code": "invalid_backup", "message": str(error)},

@@ -12,8 +12,11 @@ than being silently discarded.
 
 ## Owner-confirmed backup direction
 
-A full JSON export contains all data and is versioned. Its envelope includes at
-least:
+A full portable export contains all financial data and is versioned. Hermes
+offers an encrypted `.hermes` file as the recommended option and an explicit
+plaintext JSON file for compatibility and inspection. Both export responses use
+`Cache-Control: no-store`; this prevents ordinary HTTP caching but does not
+protect a plaintext file after the browser saves it.
 
 ```text
 format
@@ -28,7 +31,27 @@ restored state or no restored changes remain. See the operational
 
 Money in JSON should use decimal strings when needed to avoid loss of precision.
 
-## JSON backup format (schema 1)
+## Protected Hermes format (version 1)
+
+The `.hermes` file is UTF-8 JSON. Its outer envelope exposes only format,
+version, creation time, algorithms, bounded Argon2id parameters, random salt,
+independent nonces and Base64 ciphertext. The inner schema-1 payload contains
+`app_version`, `exported_at` and the same exact `BackupData` contract as the
+legacy export.
+
+Each export generates a random 32-byte DEK. XChaCha20-Poly1305-IETF encrypts
+the payload with the DEK. Argon2id derives a separate 32-byte KEK from the
+supplied master password and a new random salt; a second XChaCha20-Poly1305
+operation encrypts the DEK. The password, KEK and plaintext DEK are never stored
+in the file. Key and payload operations use independent 24-byte random nonces.
+
+The reader validates the 72 MiB outer limit, KDF ranges, strict Base64 and all
+decoded lengths before Argon2. Unknown versions fail explicitly. Wrong
+passwords and authenticated-ciphertext failures share one user-facing error.
+Payload AAD is independent of KDF and wrapped-key metadata so a future password
+change may rewrap only the DEK; that rewrap operation is not implemented yet.
+
+## Legacy JSON backup format (schema 1)
 
 `0.1.0-rc.1` implements `hermes-json-backup`, schema version `1`. The envelope
 contains `format`, `schema_version`, `app_version`, `exported_at`, `data` and an
@@ -63,7 +86,7 @@ settings and financial data commit atomically. Excluding source authentication
 state is the security-first MVP assumption pending owner review; importing it
 remains outside scope.
 
-Only schema 1 is accepted. Compatibility translation between backup schemas is
+Only payload schema 1 is accepted. Compatibility translation between backup schemas is
 not implicit: a future version must add an explicit, tested reader before it
 claims support.
 
@@ -77,6 +100,9 @@ because data came from a file.
 ## Open questions
 
 - CSV dialects, date formats and locale-aware decimal parsing.
-- Excel formats; JSON backup requests are currently limited to 50 MiB.
+- Excel formats. Plaintext JSON remains limited to 50 MiB; encrypted envelopes
+  are limited to 72 MiB and contain at most a 50 MiB plaintext payload.
 - Duplicate fingerprint and conflict-review UX.
-- Forward/backward schema compatibility beyond exact schema 1 and encryption at rest.
+- Forward/backward payload compatibility beyond exact schema 1.
+- Password-only DEK rewrap, streaming encryption, signatures and automatic
+  rotated backups.

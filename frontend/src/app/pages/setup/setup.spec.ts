@@ -124,7 +124,41 @@ describe('SetupPage', () => {
     expect(auth.restoreSetup).toHaveBeenCalledWith({
       master_password: 'long-master-password',
       backup,
+      backup_password: null,
     });
     expect(auth.setup).not.toHaveBeenCalled();
+  });
+
+  it('requires and submits a separate password for a protected Hermes backup', async () => {
+    const backup = { format: 'hermes', version: 1 };
+    const file = {
+      name: 'protected.hermes',
+      size: 128,
+      text: () => Promise.resolve(JSON.stringify(backup)),
+    };
+    const input = fixture.nativeElement.querySelector('#setup-backup') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [file] });
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    fillPasswords();
+
+    const backupPassword = fixture.nativeElement.querySelector(
+      '#setup-backup-password',
+    ) as HTMLInputElement;
+    const submit = fixture.nativeElement.querySelector(
+      'button[type="submit"]',
+    ) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    backupPassword.value = 'old-backup-password';
+    backupPassword.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    submit.click();
+
+    expect(auth.restoreSetup).toHaveBeenCalledWith({
+      master_password: 'long-master-password',
+      backup,
+      backup_password: 'old-backup-password',
+    });
   });
 });

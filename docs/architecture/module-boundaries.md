@@ -18,7 +18,7 @@
 | `debts` | `i_owe` and `owed_to_me` obligations | repayment posting contract |
 | `reports` | reporting read models | public read contracts only |
 | `imports` | parse, map, preview, duplicate candidates | owning modules' validation/write commands |
-| `backup` | versioned export and restore orchestration | module-owned export/import contracts |
+| `backup` | versioned plaintext/protected export, crypto envelope and restore orchestration | module-owned export/import contracts |
 
 `scenarios`, `assistant`, `liabilities`, `debts` and `imports` are planned
 ownership reservations. Only the last three currently have placeholder

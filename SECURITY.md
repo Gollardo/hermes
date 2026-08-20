@@ -20,7 +20,8 @@ cookies, protected Docker volumes and tested backups.
 - Replace example passwords and keep `.env` out of version control.
 - Complete first-run setup while the default `127.0.0.1` bind is still active;
   never expose an uninitialized instance to a LAN or remote network.
-- Protect the PostgreSQL volume and backup files as sensitive financial data.
+- Prefer protected `.hermes` exports and keep their password separately. Treat
+  plaintext JSON exports as fully readable financial data.
 - For remote access, require a VPN or a maintained reverse proxy with HTTPS and
   keep `HERMES_COOKIE_SECURE=true`.
 - End server-side sessions after suspected compromise and keep the host, images

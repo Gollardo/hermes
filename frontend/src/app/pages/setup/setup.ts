@@ -106,6 +106,7 @@ export class SetupPage {
   protected readonly mode = signal<SetupMode | null>(null);
   protected readonly selectedGroups = signal(new Set<string>());
   protected readonly backupName = signal<string | null>(null);
+  protected readonly backupRequiresPassword = signal(false);
   protected readonly readingBackup = signal(false);
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -117,6 +118,7 @@ export class SetupPage {
     passwordConfirmation: ['', Validators.required],
     baseCurrency: ['RUB', [Validators.required, Validators.pattern(/^[A-Za-z]{3}$/)]],
     timezone: [detectedTimezone(), Validators.required],
+    backupPassword: ['', Validators.maxLength(1024)],
   });
 
   protected startFresh(): void {
@@ -124,6 +126,7 @@ export class SetupPage {
     this.mode.set('fresh');
     this.backupDocument = null;
     this.backupName.set(null);
+    this.backupRequiresPassword.set(false);
     this.readingBackup.set(false);
     this.error.set(null);
     this.step.set(2);
@@ -134,12 +137,13 @@ export class SetupPage {
     const file = (event.target as HTMLInputElement).files?.[0];
     this.backupDocument = null;
     this.backupName.set(null);
+    this.backupRequiresPassword.set(false);
     this.mode.set(null);
     this.readingBackup.set(false);
     this.error.set(null);
     if (!file) return;
-    if (file.size > 50 * 1024 * 1024) {
-      this.error.set('Файл больше допустимых 50 МБ.');
+    if (file.size > 72 * 1024 * 1024) {
+      this.error.set('Файл больше допустимых 72 МБ.');
       return;
     }
     this.readingBackup.set(true);
@@ -149,6 +153,13 @@ export class SetupPage {
         if (sequence !== this.backupSequence) return;
         try {
           this.backupDocument = JSON.parse(text);
+          const format = this.backupFormat(this.backupDocument);
+          if (format === 'hermes-json-backup' && file.size > 50 * 1024 * 1024) {
+            this.backupDocument = null;
+            this.error.set('Открытый JSON-backup больше допустимых 50 МБ.');
+            return;
+          }
+          this.backupRequiresPassword.set(format === 'hermes');
           this.backupName.set(file.name);
           this.mode.set('restore');
           this.step.set(2);
@@ -175,6 +186,7 @@ export class SetupPage {
     this.mode.set(null);
     this.backupDocument = null;
     this.backupName.set(null);
+    this.backupRequiresPassword.set(false);
     this.readingBackup.set(false);
     this.step.set(1);
   }
@@ -203,7 +215,11 @@ export class SetupPage {
 
     if (this.mode() === 'restore' && this.backupDocument) {
       this.auth
-        .restoreSetup({ master_password: value.password, backup: this.backupDocument })
+        .restoreSetup({
+          master_password: value.password,
+          backup: this.backupDocument,
+          backup_password: this.backupRequiresPassword() ? value.backupPassword : null,
+        })
         .subscribe({
           next: () => this.submitting.set(false),
           error: (error: unknown) => {
@@ -237,7 +253,11 @@ export class SetupPage {
 
   private credentialsValid(): boolean {
     const value = this.form.getRawValue();
-    if (this.form.invalid || value.password !== value.passwordConfirmation) {
+    if (
+      this.form.invalid ||
+      value.password !== value.passwordConfirmation ||
+      (this.mode() === 'restore' && this.backupRequiresPassword() && !value.backupPassword)
+    ) {
       this.form.markAllAsTouched();
       if (this.form.valid && value.password !== value.passwordConfirmation) {
         this.error.set('Пароли не совпадают.');
@@ -245,6 +265,11 @@ export class SetupPage {
       return false;
     }
     return true;
+  }
+
+  private backupFormat(document: unknown): string | null {
+    if (typeof document !== 'object' || document === null || !('format' in document)) return null;
+    return typeof document.format === 'string' ? document.format : null;
   }
 }
 

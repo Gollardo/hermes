@@ -19,6 +19,7 @@ export interface SetupPayload {
 export interface RestoreSetupPayload {
   master_password: string;
   backup: unknown;
+  backup_password?: string | null;
 }
 
 interface SetupStatusResponse {
@@ -186,7 +187,13 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
       scheduling_conflict: 'Расписание уже изменено в другой вкладке. Обновите календарь.',
       invalid_occurrence_transition: 'Это действие больше недоступно для ожидаемой операции.',
       confirmation_invalid: 'Фраза подтверждения не совпадает. Данные не изменены.',
-      backup_too_large: 'Backup превышает допустимый размер 50 МБ.',
+      backup_too_large: 'Backup превышает допустимый размер.',
+      backup_authentication_failed:
+        'Не удалось расшифровать резервную копию. Пароль неверен или файл повреждён.',
+      invalid_hermes_file: 'Hermes-backup имеет некорректную структуру.',
+      unsupported_hermes_version: 'Эта версия Hermes-backup пока не поддерживается.',
+      invalid_kdf_parameters: 'Параметры защиты Hermes-backup недопустимы.',
+      invalid_backup_payload: 'Расшифрованные данные backup повреждены или несовместимы.',
       invalid_backup: 'Backup повреждён, несовместим или нарушает финансовые правила.',
     };
     return localized[detail.code] ?? fallback;

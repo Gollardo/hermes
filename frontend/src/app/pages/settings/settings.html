@@ -218,35 +218,62 @@
         <div>
           <p class="section-label">Резервная копия</p>
           <h2 id="backup-title">Экспорт и восстановление</h2>
-          <p>JSON содержит финансовые данные и настройки, но не пароль и не сессии.</p>
+          <p>Защищённый Hermes-файл шифрует данные. Открытый JSON доступен для совместимости.</p>
         </div>
       </div>
       <div class="backup-actions">
         <div>
           <h3>Создать копию</h3>
-          <p>Скачайте полный проверенный снимок текущих данных.</p>
+          <p>Рекомендуемый формат требует мастер-пароль при создании и восстановлении.</p>
+          <form [formGroup]="hermesExportForm" (ngSubmit)="exportHermesBackup()">
+            <label for="hermes-export-password">Текущий мастер-пароль</label>
+            <input
+              id="hermes-export-password"
+              type="password"
+              formControlName="masterPassword"
+              autocomplete="current-password"
+            />
+            <button type="submit" [disabled]="backupBusy() || hermesExportForm.invalid">
+              Скачать защищённый .hermes
+            </button>
+          </form>
+          <p>JSON не зашифрован: любой получивший файл сможет прочитать финансовые данные.</p>
           <button
             type="button"
             class="secondary"
-            (click)="exportBackup()"
+            (click)="exportJsonBackup()"
             [disabled]="backupBusy()"
           >
-            Скачать backup
+            Скачать открытый .json
           </button>
         </div>
         <div>
           <h3>Проверить и восстановить</h3>
           <p>Сначала выберите файл: данные не изменятся до отдельного подтверждения.</p>
-          <label for="backup-file">Выберите JSON-backup</label>
+          <label for="backup-file">Выберите .hermes или JSON-backup</label>
           <input
             id="backup-file"
             type="file"
-            accept="application/json,.json"
+            accept="application/json,application/vnd.hermes.backup+json,.json,.hermes"
             [disabled]="backupBusy()"
             (change)="chooseBackup($event)"
           />
         </div>
       </div>
+      @if (backupRequiresPassword() && !backupPreview()) {
+        <form [formGroup]="restoreForm" (ngSubmit)="previewEncryptedBackup()" class="restore-form">
+          <label for="backup-password-preview">Пароль защищённого backup</label>
+          <input
+            id="backup-password-preview"
+            type="password"
+            formControlName="backupPassword"
+            autocomplete="current-password"
+          />
+          <button type="submit" class="secondary" [disabled]="backupBusy()">
+            Проверить защищённый backup
+          </button>
+        </form>
+      }
       @if (backupPreview(); as preview) {
         <div class="backup-summary" role="status">
           <strong>Целостность подтверждена</strong>
@@ -285,6 +312,15 @@
             formControlName="masterPassword"
             autocomplete="current-password"
           />
+          @if (backupRequiresPassword()) {
+            <label for="restore-backup-password">Пароль защищённого backup</label>
+            <input
+              id="restore-backup-password"
+              type="password"
+              formControlName="backupPassword"
+              autocomplete="current-password"
+            />
+          }
           <button
             type="submit"
             class="danger"

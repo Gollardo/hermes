@@ -1,33 +1,42 @@
 # Backup and restore
 
-## Application JSON backup
+## Application backup choices
 
-Open the backup and restore section in Settings and select its download action.
-Store the JSON file outside the Hermes host, protect it as financial
-data and periodically test it on a separately initialized instance. The file is
-not encrypted by Hermes.
+Open the backup and restore section in Settings. The recommended action creates
+a protected `.hermes` file after the current master password is verified. The
+file is JSON, but financial data exists only in authenticated ciphertext. The
+same password is required to open that particular file; Hermes cannot recover a
+forgotten backup password.
 
-On an empty destination, choose the JSON file on the first setup step and set a
-new destination master password. Backup validation, credential/session creation
+The separate plaintext `.json` action remains available for compatibility and
+manual inspection. It is not encrypted. Anyone who receives it can read the
+financial data, so store and transmit it only through protected channels.
+Both export responses disable HTTP caching; the downloaded plaintext file still
+requires protected storage.
+
+On an empty destination, choose either file on the first setup step. For a
+`.hermes` file, provide its backup password separately from the new destination
+master password. Backup validation, credential/session creation
 and data restore share one transaction; failure leaves the instance
 uninitialized and lets the owner choose another file or start fresh.
 
-On an initialized destination, sign in, choose the JSON file in Settings and
-review the count/currency/timezone summary. Enter the exact destructive-
-confirmation phrase shown by the interface, provide the destination instance's
-current master password, and confirm. Current financial and planning data is
+On an initialized destination, sign in, choose either file in Settings and
+review the count/currency/timezone summary. A `.hermes` preview first requires
+its backup password. Enter the exact destructive-confirmation phrase, provide
+the destination instance's current master password and, for `.hermes`, retain
+the separate backup password. Current financial and planning data is
 replaced; the current owner credential and current session are retained, while
 other sessions are ended. A checksum, strict schema and
 references are checked before mutation. Table locks, one database transaction
 and post-write domain checks guarantee that a failed restore leaves the old data
 intact.
-The UI and API reject JSON backup payloads larger than 50 MiB before parsing.
+The UI and API reject outer backup requests larger than 72 MiB before parsing.
+Plaintext JSON and decrypted payloads remain limited to 50 MiB.
 The SHA-256 digest detects accidental corruption but is not an authenticity
 signature, so only restore files from a trusted source.
 
-Schema 1 restore accepts only `hermes-json-backup`. Keep an old application
-image available when retaining older backup formats; no compatibility beyond
-schema 1 is currently promised.
+Restore accepts `hermes-json-backup` schema 1 and `hermes` envelope version 1
+containing payload schema 1. Unknown Hermes versions are rejected explicitly.
 
 ## Interim PostgreSQL backup
 
@@ -60,15 +69,17 @@ Then inspect logs and verify `/api/v1/health`. A successful health response does
 not prove financial correctness; future restore verification must include schema
 version and domain-level counts/invariants.
 
-## Implemented JSON restore behavior
+## Implemented portable restore behavior
 
-1. Read and validate `format`, `schema_version`, `app_version` and `exported_at`.
-2. Reject unsupported or malformed input before mutation.
-3. Validate all module data and exact decimal representations.
-4. Restore all module state inside one database transaction.
-5. Recheck cross-module invariants and commit once; roll back everything on any
+1. Enforce the outer size limit and read the explicit format/version.
+2. For Hermes V1, validate all KDF and encoded-field limits before Argon2id,
+   decrypt the wrapped DEK, and authenticate/decrypt the payload.
+3. Reject unsupported, malformed or unauthenticated input before mutation.
+4. Validate all module data and exact decimal representations.
+5. Restore all module state inside one database transaction.
+6. Recheck cross-module invariants and commit once; roll back everything on any
    failure.
-6. Import no source authentication state. Initialized restore preserves the
+7. Import no source authentication state. Initialized restore preserves the
    destination credential/current session and ends other sessions; first-run
    restore creates a new destination credential/session in the restore
    transaction.

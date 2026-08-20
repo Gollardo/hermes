@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -9,6 +9,7 @@ from pydantic import (
     ConfigDict,
     Field,
     SecretStr,
+    StrictInt,
     field_validator,
     model_validator,
 )
@@ -226,6 +227,47 @@ class BackupDocument(BackupModel):
     integrity: BackupIntegrity
 
 
+class HermesKdf(BackupModel):
+    algorithm: Literal["argon2id"]
+    argon2_version: StrictInt
+    salt: str = Field(min_length=1, max_length=128)
+    time_cost: StrictInt
+    memory_cost: StrictInt
+    parallelism: StrictInt
+    hash_len: StrictInt
+
+
+class HermesKeyEncryption(BackupModel):
+    algorithm: Literal["xchacha20-poly1305-ietf"]
+    nonce: str = Field(min_length=1, max_length=64)
+    encrypted_data_key: str = Field(min_length=1, max_length=128)
+
+
+class HermesPayloadEncryption(BackupModel):
+    algorithm: Literal["xchacha20-poly1305-ietf"]
+    nonce: str = Field(min_length=1, max_length=64)
+    ciphertext: str = Field(min_length=1, max_length=70_000_000)
+
+
+class HermesBackup(BackupModel):
+    format: Literal["hermes"]
+    version: StrictInt
+    created_at: AwareDatetime
+    kdf: HermesKdf
+    key_encryption: HermesKeyEncryption
+    payload_encryption: HermesPayloadEncryption
+
+
+class HermesPayload(BackupModel):
+    schema_version: Literal[1]
+    app_version: str
+    exported_at: AwareDatetime
+    data: BackupData
+
+
+BackupEnvelope = BackupDocument | HermesBackup
+
+
 class BackupCounts(BackupModel):
     accounts: int
     categories: int
@@ -249,10 +291,20 @@ class BackupPreviewResponse(BackupModel):
     integrity_verified: bool
 
 
+class BackupPreviewRequest(BackupModel):
+    backup: dict[str, Any]
+    backup_password: SecretStr | None = Field(default=None, max_length=1024)
+
+
+class HermesExportRequest(BackupModel):
+    master_password: SecretStr = Field(max_length=1024)
+
+
 class RestoreRequest(BackupModel):
-    backup: BackupDocument
+    backup: dict[str, Any]
     confirmation: str = Field(max_length=64)
     master_password: SecretStr = Field(max_length=1024)
+    backup_password: SecretStr | None = Field(default=None, max_length=1024)
 
 
 class RestoreResponse(BackupModel):

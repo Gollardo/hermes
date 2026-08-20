@@ -17,8 +17,8 @@
       @if (step() === 1) {
         <h1 id="setup-title">Добро пожаловать в Hermes</h1>
         <p class="intro">
-          Можно восстановить JSON-backup из прежней версии или создать новое финансовое
-          пространство.
+          Можно восстановить защищённый Hermes-backup, JSON-backup прежней версии или создать новое
+          финансовое пространство.
         </p>
         <div class="start-options">
           <label class="start-option" for="setup-backup">
@@ -30,7 +30,7 @@
             <input
               id="setup-backup"
               type="file"
-              accept="application/json,.json"
+              accept="application/json,application/vnd.hermes.backup+json,.json,.hermes"
               (change)="chooseBackup($event)"
             />
           </label>
@@ -110,11 +110,26 @@
               Основную валюту можно изменить только до появления финансовых данных.
             </p>
           }
+          @if (mode() === 'restore' && backupRequiresPassword()) {
+            <label for="setup-backup-password">Пароль защищённого backup</label>
+            <input
+              id="setup-backup-password"
+              type="password"
+              formControlName="backupPassword"
+              autocomplete="current-password"
+            />
+            <p class="hint">
+              Это пароль, с которым был создан файл. Он может отличаться от нового мастер-пароля.
+            </p>
+          }
           <button
             type="submit"
             [disabled]="
               form.invalid ||
               form.controls.password.value !== form.controls.passwordConfirmation.value ||
+              (mode() === 'restore' &&
+                backupRequiresPassword() &&
+                !form.controls.backupPassword.value) ||
               submitting()
             "
           >

@@ -6,7 +6,7 @@ from fastapi.routing import APIRoute
 from starlette.responses import Response
 from starlette.types import Message
 
-MAX_BACKUP_BYTES = 50 * 1024 * 1024
+MAX_BACKUP_BYTES = 72 * 1024 * 1024
 
 
 class BackupBodyLimitRoute(APIRoute):
@@ -47,7 +47,7 @@ def backup_too_large() -> HTTPException:
         status_code=status.HTTP_413_CONTENT_TOO_LARGE,
         detail={
             "code": "backup_too_large",
-            "message": "Backup exceeds the 50 MiB request limit",
+            "message": "Backup exceeds the 72 MiB request limit",
         },
     )
 

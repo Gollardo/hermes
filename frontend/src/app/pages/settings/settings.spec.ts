@@ -197,11 +197,21 @@ describe('SettingsPage', () => {
     http.expectOne('/api/v1/accounts').flush([]);
     const page = fixture.componentInstance as unknown as {
       backupDocument: { set: (value: unknown) => void };
-      restoreForm: { setValue: (value: { confirmation: string; masterPassword: string }) => void };
+      restoreForm: {
+        setValue: (value: {
+          confirmation: string;
+          masterPassword: string;
+          backupPassword: string;
+        }) => void;
+      };
       restoreBackup: () => void;
     };
     page.backupDocument.set({ format: 'hermes-json-backup' });
-    page.restoreForm.setValue({ confirmation: 'не совпадает', masterPassword: 'secret' });
+    page.restoreForm.setValue({
+      confirmation: 'не совпадает',
+      masterPassword: 'secret',
+      backupPassword: '',
+    });
     page.restoreBackup();
     fixture.detectChanges();
     http.expectNone('/api/v1/backup/restore');
@@ -222,8 +232,16 @@ describe('SettingsPage', () => {
     const page = fixture.componentInstance as unknown as {
       backupDocument: { set: (value: unknown) => void };
       restoreForm: {
-        setValue: (value: { confirmation: string; masterPassword: string }) => void;
-        getRawValue: () => { confirmation: string; masterPassword: string };
+        setValue: (value: {
+          confirmation: string;
+          masterPassword: string;
+          backupPassword: string;
+        }) => void;
+        getRawValue: () => {
+          confirmation: string;
+          masterPassword: string;
+          backupPassword: string;
+        };
       };
       restoreBackup: () => void;
     };
@@ -231,6 +249,7 @@ describe('SettingsPage', () => {
     page.restoreForm.setValue({
       confirmation: 'ЗАМЕНИТЬ ВСЕ ДАННЫЕ',
       masterPassword: 'correct-master-password',
+      backupPassword: '',
     });
     page.restoreBackup();
 
@@ -240,11 +259,54 @@ describe('SettingsPage', () => {
       backup,
       confirmation: 'ЗАМЕНИТЬ ВСЕ ДАННЫЕ',
       master_password: 'correct-master-password',
+      backup_password: null,
     });
     request.flush(
       { detail: { code: 'invalid_backup' } },
       { status: 422, statusText: 'Unprocessable Content' },
     );
     expect(page.restoreForm.getRawValue().masterPassword).toBe('');
+  });
+
+  it('asks for a Hermes password before preview and keeps password roles separate', async () => {
+    fixture.detectChanges();
+    http.expectOne('/api/v1/settings').flush({
+      base_currency: 'RUB',
+      timezone: 'Europe/Moscow',
+      default_account_id: null,
+      base_currency_locked: true,
+      updated_at: '2026-08-20T00:00:00Z',
+    });
+    http.expectOne('/api/v1/accounts').flush([]);
+    fixture.detectChanges();
+
+    const backup = { format: 'hermes', version: 1 };
+    const file = {
+      name: 'protected.hermes',
+      size: 128,
+      text: () => Promise.resolve(JSON.stringify(backup)),
+    };
+    const input = fixture.nativeElement.querySelector('#backup-file') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [file] });
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    http.expectNone('/api/v1/backup/preview');
+    const password = fixture.nativeElement.querySelector(
+      '#backup-password-preview',
+    ) as HTMLInputElement;
+    password.value = 'backup-file-password';
+    password.dispatchEvent(new Event('input'));
+    fixture.nativeElement
+      .querySelector('#backup-password-preview')
+      .closest('form')
+      .dispatchEvent(new Event('submit'));
+
+    const request = http.expectOne('/api/v1/backup/preview');
+    expect(request.request.body).toEqual({
+      backup,
+      backup_password: 'backup-file-password',
+    });
   });
 });

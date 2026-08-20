@@ -9,6 +9,13 @@ from sqlalchemy.orm import Session
 
 from app import APP_VERSION
 from app.modules.accounts.backup import Account
+from app.modules.backup.errors import BackupAuthenticationFailed, BackupTooLarge
+from app.modules.backup.hermes_v1 import (
+    MAX_PLAINTEXT_BACKUP_BYTES,
+    HermesV1Reader,
+    HermesV1Writer,
+    parse_backup_envelope,
+)
 from app.modules.backup.schemas import (
     AccountMovementRecord,
     AccountRecord,
@@ -22,6 +29,7 @@ from app.modules.backup.schemas import (
     FundEventRecord,
     FundMovementRecord,
     FundRecord,
+    HermesBackup,
     OperationRecord,
     RecurringRuleRecord,
     RestoreResponse,
@@ -132,6 +140,49 @@ def create_backup(session: Session) -> BackupDocument:
         integrity=BackupIntegrity(digest="0" * 64),
     )
     return seal_backup(document)
+
+
+def create_hermes_backup(session: Session, master_password: str) -> HermesBackup:
+    return HermesV1Writer().write(master_password, create_backup(session))
+
+
+def open_backup(raw: dict[str, Any], backup_password: str | None = None) -> BackupDocument:
+    envelope = parse_backup_envelope(raw)
+    if isinstance(envelope, BackupDocument):
+        if len(envelope.model_dump_json(exclude_unset=True).encode("utf-8")) > (
+            MAX_PLAINTEXT_BACKUP_BYTES
+        ):
+            raise BackupTooLarge("Legacy backup exceeds the 50 MiB limit")
+        return envelope
+    if backup_password is None or not backup_password:
+        raise BackupAuthenticationFailed("Incorrect password or corrupted backup.")
+    payload = HermesV1Reader().read(backup_password, envelope)
+    return seal_backup(
+        BackupDocument(
+            format=FORMAT,
+            schema_version=payload.schema_version,
+            app_version=payload.app_version,
+            exported_at=payload.exported_at,
+            data=payload.data,
+            integrity=BackupIntegrity(digest="0" * 64),
+        )
+    )
+
+
+def preview_backup_envelope(
+    raw: dict[str, Any], backup_password: str | None = None
+) -> BackupPreviewResponse:
+    format_name = raw.get("format")
+    result = preview_backup(open_backup(raw, backup_password))
+    if format_name == "hermes":
+        return result.model_copy(update={"format": "hermes"})
+    return result
+
+
+def restore_backup_envelope(
+    session: Session, raw: dict[str, Any], backup_password: str | None = None
+) -> RestoreResponse:
+    return restore_backup(session, open_backup(raw, backup_password))
 
 
 def _counts(data: BackupData) -> BackupCounts:
