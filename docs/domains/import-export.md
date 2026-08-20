@@ -49,7 +49,9 @@ Optional fund targets and recurrence interval/weekday fields are included.
 Schema 1 readers supply compatible defaults for backups written before these
 fields existed. Fund-event validation preserves the distinct shapes of an
 allocation into one account, redistribution of one fund between accounts, and
-a transfer between two funds within one account.
+a transfer between two funds within one account. Restore writes category roots
+before children so the serialized UUID order cannot violate the category-tree
+foreign key.
 
 Owner credential, password hash, login throttle and sessions are deliberately
 excluded: they are security state of the destination instance, not portable

@@ -345,6 +345,34 @@ def test_valid_backup_domain_shape() -> None:
     validate_document(data)
 
 
+def test_backup_category_validation_is_independent_of_parent_order() -> None:
+    data = valid_data()
+    parent = data["categories"][1]
+    data["categories"].insert(
+        0,
+        {
+            "id": str(uuid4()),
+            "type": parent["type"],
+            "name": "Child",
+            "description": None,
+            "parent_id": parent["id"],
+            "archived_at": None,
+            "created_at": parent["created_at"],
+            "updated_at": parent["updated_at"],
+        },
+    )
+
+    validate_document(BackupData.model_validate(data))
+
+
+def test_backup_rejects_missing_category_parent() -> None:
+    data = valid_data()
+    data["categories"][0]["parent_id"] = str(uuid4())
+
+    with pytest.raises(BackupInvariantError, match="Category parent is missing"):
+        validate_document(BackupData.model_validate(data))
+
+
 def test_backup_accepts_balanced_transfer_between_funds_on_one_account() -> None:
     data = valid_data()
     add_valid_fund_transfer(data)

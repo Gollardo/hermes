@@ -414,7 +414,7 @@ access. Direct public-internet exposure is unsupported.
 
 ## Verification snapshot
 
-- For the current `0.4.6` worktree, 77 non-PostgreSQL backend tests, 59/59
+- For the current `0.4.6` worktree, 79 non-PostgreSQL backend tests, 59/59
   PostgreSQL integration tests and 115/115 frontend tests pass. Dedicated fund
   cases prove that equal relative completion receives equal dynamic shares even
   when targets differ by an order of magnitude, that the less complete target
@@ -424,10 +424,12 @@ access. Direct public-internet exposure is unsupported.
   same-account transfer between two funds from a same-fund redistribution
   between two accounts. Unit tests cover valid and malformed transfer shapes;
   the PostgreSQL backup round trip restores the two resulting fund positions,
-  and the owner's unchanged `0.4.6` backup passes schema, checksum and domain
-  preview validation. A frontend geometry case protects the long series-shift
-  checkbox from shrinking or reverting to centered label alignment. Alembic
-  reports the current and only head as
+  while category restore writes roots before children independently of UUID
+  order. The owner's unchanged `0.4.6` backup passes schema, checksum and domain
+  preview validation and completes first-run restore into a clean disposable
+  PostgreSQL database with all 85 categories. A frontend geometry case protects
+  the long series-shift checkbox from shrinking or reverting to centered label
+  alignment. Alembic reports the current and only head as
   `0012_recurring_series_shift`, and `alembic check` detects no schema changes;
   release `0.4.6` therefore adds no empty migration. Ruff, Python formatting,
   Angular lint, Prettier, mypy, TypeScript, documentation checks and the

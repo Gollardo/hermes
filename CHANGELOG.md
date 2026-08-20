@@ -17,6 +17,9 @@ assigned.
 - Backup validation now distinguishes fund-to-fund transfers from
   redistributions between accounts, so valid schema-1 backups containing a
   `fund_transfer` event can be previewed and restored.
+- Backup restore now writes parent categories before their children, regardless
+  of UUID/export order, so valid category trees satisfy the immediate
+  self-referencing foreign key during import.
 
 ## [0.4.6] - 2026-08-20
 

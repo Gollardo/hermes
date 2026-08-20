@@ -41,7 +41,21 @@ def test_first_run_restore_is_atomic_and_uses_backup_settings(
     app = create_app(postgres_database_settings)
     with TestClient(app) as client:
         assert client.post("/api/v1/setup", json=SETUP).status_code == 201
+        headers = csrf(client)
+        parent = client.post(
+            "/api/v1/categories",
+            headers=headers,
+            json={"type": "expense", "name": "Parent"},
+        ).json()
+        child = client.post(
+            "/api/v1/categories",
+            headers=headers,
+            json={"type": "expense", "name": "Child", "parent_id": parent["id"]},
+        ).json()
         backup = client.get("/api/v1/backup/export").json()
+        backup["data"]["categories"].sort(key=lambda item: item["parent_id"] is None)
+        backup = seal_backup(BackupDocument.model_validate(backup)).model_dump(mode="json")
+        assert backup["data"]["categories"][0]["id"] == child["id"]
         reset_to_uninitialized(app)
 
         restored = client.post(
@@ -51,6 +65,8 @@ def test_first_run_restore_is_atomic_and_uses_backup_settings(
         assert restored.status_code == 201
         assert restored.json()["authenticated"] is True
         assert client.get("/api/v1/settings").json()["timezone"] == "Europe/Moscow"
+        restored_categories = {item["id"]: item for item in client.get("/api/v1/categories").json()}
+        assert restored_categories[child["id"]]["parent_id"] == parent["id"]
         repeated = client.post(
             "/api/v1/setup/restore",
             json={"master_password": "x" * 12, "backup": backup},

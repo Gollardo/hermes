@@ -474,6 +474,13 @@ def _insert(session: Session, model: type[Any], records: list[Any]) -> None:
     session.flush()
 
 
+def _insert_categories(session: Session, records: list[CategoryRecord]) -> None:
+    roots = [record for record in records if record.parent_id is None]
+    children = [record for record in records if record.parent_id is not None]
+    _insert(session, Category, roots)
+    _insert(session, Category, children)
+
+
 def restore_backup(session: Session, document: BackupDocument) -> RestoreResponse:
     verify_integrity(document)
     validate_document(document.data)
@@ -500,7 +507,7 @@ def restore_backup(session: Session, document: BackupDocument) -> RestoreRespons
         setattr(settings, field, value)
     _insert(session, Account, document.data.accounts)
     settings.default_account_id = default_account_id
-    _insert(session, Category, document.data.categories)
+    _insert_categories(session, document.data.categories)
     _insert(session, FinancialOperation, document.data.operations)
     _insert(session, AccountMovement, document.data.account_movements)
     _insert(session, Fund, document.data.funds)
