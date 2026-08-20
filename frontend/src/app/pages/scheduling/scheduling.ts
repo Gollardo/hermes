@@ -158,7 +158,6 @@ export class SchedulingPage implements OnInit {
   protected readonly ruleFormOpen = signal(false);
   protected readonly busyOccurrenceId = signal<string | null>(null);
   protected readonly postponeDates = signal<Record<string, string>>({});
-  protected readonly confirmationAmounts = signal<Record<string, string>>({});
   protected readonly editingConfirmationId = signal<string | null>(null);
   protected readonly selectedCalendarDay = signal<CalendarDay | null>(null);
   protected readonly actionNotice = signal<string | null>(null);
@@ -166,6 +165,10 @@ export class SchedulingPage implements OnInit {
   protected readonly filters = this.builder.group({
     accountId: [''],
     type: this.builder.control<OperationType | ''>(''),
+  });
+
+  protected readonly confirmationForm = this.builder.group({
+    amount: ['', [Validators.required, moneyExpressionValidator]],
   });
 
   protected readonly ruleForm = this.builder.group({
@@ -542,28 +545,19 @@ export class SchedulingPage implements OnInit {
   }
 
   protected confirmationAmount(occurrence: ExpectedOccurrence): string {
-    return this.confirmationAmounts()[occurrence.id] ?? occurrence.amount;
-  }
-
-  protected confirmationAmountDisplay(occurrence: ExpectedOccurrence): string {
-    return formatMoney(this.confirmationAmount(occurrence));
+    return this.editingConfirmationId() === occurrence.id
+      ? this.confirmationForm.controls.amount.value
+      : occurrence.amount;
   }
 
   protected editConfirmationAmount(occurrence: ExpectedOccurrence): void {
+    this.confirmationForm.controls.amount.setValue(occurrence.amount);
     this.editingConfirmationId.set(occurrence.id);
   }
 
-  protected cancelConfirmationAmountEdit(occurrence: ExpectedOccurrence): void {
-    this.confirmationAmounts.update((amounts) => {
-      const next = { ...amounts };
-      delete next[occurrence.id];
-      return next;
-    });
+  protected cancelConfirmationAmountEdit(): void {
+    this.confirmationForm.reset();
     this.editingConfirmationId.set(null);
-  }
-
-  protected setConfirmationAmount(occurrenceId: string, value: string): void {
-    this.confirmationAmounts.update((amounts) => ({ ...amounts, [occurrenceId]: value }));
   }
 
   protected validConfirmationAmount(occurrence: ExpectedOccurrence): boolean {

@@ -223,21 +223,18 @@
                               type="text"
                               inputmode="text"
                               autocomplete="off"
-                              [value]="confirmationAmountDisplay(occurrence)"
+                              [formControl]="confirmationForm.controls.amount"
                               [attr.aria-invalid]="!validConfirmationAmount(occurrence)"
                               [attr.aria-describedby]="
                                 !validConfirmationAmount(occurrence)
                                   ? 'confirm-error-' + occurrence.id
                                   : null
                               "
-                              (input)="
-                                setConfirmationAmount(occurrence.id, $any($event.target).value)
-                              "
                             />
                             <button
                               type="button"
                               class="secondary amount-edit-cancel"
-                              (click)="cancelConfirmationAmountEdit(occurrence)"
+                              (click)="cancelConfirmationAmountEdit()"
                             >
                               Отмена
                             </button>

@@ -56,6 +56,7 @@ const RULE = {
 interface SchedulingHarness {
   accounts: { set(value: object[]): void };
   categories: { set(value: object[]): void };
+  confirmationForm: FormGroup;
   ruleForm: FormGroup;
   canSaveRule(): boolean;
   submitRule(): void;
@@ -280,6 +281,25 @@ describe('SchedulingPage recurrence editor', () => {
     expect(request.request.body).toEqual({ version: 1, amount: '12345.75' });
     request.flush({ ...OCCURRENCE, amount: '12345.7500', status: 'confirmed' });
     flushOccurrenceRequests([]);
+  });
+
+  it('keeps a partial confirmation amount while the field is being edited', () => {
+    flushInitial([OCCURRENCE]);
+    clickButton('Изменить');
+    const amountInput = fixture.nativeElement.querySelector(
+      '#confirm-amount-occurrence-1',
+    ) as HTMLInputElement;
+
+    amountInput.focus();
+    setValue('#confirm-amount-occurrence-1', '12,');
+    fixture.detectChanges();
+
+    expect(amountInput.value).toBe('12,');
+    expect(
+      (fixture.componentInstance as unknown as SchedulingHarness).confirmationForm.controls[
+        'amount'
+      ].value,
+    ).toBe('12,');
   });
 
   it('bounds a busy calendar day and exposes every occurrence on demand', () => {
