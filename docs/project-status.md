@@ -10,11 +10,11 @@ map lives in [index.md](./index.md).
 
 ## Current phase
 
-**Internal application version `0.4.6` is implemented, but the public release
+**Internal application version `0.5.0` is implemented, but the public release
 gate remains open.** Previous version numbers were owner development milestones
 and were not published as GitHub Releases or public git tags.
 
-The next action is owner acceptance of `0.4.6` on restored real data, followed
+The next action is owner acceptance of `0.5.0` on restored real data, followed
 by a decision on the first public tag.
 
 The owner confirmed the version policy on 2026-08-18: the current `0.x` series
@@ -91,6 +91,12 @@ access. Direct public-internet exposure is unsupported.
   unfilled share. Equal completion progress therefore produces equal dynamic
   shares regardless of target size. Long recurring-rule checkbox labels also
   keep natural control sizing and align from their first text line.
+- Version `0.5.0` caps dynamic allocations at their goals, iteratively
+  redistributes the remainder in one transaction, and keeps final excess in a
+  separate reserve on the receiving account. Reserves from all accounts refill
+  incomplete funds automatically; operation-caused refills roll back with the
+  operation. Funds and forecast show reserve totals separately, while the only
+  manual action returns reserve to free money on the same account.
 - The owner decision from 2026-08-18 confirms the decision-first “Oracle · What
   if?” direction. Temporary alternatives compare with a baseline, change neither
   ledger nor plan, and persist only by choice. The owner may set a stop-loss,
@@ -105,6 +111,18 @@ access. Direct public-internet exposure is unsupported.
   unnecessary in the current single-owner scope.
 
 ## Verified capabilities
+
+### 0.5.0 verification snapshot
+
+- The full PostgreSQL integration suite passes 61/61 against disposable
+  databases upgraded through `0013_fund_reserve`; this includes reserve
+  creation with no funds, cross-account automatic refill, manual release,
+  exact operation-linked rollback, backup restore and forecast contracts.
+- Backend unit tests pass 101/101 and frontend tests pass 121/121. Ruff, Python
+  formatting, Angular lint, Prettier, mypy, TypeScript, documentation checks,
+  `git diff --check`, and the production Angular build pass. Alembic reports one
+  head at `0013_fund_reserve` and no ungenerated upgrade operations. Existing
+  Angular component-style budget warnings remain non-blocking.
 
 ### First run and access
 
@@ -256,7 +274,7 @@ access. Direct public-internet exposure is unsupported.
   `0009_scheduled_fund_allocation` adds planned-transfer allocation, and
   `0010_default_account` adds an optional default account.
 - Migration `0011_dynamic_fund_allocation` introduced the allocation mode;
-  `0012_recurring_series_shift` is the single current head.
+  `0013_fund_reserve` is the single current head.
 
 ### Financial operations and journal
 
@@ -324,12 +342,13 @@ access. Direct public-internet exposure is unsupported.
   Equal progress produces equal shares regardless of target size. At 20 or more
   active funds, the equal guaranteed base consumes the complete percentage, so
   relative progress does not differentiate their shares. Percentages and money
-  close exactly to 100%, recalculate before each top-up, and allow target
-  overshoot without redistribution within the same event.
+  close exactly to 100% and recalculate before each iterative top-up. Funds are
+  capped at their goals; final excess enters the per-account reserve.
 - Filled and archived funds receive 0%. Expense or restoration returns a fund
   to the next calculation when it is below target again.
 - Fund perspective recalculates dynamic percentages sequentially after each
-  planned top-up and explicitly reports blocked events.
+  planned top-up and reports the projected reserve instead of blocking dynamic
+  events when all goals are full.
 
 ### Recurring rules and calendar
 
@@ -492,7 +511,7 @@ access. Direct public-internet exposure is unsupported.
   global schedule snapshot for account free forecast and restoration of a
   dynamic backup whose unused manual percentages exceed 100%.
 - The integration suite creates disposable databases and verifies upgrades to
-  the current `0012_recurring_series_shift` head. A dedicated manual
+  the current `0013_fund_reserve` head. A dedicated manual
   upgrade/check/downgrade cycle was not added to this pass.
 - The 2026-08-20 network audit reports zero production vulnerabilities. The full
   development graph reports two high-severity findings for the same build-only

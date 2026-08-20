@@ -10,9 +10,9 @@ financial decision. The future **Oracle · What if?** capability will compare
 hypothetical scenarios with the deterministic baseline forecast; it is planned,
 not part of the current release.
 
-> **Current internal version:** `0.4.6` balances dynamic fund allocations by
-> relative target progress and corrects long recurring-rule checkbox alignment.
-> Versions through `0.4.6` are development milestones; no public GitHub release
+> **Current internal version:** `0.5.0` adds an account-level reserve for dynamic
+> fund allocations and atomic automatic refill when a goal becomes incomplete.
+> Versions through `0.5.0` are development milestones; no public GitHub release
 > has been published yet.
 
 ## Project priorities and contributions
@@ -37,8 +37,9 @@ and the maintainer's available time.
 - income/expense category trees with archive-safe lifecycle rules;
 - income, expense, transfer and balance-adjustment CRUD with exact movements;
 - collapsible journal filters, details and pagination with optimistic edit protection;
-- virtual funds, physical/free coverage, manual or target-aware dynamic
-  percentage allocation, redistribution between accounts and funds, and progress;
+- virtual funds, physical/fund/reserve/free coverage, an account-level dynamic
+  reserve, automatic goal refill, redistribution between accounts and funds,
+  and progress;
 - recurring income, expense and transfer rules with selectable weekly weekdays,
   weekly/monthly intervals, exact dated snapshots and optional series shifting;
 - exact addition and subtraction directly in operation and scheduling amount

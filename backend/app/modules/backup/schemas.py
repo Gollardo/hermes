@@ -101,6 +101,7 @@ class FundEventRecord(BackupModel):
     type: FundEventType
     occurred_on: date
     description: str | None = Field(max_length=2000)
+    caused_by_operation_id: UUID | None = None
     created_at: AwareDatetime
 
 
@@ -110,6 +111,13 @@ class FundMovementRecord(BackupModel):
     account_id: UUID
     operation_id: UUID | None
     event_id: UUID | None
+    amount: Money
+
+
+class FundReserveMovementRecord(BackupModel):
+    id: UUID
+    account_id: UUID
+    event_id: UUID
     amount: Money
 
 
@@ -209,6 +217,7 @@ class BackupData(BackupModel):
     funds: list[FundRecord]
     fund_events: list[FundEventRecord]
     fund_movements: list[FundMovementRecord]
+    fund_reserve_movements: list[FundReserveMovementRecord] = Field(default_factory=list)
     recurring_rules: list[RecurringRuleRecord]
     expected_occurrences: list[ExpectedOccurrenceRecord]
 
@@ -276,6 +285,7 @@ class BackupCounts(BackupModel):
     funds: int
     fund_events: int
     fund_movements: int
+    fund_reserve_movements: int = 0
     recurring_rules: int
     expected_occurrences: int
 

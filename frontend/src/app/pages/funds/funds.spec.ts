@@ -29,6 +29,8 @@ const SUMMARY = {
       account_name: 'Savings',
       physical_balance: '100.0000',
       reserved_balance: '25.0000',
+      fund_reserved_balance: '25.0000',
+      reserve_balance: '0',
       free_balance: '75.0000',
       archived: false,
     },
@@ -36,6 +38,8 @@ const SUMMARY = {
   active_percentage: '10.0000',
   allocation_mode: 'manual',
   total_reserved: '25.0000',
+  total_fund_reserved: '25.0000',
+  total_reserve: '0',
   total_free: '75.0000',
 };
 
@@ -136,7 +140,9 @@ describe('FundsPage', () => {
 
   it('permits editing a fund definition and keeps physical coverage visible', () => {
     flushInitial();
-    expect(fixture.nativeElement.textContent).toContain('Физический остаток = в фондах + свободно');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Физический остаток = в фондах + в резерве + свободно',
+    );
     expect(fixture.nativeElement.textContent).toContain('75,00');
     clickButton('Изменить');
     expect((fixture.nativeElement.querySelector('#fund-name') as HTMLInputElement).value).toBe(
@@ -177,6 +183,39 @@ describe('FundsPage', () => {
     http
       .expectOne((candidate) => candidate.url === '/api/v1/funds/history')
       .flush({ items: [], page: 1, page_size: 25, total: 0 });
+  });
+
+  it('explains a frozen manual reserve and blocks releasing more than its balance', () => {
+    fixture.detectChanges();
+    http.expectOne('/api/v1/settings').flush({ timezone: 'UTC', base_currency: 'RUB' });
+    http.expectOne('/api/v1/funds/summary').flush({
+      ...SUMMARY,
+      total_reserve: '5.0000',
+      accounts: [
+        {
+          ...SUMMARY.accounts[0],
+          fund_reserved_balance: '20.0000',
+          reserve_balance: '5.0000',
+        },
+      ],
+    });
+    http
+      .expectOne((request) => request.url === '/api/v1/funds/history')
+      .flush({ items: [], page: 1, page_size: 25, total: 0 });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Резерв сохранён после динамического режима',
+    );
+    clickButton('Вернуть в свободные');
+    setValue('#reserve-release-amount', '6');
+    fixture.nativeElement.querySelector('.modal-card form').dispatchEvent(new Event('submit'));
+    fixture.detectChanges();
+    const submit = fixture.nativeElement.querySelector(
+      '.modal-card button[type="submit"]',
+    ) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('не больше резерва выбранного счёта');
   });
 
   it('blocks percentage overflow and invalidates a stale allocation preview', () => {

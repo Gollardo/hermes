@@ -26,6 +26,7 @@ not another bank account.
 ## Primary user jobs
 
 - see the total in all funds and total free money;
+- see the dynamic reserve separately, with its physical-account breakdown;
 - check each fund's state;
 - see a fund target, amount, progress percentage, and combined target progress;
 - understand the fund's physical account breakdown;
@@ -68,7 +69,7 @@ For each fund:
 The screen supports two perspectives:
 
 - fund → which accounts hold its portions;
-- account → physical, reserved, and free amounts.
+- account → physical, in funds, in reserve, and free amounts.
 
 An expandable list may serve a small number of entities. Many funds and
 accounts may require a matrix or table view; decide after measuring real data.
@@ -103,6 +104,9 @@ accounts may require a matrix or table view; decide after measuring real data.
 5. After manual adjustment, totals recalculate with exact decimal arithmetic;
    the actually selected amount and ending free balance appear before saving.
 6. Allocation commits atomically or changes nothing.
+
+In dynamic mode, valid bounds include each fund's remaining target capacity;
+the server rejects stale or edited allocations that would overflow a goal.
 
 Changing account or source amount invalidates the old preview. New allocations
 and redistributions offer only active physical accounts. Amounts use the base
@@ -140,9 +144,14 @@ weighted by each goal's relative unfilled share, so equal completion levels
 receive equal shares regardless of target size. When 20 or more funds are
 active, the guaranteed equal base consumes the complete percentage and the UI
 must explain that relative progress no longer differentiates them. Percentage
-is not editable in the fund form. With no incomplete funds, preview and atomic
-transfer state that allocation is unavailable. Archiving excludes a fund;
-restoring it returns it to the next calculation.
+is not editable in the fund form. Allocations are capped at goals and
+recalculated until no eligible capacity remains. With no incomplete funds, the
+amount enters a separately labelled reserve on the receiving account instead
+of appearing free or failing. The reserve section is separate from the fund
+list, discloses account detail, and offers only “Return to free money”; the user
+cannot choose a fund for reserve consumption. History explains automatic refill
+from reserves across accounts. Archiving excludes a fund; restoring it returns
+it to the next calculation.
 
 ### Attempt to exceed 100%
 

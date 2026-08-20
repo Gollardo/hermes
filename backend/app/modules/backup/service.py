@@ -29,6 +29,7 @@ from app.modules.backup.schemas import (
     FundEventRecord,
     FundMovementRecord,
     FundRecord,
+    FundReserveMovementRecord,
     HermesBackup,
     OperationRecord,
     RecurringRuleRecord,
@@ -37,7 +38,13 @@ from app.modules.backup.schemas import (
 )
 from app.modules.categories.backup import Category
 from app.modules.categories.contracts import CategoryType
-from app.modules.funds.backup import Fund, FundEvent, FundEventType, FundMovement
+from app.modules.funds.backup import (
+    Fund,
+    FundEvent,
+    FundEventType,
+    FundMovement,
+    FundReserveMovement,
+)
 from app.modules.operations.backup import AccountMovement, FinancialOperation
 from app.modules.operations.contracts import OperationType
 from app.modules.scheduling.backup import (
@@ -62,6 +69,7 @@ _TABLES = (
     "funds",
     "fund_events",
     "fund_movements",
+    "fund_reserve_movements",
     "recurring_rules",
     "expected_occurrences",
 )
@@ -126,6 +134,9 @@ def create_backup(session: Session) -> BackupDocument:
         funds=[_record(FundRecord, row) for row in _all(session, Fund)],
         fund_events=[_record(FundEventRecord, row) for row in _all(session, FundEvent)],
         fund_movements=[_record(FundMovementRecord, row) for row in _all(session, FundMovement)],
+        fund_reserve_movements=[
+            _record(FundReserveMovementRecord, row) for row in _all(session, FundReserveMovement)
+        ],
         recurring_rules=[_record(RecurringRuleRecord, row) for row in _all(session, RecurringRule)],
         expected_occurrences=[
             _record(ExpectedOccurrenceRecord, row) for row in _all(session, ExpectedOccurrence)
@@ -220,6 +231,7 @@ def validate_document(data: BackupData) -> None:
         [item.id for item in data.funds],
         [item.id for item in data.fund_events],
         [item.id for item in data.fund_movements],
+        [item.id for item in data.fund_reserve_movements],
         [item.id for item in data.recurring_rules],
         [item.id for item in data.expected_occurrences],
     ]
@@ -330,6 +342,23 @@ def validate_document(data: BackupData) -> None:
         raise BackupInvariantError("Fund movement reference or source is invalid")
     if any(item.amount == 0 for item in data.fund_movements):
         raise BackupInvariantError("Fund movements must be non-zero")
+    if any(
+        item.account_id not in account_ids or item.event_id not in event_ids or item.amount == 0
+        for item in data.fund_reserve_movements
+    ):
+        raise BackupInvariantError("Fund reserve movement is invalid")
+    reserve_keys = [(item.event_id, item.account_id) for item in data.fund_reserve_movements]
+    if len(reserve_keys) != len(set(reserve_keys)):
+        raise BackupInvariantError("A reserve event moves the same account more than once")
+    if any(
+        event.caused_by_operation_id is not None
+        and (
+            event.caused_by_operation_id not in operation_ids
+            or event.type != FundEventType.RESERVE_DISTRIBUTION
+        )
+        for event in data.fund_events
+    ):
+        raise BackupInvariantError("Fund event cause is invalid")
     movement_keys = [
         (item.operation_id, item.fund_id, item.account_id)
         if item.operation_id is not None
@@ -341,6 +370,9 @@ def validate_document(data: BackupData) -> None:
     fund_movements_by_event: dict[Any, list[FundMovementRecord]] = {
         event_id: [] for event_id in event_ids
     }
+    reserve_movements_by_event: dict[Any, list[FundReserveMovementRecord]] = {
+        event_id: [] for event_id in event_ids
+    }
     fund_movements_by_operation: dict[Any, list[FundMovementRecord]] = {
         operation_id: [] for operation_id in operation_ids
     }
@@ -350,13 +382,20 @@ def validate_document(data: BackupData) -> None:
         else:
             assert fund_movement.operation_id is not None
             fund_movements_by_operation[fund_movement.operation_id].append(fund_movement)
+    for reserve_movement in data.fund_reserve_movements:
+        reserve_movements_by_event[reserve_movement.event_id].append(reserve_movement)
     for event in data.fund_events:
         event_movements = fund_movements_by_event[event.id]
+        event_reserve_movements = reserve_movements_by_event[event.id]
         if event.type == FundEventType.ALLOCATION:
-            if (
-                not event_movements
-                or any(item.amount <= 0 for item in event_movements)
-                or len({item.account_id for item in event_movements}) != 1
+            if (not event_movements and not event_reserve_movements) or (
+                any(item.amount <= 0 for item in event_movements)
+                or any(item.amount <= 0 for item in event_reserve_movements)
+                or len(
+                    {item.account_id for item in event_movements}
+                    | {item.account_id for item in event_reserve_movements}
+                )
+                != 1
             ):
                 raise BackupInvariantError("Fund allocation event is empty or negative")
         elif event.type == FundEventType.REDISTRIBUTION:
@@ -365,6 +404,7 @@ def validate_document(data: BackupData) -> None:
                 or len({item.fund_id for item in event_movements}) != 1
                 or len({item.account_id for item in event_movements}) != 2
                 or sum((item.amount for item in event_movements), Decimal(0)) != 0
+                or event_reserve_movements
             ):
                 raise BackupInvariantError("Fund redistribution is not balanced")
         elif event.type == FundEventType.FUND_TRANSFER and (
@@ -372,8 +412,26 @@ def validate_document(data: BackupData) -> None:
             or len({item.fund_id for item in event_movements}) != 2
             or len({item.account_id for item in event_movements}) != 1
             or sum((item.amount for item in event_movements), Decimal(0)) != 0
+            or event_reserve_movements
         ):
             raise BackupInvariantError("Fund transfer is not balanced")
+        elif event.type == FundEventType.RESERVE_DISTRIBUTION:
+            if (
+                not event_movements
+                or not event_reserve_movements
+                or any(item.amount <= 0 for item in event_movements)
+                or any(item.amount >= 0 for item in event_reserve_movements)
+                or sum((item.amount for item in event_movements), Decimal(0))
+                + sum((item.amount for item in event_reserve_movements), Decimal(0))
+                != 0
+            ):
+                raise BackupInvariantError("Fund reserve distribution is not balanced")
+        elif event.type == FundEventType.RESERVE_RELEASE and (
+            event_movements
+            or not event_reserve_movements
+            or any(item.amount >= 0 for item in event_reserve_movements)
+        ):
+            raise BackupInvariantError("Fund reserve release is invalid")
     for operation_id, operation_fund_movements in fund_movements_by_operation.items():
         if not operation_fund_movements:
             continue
@@ -512,6 +570,13 @@ def validate_document(data: BackupData) -> None:
     for (fund_id, account_id), amount in fund_positions.items():
         reserved_by_account[account_id] += amount
         fund_totals[fund_id] += amount
+    reserve_positions = {account_id: Decimal(0) for account_id in account_ids}
+    for reserve_position_movement in data.fund_reserve_movements:
+        reserve_positions[reserve_position_movement.account_id] += reserve_position_movement.amount
+    if any(amount < 0 for amount in reserve_positions.values()):
+        raise BackupInvariantError("A fund reserve position would be negative")
+    for account_id, amount in reserve_positions.items():
+        reserved_by_account[account_id] += amount
     if any(
         amount > account_balances[account_id] for account_id, amount in reserved_by_account.items()
     ):
@@ -539,6 +604,7 @@ def restore_backup(session: Session, document: BackupDocument) -> RestoreRespons
     for model in (
         ExpectedOccurrence,
         RecurringRule,
+        FundReserveMovement,
         FundMovement,
         FundEvent,
         Fund,
@@ -564,6 +630,7 @@ def restore_backup(session: Session, document: BackupDocument) -> RestoreRespons
     _insert(session, Fund, document.data.funds)
     _insert(session, FundEvent, document.data.fund_events)
     _insert(session, FundMovement, document.data.fund_movements)
+    _insert(session, FundReserveMovement, document.data.fund_reserve_movements)
     _insert(session, RecurringRule, document.data.recurring_rules)
     _insert(session, ExpectedOccurrence, document.data.expected_occurrences)
     session.flush()
@@ -587,6 +654,13 @@ def validate_restored_state(session: Session) -> None:
             )
         )
     }
+    for account_id, amount in session.execute(
+        select(
+            FundReserveMovement.account_id,
+            func.sum(FundReserveMovement.amount),
+        ).group_by(FundReserveMovement.account_id)
+    ):
+        reserved[account_id] = reserved.get(account_id, Decimal(0)) + Decimal(amount)
     physical: dict[Any, Decimal] = {
         row[0]: Decimal(row[1])
         for row in session.execute(

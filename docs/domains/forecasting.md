@@ -4,7 +4,7 @@
 
 Forecast horizons are two weeks, month, quarter, half-year and year. A forecast
 can target one account or all accounts combined. The implemented inputs through
-`0.4.6` are:
+`0.5.0` are:
 
 - current actual balance;
 - expected income and expense;
@@ -61,7 +61,7 @@ structured events, but an AI adapter cannot supply authoritative balances or
 bypass Forecasting's exact arithmetic. Baseline and alternative must share the
 same snapshot, scope, horizon, currency and ordering rules.
 
-## Implemented policy (beta.2 baseline, extended through 0.4.6)
+## Implemented policy (beta.2 baseline, extended through 0.5.0)
 
 - The series starts with today's ledger-derived actual balance. It includes
   actionable `pending` and `postponed` occurrences from today through the

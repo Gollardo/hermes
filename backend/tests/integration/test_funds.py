@@ -102,7 +102,7 @@ def test_dynamic_mode_recalculates_and_archive_restore_changes_eligibility(
             json={"version": first["version"]},
         )
         assert no_funds.status_code == 200
-        rejected = client.post(
+        reserved = client.post(
             "/api/v1/funds/transfer-and-allocate",
             headers=headers,
             json={
@@ -112,11 +112,24 @@ def test_dynamic_mode_recalculates_and_archive_restore_changes_eligibility(
                 "occurred_on": "2026-08-17",
             },
         )
-        assert rejected.status_code == 409
-        assert rejected.json()["detail"]["code"] == "fund_allocation_unavailable"
+        assert reserved.status_code == 201
+        assert reserved.json()["allocation"]["movements"] == []
+        assert reserved.json()["allocation"]["reserve_movements"][0]["amount"] == "10.0000"
         balances = {item["id"]: item["balance"] for item in client.get("/api/v1/accounts").json()}
-        assert balances[source] == "500.0000"
-        assert balances[destination] == "0"
+        assert balances[source] == "490.0000"
+        assert balances[destination] == "10.0000"
+        released = client.post(
+            "/api/v1/funds/reserve-release",
+            headers=headers,
+            json={
+                "account_id": destination,
+                "amount": "4",
+                "occurred_on": "2026-08-17",
+            },
+        )
+        assert released.status_code == 201
+        assert released.json()["type"] == "reserve_release"
+        assert released.json()["reserve_movements"][0]["amount"] == "-4.0000"
 
         first = client.post(
             f"/api/v1/funds/{first['id']}/restore",
@@ -129,7 +142,11 @@ def test_dynamic_mode_recalculates_and_archive_restore_changes_eligibility(
             json={"version": archived.json()["version"]},
         ).json()
         restored = client.get("/api/v1/funds/summary").json()
-        assert {item["allocation_percentage"] for item in restored["funds"]} == {"50.0000"}
+        assert restored["total_reserve"] == "0"
+        assert {item["id"]: item["total_balance"] for item in restored["funds"]} == {
+            first["id"]: "6.0000",
+            second["id"]: "0",
+        }
 
         direct = client.post(
             "/api/v1/funds/allocations",
@@ -144,7 +161,7 @@ def test_dynamic_mode_recalculates_and_archive_restore_changes_eligibility(
         assert direct.status_code == 201
         after_direct = client.get("/api/v1/funds/summary").json()
         percentages = {item["id"]: item["allocation_percentage"] for item in after_direct["funds"]}
-        assert percentages == {first["id"]: "35.0000", second["id"]: "65.0000"}
+        assert percentages == {first["id"]: "32.5000", second["id"]: "67.5000"}
 
         distributed = client.post(
             "/api/v1/funds/transfer-and-allocate",
@@ -161,13 +178,13 @@ def test_dynamic_mode_recalculates_and_archive_restore_changes_eligibility(
             item["fund_id"]: item["amount"]
             for item in distributed.json()["allocation"]["movements"]
         }
-        assert movements == {first["id"]: "35.0000", second["id"]: "65.0000"}
+        assert movements == {first["id"]: "32.5000", second["id"]: "67.5000"}
 
         before_manual = client.get("/api/v1/funds/summary").json()
         before_percentages = {
             item["id"]: item["allocation_percentage"] for item in before_manual["funds"]
         }
-        assert before_percentages == {first["id"]: "32.0000", second["id"]: "68.0000"}
+        assert before_percentages == {first["id"]: "28.5227", second["id"]: "71.4773"}
         manual = client.put(
             "/api/v1/settings/fund-allocation-mode",
             headers=headers,
@@ -885,6 +902,92 @@ def test_archived_fund_cannot_regain_balance_through_operation_edit(
         assert deleted.status_code == 409
         assert deleted.json()["detail"]["code"] == "archived_fund_balance"
         assert client.get(f"/api/v1/operations/{expense['id']}").status_code == 200
+
+
+def test_dynamic_reserve_refill_is_reversed_with_expense_deletion(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        account = _account(client, headers, "Main", "100")
+        assert (
+            client.put(
+                "/api/v1/settings/fund-allocation-mode",
+                headers=headers,
+                json={"mode": "dynamic"},
+            ).status_code
+            == 200
+        )
+        fund = client.post(
+            "/api/v1/funds",
+            headers=headers,
+            json={
+                "name": "Goal",
+                "allocation_percentage": "0",
+                "target_amount": "10",
+            },
+        ).json()
+        assert (
+            client.post(
+                "/api/v1/funds/allocations",
+                headers=headers,
+                json={
+                    "account_id": account,
+                    "amount": "15",
+                    "occurred_on": "2026-08-21",
+                    "allocations": [{"fund_id": fund["id"], "amount": "10"}],
+                },
+            ).status_code
+            == 201
+        )
+        over_target = client.post(
+            "/api/v1/funds/allocations",
+            headers=headers,
+            json={
+                "account_id": account,
+                "amount": "1",
+                "occurred_on": "2026-08-21",
+                "allocations": [{"fund_id": fund["id"], "amount": "1"}],
+            },
+        )
+        assert over_target.status_code == 409
+        assert over_target.json()["detail"]["code"] == "fund_target_capacity"
+        unchanged = client.get("/api/v1/funds/summary").json()
+        assert unchanged["total_fund_reserved"] == "10.0000"
+        assert unchanged["total_reserve"] == "5.0000"
+        category = client.post(
+            "/api/v1/categories",
+            headers=headers,
+            json={"type": "expense", "name": "Food"},
+        ).json()["id"]
+        expense = client.post(
+            "/api/v1/operations",
+            headers=headers,
+            json={
+                "type": "expense",
+                "occurred_on": "2026-08-21",
+                "amount": "2",
+                "account_id": account,
+                "category_id": category,
+                "fund_id": fund["id"],
+            },
+        )
+        assert expense.status_code == 201
+        after_expense = client.get("/api/v1/funds/summary").json()
+        assert after_expense["total_fund_reserved"] == "10.0000"
+        assert after_expense["total_reserve"] == "3.0000"
+
+        assert (
+            client.delete(
+                f"/api/v1/operations/{expense.json()['id']}?version=1", headers=headers
+            ).status_code
+            == 204
+        )
+        after_delete = client.get("/api/v1/funds/summary").json()
+        assert after_delete["total_fund_reserved"] == "10.0000"
+        assert after_delete["total_reserve"] == "5.0000"
 
 
 def test_alpha3_database_upgrades_and_alpha4_schema_downgrades(

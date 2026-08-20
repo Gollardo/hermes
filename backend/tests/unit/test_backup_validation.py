@@ -395,6 +395,15 @@ def test_backup_rejects_fund_transfer_between_accounts() -> None:
         validate_document(BackupData.model_validate(data))
 
 
+def test_backup_rejects_operation_cause_on_non_reserve_event() -> None:
+    data = valid_data()
+    add_valid_fund_transfer(data)
+    data["fund_events"][0]["caused_by_operation_id"] = data["operations"][0]["id"]
+
+    with pytest.raises(BackupInvariantError, match="Fund event cause is invalid"):
+        validate_document(BackupData.model_validate(data))
+
+
 def test_backup_rejects_series_shift_outside_calendar_range() -> None:
     invalid_rule = valid_data()
     invalid_rule["recurring_rules"][0]["series_shift_days"] = 2**31 - 1

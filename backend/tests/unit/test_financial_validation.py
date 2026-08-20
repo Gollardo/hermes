@@ -11,6 +11,7 @@ from app.modules.funds.schemas import AllocationCreateRequest
 from app.modules.funds.service import (
     FundDistributionState,
     complete_percentage_allocations,
+    dynamic_capacity_allocations,
     dynamic_percentages,
     percentage_allocations,
 )
@@ -206,16 +207,33 @@ def test_dynamic_money_rounding_distributes_the_complete_incoming_amount() -> No
     assert {item.amount for item in allocations} == {Decimal("3.3333"), Decimal("3.3334")}
 
 
-@pytest.mark.parametrize(
-    "allocations", [[], [{"fund_id": "10000000-0000-0000-0000-000000000001", "amount": "0"}]]
-)
-def test_allocation_rejects_empty_or_noop_movements(allocations: list[dict[str, str]]) -> None:
-    with pytest.raises(ValidationError):
-        AllocationCreateRequest.model_validate(
-            {
-                "account_id": "10000000-0000-0000-0000-000000000002",
-                "amount": "10",
-                "occurred_on": "2026-08-11",
-                "allocations": allocations,
-            }
-        )
+def test_allocation_accepts_empty_movements_for_dynamic_reserve() -> None:
+    payload = AllocationCreateRequest.model_validate(
+        {
+            "account_id": "10000000-0000-0000-0000-000000000002",
+            "amount": "10",
+            "occurred_on": "2026-08-11",
+            "allocations": [],
+        }
+    )
+
+    assert payload.allocations == []
+
+
+def test_dynamic_capacity_allocation_redistributes_caps_and_returns_reserve() -> None:
+    first = UUID("31000000-0000-0000-0000-000000000001")
+    second = UUID("31000000-0000-0000-0000-000000000002")
+
+    allocations, reserve = dynamic_capacity_allocations(
+        Decimal("100"),
+        [
+            FundDistributionState(first, Decimal("90"), Decimal("100")),
+            FundDistributionState(second, Decimal("50"), Decimal("100")),
+        ],
+    )
+
+    assert {item.fund_id: item.amount for item in allocations} == {
+        first: Decimal("10"),
+        second: Decimal("50"),
+    }
+    assert reserve == Decimal("40")

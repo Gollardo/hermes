@@ -1,3 +1,3 @@
 """Hermes backend package."""
 
-APP_VERSION = "0.4.6"
+APP_VERSION = "0.5.0"

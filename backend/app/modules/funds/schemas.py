@@ -125,6 +125,8 @@ class AccountCoverageResponse(BaseModel):
     account_name: str
     physical_balance: str
     reserved_balance: str
+    fund_reserved_balance: str
+    reserve_balance: str
     free_balance: str
     archived: bool
 
@@ -136,6 +138,8 @@ class FundSummaryResponse(BaseModel):
     active_percentage: str
     allocation_mode: FundAllocationMode
     total_reserved: str
+    total_fund_reserved: str
+    total_reserve: str
     total_free: str
 
 
@@ -170,6 +174,7 @@ class AllocationPreviewResponse(BaseModel):
     allocations: list[AllocationItem]
     allocated_amount: str
     unallocated_amount: str
+    reserve_amount: str
     free_before: str
     free_after: str
 
@@ -177,7 +182,7 @@ class AllocationPreviewResponse(BaseModel):
 class AllocationCreateRequest(AllocationPreviewRequest):
     occurred_on: date
     description: str | None = Field(default=None, max_length=2000)
-    allocations: list[AllocationItem] = Field(min_length=1)
+    allocations: list[AllocationItem] = Field(default_factory=list)
 
     @field_validator("description")
     @classmethod
@@ -189,8 +194,6 @@ class AllocationCreateRequest(AllocationPreviewRequest):
         ids = [item.fund_id for item in self.allocations]
         if len(ids) != len(set(ids)):
             raise ValueError("each fund may occur once")
-        if not any(item.amount > 0 for item in self.allocations):
-            raise ValueError("allocation must reserve a positive amount")
         return self
 
 
@@ -269,16 +272,50 @@ class FundMovementResponse(BaseModel):
 
 class FundEventResponse(BaseModel):
     id: UUID
-    type: Literal["allocation", "redistribution", "fund_transfer", "expense", "transfer"]
+    type: Literal[
+        "allocation",
+        "redistribution",
+        "fund_transfer",
+        "reserve_distribution",
+        "reserve_release",
+        "expense",
+        "transfer",
+    ]
     occurred_on: date
     description: str | None
     movements: list[FundMovementResponse]
+    reserve_movements: list["FundReserveMovementResponse"] = []
     created_at: datetime
 
 
 class TransferAllocationResponse(BaseModel):
     operation_id: UUID
     allocation: FundEventResponse
+
+
+class FundReserveMovementResponse(BaseModel):
+    account_id: UUID
+    account_name: str
+    amount: str
+
+
+class FundReserveReleaseRequest(BaseModel):
+    account_id: UUID
+    amount: Money
+    occurred_on: date
+    description: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("description")
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+    @field_validator("amount")
+    @classmethod
+    def positive_amount(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("amount must be positive")
+        return value
 
 
 class FundHistoryResponse(BaseModel):

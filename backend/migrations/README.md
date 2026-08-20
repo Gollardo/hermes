@@ -21,13 +21,15 @@ Later revisions extend the same linear history:
   persisted day offsets for rules and occurrences, plus an explicit marker for
   automatically cancelled occurrences preserved from later series shifts. Its
   partial candidate index supports narrow deterministic locking during a shift.
+- `0013_fund_reserve` adds per-account reserve movements, reserve event types,
+  and the causal operation link used for atomic refill rollback.
 
-`0012_recurring_series_shift` is the current single head. Revision identifiers,
+`0013_fund_reserve` is the current single head. Revision identifiers,
 rather than migration filenames, are the stable Alembic chain.
 
-Release `0.4.6` adds no revision: its dynamic fund percentages are derived from
-the existing target and movement ledger, and its Scheduling change is CSS-only.
-Creating an empty marker migration would not represent schema evolution.
+Downgrading below `0013_fund_reserve` removes reserve movements and causal
+links. PostgreSQL keeps the two unused reserve enum values because removing enum
+members safely would require rebuilding the type.
 
 Downgrading below `0012_recurring_series_shift` removes the rule policy, stored
 offsets and cancelled-occurrence preservation markers. Untouched occurrence

@@ -82,6 +82,14 @@ def replace_allocation_mode(
 ) -> SettingsResponse:
     try:
         return _response(replace_fund_allocation_mode(session, payload.mode))
+    except AccountReferenceError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "invalid_account_reference",
+                "message": "An account changed while fund allocation mode was updated",
+            },
+        ) from error
     except DynamicFundTargetsRequiredError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

@@ -105,6 +105,7 @@ class FundForecastAllocationEventResponse(BaseModel):
     due_on: date
     incoming_amount: str
     allocated_amount: str
+    reserve_amount: str
     executable: bool
     allocations: list[FundForecastAllocationItemResponse]
 
@@ -118,6 +119,8 @@ class FundForecastResponse(BaseModel):
     planned_transfer_total: str
     planned_allocation_total: str
     unallocated_total: str
+    starting_reserve: str
+    ending_reserve: str
     blocked_allocation_count: int
     allocation_events: list[FundForecastAllocationEventResponse]
     series: list[FundForecastSeriesResponse]

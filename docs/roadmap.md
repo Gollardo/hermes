@@ -594,7 +594,23 @@ gate.**
 
 ---
 
-# Proposed global plan after 0.4.6
+# 0.5.0 — dynamic fund reserve
+
+**Status: implemented on 2026-08-21; owner acceptance on real data remains.**
+
+- [x] Cap dynamic allocations at each goal and iteratively redistribute the
+  remainder within one atomic operation.
+- [x] Store final excess in a separate per-account reserve only in dynamic mode.
+- [x] Automatically refill incomplete funds from reserves across all accounts
+  and reverse operation-caused refills with operation edits or deletion.
+- [x] Allow only manual reserve release to free money on the same account.
+- [x] Expose reserve totals and account detail in Funds, history, backup and
+  forecast contracts.
+- [x] Add migration `0013_fund_reserve` and advance the application to `0.5.0`.
+
+---
+
+# Proposed global plan after 0.5.0
 
 This plan is a product hypothesis for discussion, not an approved detailed
 design or calendar commitment. A version number marks a convenient boundary of
@@ -618,7 +634,7 @@ An unfinished item is never moved silently into the next release.
 
 ## Before 1.0.0 — trial use and stable self-hosted core preparation
 
-- [ ] Perform owner acceptance of `0.4.6` on a restored copy of real data.
+- [ ] Perform owner acceptance of `0.5.0` on a restored copy of real data.
 - [x] Add protected `.hermes` V1 export/restore while retaining explicit legacy
   plaintext JSON export/import.
 - [ ] Define supported PostgreSQL, Python, Node, Docker, and browser versions.

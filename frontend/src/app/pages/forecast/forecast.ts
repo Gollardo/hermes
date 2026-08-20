@@ -111,12 +111,15 @@ interface FundForecast {
   planned_transfer_total: string;
   planned_allocation_total: string;
   unallocated_total: string;
+  starting_reserve: string;
+  ending_reserve: string;
   blocked_allocation_count: number;
   allocation_events: {
     occurrence_id: string;
     due_on: string;
     incoming_amount: string;
     allocated_amount: string;
+    reserve_amount: string;
     executable: boolean;
     allocations: {
       fund_id: string;

@@ -122,8 +122,8 @@ hundredths are smoothed by a stable largest-remainder method and also total
 Owner-confirmed on 2026-08-14: a fund has an editable target amount, exact
 percentage, and progress bar; creation may immediately reserve money only for a
 new fund, while a separate action moves assignment between funds on one
-account. Target date is not approved. Owner-confirmed on 2026-08-18: rounding
-remainder remains free; a fund cannot become negative; archiving is allowed only
+account. Target date is not approved. Owner-confirmed on 2026-08-18: manual-mode
+rounding remainder remains free; a fund cannot become negative; archiving is allowed only
 at zero balance and releases nothing automatically.
 
 1. Does reasoning start from the fund (“How much for vacation?”) or account

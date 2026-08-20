@@ -19,7 +19,8 @@
   } @else if (summary(); as data) {
     <section class="fund-summary" aria-label="Сводка фондов">
       <article class="fund-summary-primary">
-        <span>В фондах</span><strong>{{ data.total_reserved | money }} {{ baseCurrency() }}</strong>
+        <span>В фондах</span
+        ><strong>{{ data.total_fund_reserved | money }} {{ baseCurrency() }}</strong>
       </article>
       <article class="fund-summary-primary">
         <span>Свободно</span><strong>{{ data.total_free | money }} {{ baseCurrency() }}</strong>
@@ -45,6 +46,40 @@
         </div>
       </div>
     </section>
+
+    @if (reserveVisible()) {
+      <section class="panel coverage" aria-labelledby="reserve-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="reserve-title">Резерв фондов</h2>
+            <p>
+              @if (dynamicMode()) {
+                Деньги уже отложены для фондов и автоматически пополнят следующую незаполненную
+                цель.
+              } @else {
+                Резерв сохранён после динамического режима и не распределяется автоматически.
+              }
+            </p>
+          </div>
+          <strong>{{ data.total_reserve | money }} {{ baseCurrency() }}</strong>
+        </div>
+        <div class="coverage-grid">
+          @for (account of data.accounts; track account.account_id) {
+            @if (reserveHasBalance(account)) {
+              <article>
+                <strong
+                  >{{ account.account_name }}{{ account.archived ? ' · в архиве' : '' }}</strong
+                >
+                <p>{{ account.reserve_balance | money }} {{ baseCurrency() }}</p>
+                <button type="button" class="secondary" (click)="openReserveRelease(account)">
+                  Вернуть в свободные
+                </button>
+              </article>
+            }
+          }
+        </div>
+      </section>
+    }
 
     <section class="panel allocation-mode-note" aria-label="Режим распределения фондов">
       <div>
@@ -183,7 +218,7 @@
       <div class="panel-heading">
         <div>
           <h2>Деньги по счетам</h2>
-          <p>Физический остаток = в фондах + свободно.</p>
+          <p>Физический остаток = в фондах + в резерве + свободно.</p>
         </div>
       </div>
       <div class="coverage-grid">
@@ -197,7 +232,11 @@
               </div>
               <div>
                 <dt>В фондах</dt>
-                <dd>{{ account.reserved_balance | money }} {{ baseCurrency() }}</dd>
+                <dd>{{ account.fund_reserved_balance | money }} {{ baseCurrency() }}</dd>
+              </div>
+              <div>
+                <dt>В резерве</dt>
+                <dd>{{ account.reserve_balance | money }} {{ baseCurrency() }}</dd>
               </div>
               <div>
                 <dt>Свободно</dt>
@@ -233,6 +272,12 @@
                 @for (movement of event.movements; track movement.fund_id + movement.account_id) {
                   <li>
                     {{ movement.fund_name }} · {{ movement.account_name }}
+                    <strong>{{ movement.amount | money }} {{ baseCurrency() }}</strong>
+                  </li>
+                }
+                @for (movement of event.reserve_movements; track movement.account_id) {
+                  <li>
+                    Резерв · {{ movement.account_name }}
                     <strong>{{ movement.amount | money }} {{ baseCurrency() }}</strong>
                   </li>
                 }
@@ -294,6 +339,9 @@
                   }
                   @case ('fundTransfer') {
                     Перевести между фондами
+                  }
+                  @case ('reserveRelease') {
+                    Вернуть резерв в свободные деньги
                   }
                 }
               </h2>
@@ -650,6 +698,42 @@
               }
               <button type="submit" [disabled]="saving() || !canTransferBetweenFunds()">
                 Перевести между фондами
+              </button>
+            </form>
+          }
+
+          @if (activeModal() === 'reserveRelease') {
+            <p class="modal-explanation">
+              Деньги останутся на том же физическом счёте и перестанут быть зарезервированными.
+              Направить резерв в фонд вручную нельзя.
+            </p>
+            <form [formGroup]="reserveReleaseForm" (ngSubmit)="releaseReserve()">
+              <label for="reserve-release-account">Счёт</label>
+              <app-entity-combobox
+                inputId="reserve-release-account"
+                formControlName="accountId"
+                [options]="reserveAccountOptions()"
+                recentKey="accounts"
+                placeholder="Выберите счёт"
+              />
+              <label for="reserve-release-amount">Сумма</label>
+              <input
+                appDecimalInput
+                id="reserve-release-amount"
+                formControlName="amount"
+                inputmode="decimal"
+              />
+              @if (reserveReleaseForm.controls.amount.touched && !canReleaseReserve()) {
+                <p class="field-error">
+                  Введите положительную сумму не больше резерва выбранного счёта.
+                </p>
+              }
+              <label for="reserve-release-date">Дата</label>
+              <input id="reserve-release-date" type="date" formControlName="occurredOn" />
+              <label for="reserve-release-description">Описание</label>
+              <input id="reserve-release-description" formControlName="description" />
+              <button type="submit" [disabled]="saving() || !canReleaseReserve()">
+                Вернуть в свободные
               </button>
             </form>
           }

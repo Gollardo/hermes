@@ -133,6 +133,10 @@ def test_fund_forecast_applies_only_flagged_transfers_with_exact_rounding(
         "app.modules.forecasting.service.fund_allocation_mode",
         lambda *args, **kwargs: FundAllocationMode.MANUAL,
     )
+    monkeypatch.setattr(
+        "app.modules.forecasting.service.reserve_balances",
+        lambda *args, **kwargs: {},
+    )
 
     result = build_fund_forecast(
         cast(Session, object()),
@@ -215,9 +219,10 @@ def test_dynamic_fund_forecast_recalculates_before_each_planned_replenishment() 
         second_id: Decimal("32.0000"),
     }
     assert projection.ending_balances == {
-        first_id: Decimal("133.0000"),
-        second_id: Decimal("117.0000"),
+        first_id: Decimal("100.0000"),
+        second_id: Decimal("100.0000"),
     }
+    assert projection.events[1].reserve_amount == Decimal("50.0000")
     assert projection.ending_percentages == {}
 
 

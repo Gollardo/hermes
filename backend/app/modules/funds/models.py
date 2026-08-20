@@ -24,6 +24,8 @@ class FundEventType(StrEnum):
     ALLOCATION = "allocation"
     REDISTRIBUTION = "redistribution"
     FUND_TRANSFER = "fund_transfer"
+    RESERVE_DISTRIBUTION = "reserve_distribution"
+    RESERVE_RELEASE = "reserve_release"
 
 
 class Fund(Base):
@@ -66,6 +68,11 @@ class FundEvent(Base):
     )
     occurred_on: Mapped[date]
     description: Mapped[str | None] = mapped_column(Text)
+    caused_by_operation_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("financial_operations.id", ondelete="CASCADE"),
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -101,6 +108,23 @@ class FundMovement(Base):
         index=True,
     )
     event_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("fund_events.id", ondelete="CASCADE"), index=True
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(20, 4), nullable=False)
+
+
+class FundReserveMovement(Base):
+    __tablename__ = "fund_reserve_movements"
+    __table_args__ = (
+        CheckConstraint("amount <> 0", name="ck_fund_reserve_movements_amount_nonzero"),
+        UniqueConstraint("event_id", "account_id", name="uq_fund_reserve_movements_event_position"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    account_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("accounts.id", ondelete="RESTRICT"), index=True
+    )
+    event_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True), ForeignKey("fund_events.id", ondelete="CASCADE"), index=True
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(20, 4), nullable=False)

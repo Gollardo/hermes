@@ -290,7 +290,7 @@
           <span
             >{{ preview.counts['fund_events'] }} событий фондов ·
             {{ preview.counts['fund_movements'] }} виртуальных движений</span
-          >
+          ><span>{{ preview.counts['fund_reserve_movements'] || 0 }} движений резерва</span>
           <span
             >{{ preview.counts['recurring_rules'] }} регулярных правил ·
             {{ preview.counts['expected_occurrences'] }} ожидаемых операций</span

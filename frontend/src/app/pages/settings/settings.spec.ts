@@ -173,6 +173,7 @@ describe('SettingsPage', () => {
         funds: 1,
         fund_events: 1,
         fund_movements: 1,
+        fund_reserve_movements: 0,
         recurring_rules: 1,
         expected_occurrences: 3,
       },

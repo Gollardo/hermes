@@ -566,8 +566,15 @@
             </p>
           </div>
           <div class="fund-allocation-total">
-            <span>Распределится из переводов</span>
+            <span>{{
+              funds.allocation_mode === 'dynamic'
+                ? 'В фонды из переводов'
+                : 'Распределится из переводов'
+            }}</span>
             <strong>{{ funds.planned_allocation_total | money }} {{ baseCurrency() }}</strong>
+            @if (funds.allocation_mode === 'dynamic') {
+              <small>Резерв к концу: {{ funds.ending_reserve | money }} {{ baseCurrency() }}</small>
+            }
           </div>
         </div>
         @if (funds.series.length) {
@@ -617,6 +624,10 @@
               По текущему состоянию не распределяется:
               <strong>{{ funds.unallocated_total | money }} {{ baseCurrency() }}</strong
               >. Заблокированные переводы не могут быть подтверждены с распределением.
+            } @else if (funds.allocation_mode === 'dynamic' && !isZero(funds.unallocated_total)) {
+              В фонды поступит {{ funds.planned_allocation_total | money }} {{ baseCurrency() }}, а
+              <strong>{{ funds.unallocated_total | money }} {{ baseCurrency() }}</strong>
+              останется в резерве на счетах до появления незаполненной цели.
             } @else if (isZero(funds.unallocated_total)) {
               Все {{ funds.planned_transfer_total | money }} {{ baseCurrency() }} плановых переводов
               будут распределены по фондам.

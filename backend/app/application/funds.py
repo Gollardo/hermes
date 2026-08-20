@@ -16,11 +16,14 @@ from app.modules.funds.contracts import (
     FundEventResponse,
     FundHistoryResponse,
     FundMovementResponse,
+    FundReserveReleaseRequest,
     FundResponse,
     FundSummaryResponse,
     FundTransferCreateRequest,
+    FundUpdateRequest,
     RedistributionCreateRequest,
     allocation_preview_with_free_balance,
+    archive_fund,
     create_allocation_with_free_balance,
     create_fund_definition,
     create_fund_transfer,
@@ -31,13 +34,21 @@ from app.modules.funds.contracts import (
     fund_response,
     history_source_ids,
     operation_fund_movements,
+    rebalance_reserve,
+    release_reserve,
     reserved_balance,
     summary_with_physical_balances,
+    update_fund,
 )
 from app.modules.operations.contracts import (
     account_balance,
     operation_history_references,
 )
+
+
+def _lock_all_accounts(session: Session) -> None:
+    account_ids = {account.id for account in list_account_identities(session)}
+    lock_account_references(session, account_ids, allow_archived_ids=account_ids)
 
 
 def fund_summary(session: Session) -> FundSummaryResponse:
@@ -50,9 +61,9 @@ def create_fund_with_initial_allocation(
     session: Session, payload: FundCreateRequest
 ) -> FundResponse:
     """Create one fund and optionally reserve free money only for that fund atomically."""
+    _lock_all_accounts(session)
     initial_free: Decimal | None = None
     if payload.initial_account_id is not None:
-        lock_account_references(session, {payload.initial_account_id})
         initial_free = account_balance(session, payload.initial_account_id) - reserved_balance(
             session, payload.initial_account_id
         )
@@ -81,6 +92,7 @@ def create_fund_with_initial_allocation(
             ),
             initial_free,
         )
+    rebalance_reserve(session, occurred_on=payload.initial_occurred_on)
     return fund_response(session, fund_id)
 
 
@@ -112,8 +124,35 @@ def redistribute_fund(session: Session, payload: RedistributionCreateRequest) ->
 def transfer_between_funds(
     session: Session, payload: FundTransferCreateRequest
 ) -> FundEventResponse:
-    lock_account_references(session, {payload.account_id})
-    return event_response(session, create_fund_transfer(session, payload))
+    _lock_all_accounts(session)
+    event = create_fund_transfer(session, payload)
+    rebalance_reserve(session, occurred_on=payload.occurred_on)
+    return event_response(session, event)
+
+
+def replace_fund_definition(
+    session: Session, fund_id: UUID, payload: FundUpdateRequest
+) -> FundResponse:
+    _lock_all_accounts(session)
+    fund = update_fund(session, fund_id, payload)
+    rebalance_reserve(session)
+    return fund_response(session, fund.id)
+
+
+def change_fund_lifecycle(
+    session: Session, fund_id: UUID, *, restore: bool, expected_version: int
+) -> FundResponse:
+    if restore:
+        _lock_all_accounts(session)
+    fund = archive_fund(session, fund_id, restore=restore, expected_version=expected_version)
+    if restore:
+        rebalance_reserve(session)
+    return fund_response(session, fund.id)
+
+
+def release_fund_reserve(session: Session, payload: FundReserveReleaseRequest) -> FundEventResponse:
+    lock_account_references(session, {payload.account_id}, allow_archived_ids={payload.account_id})
+    return event_response(session, release_reserve(session, payload))
 
 
 def fund_history(

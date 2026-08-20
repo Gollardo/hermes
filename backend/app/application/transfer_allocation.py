@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session
 
 from app.modules.funds.contracts import (
     AllocationCreateRequest,
-    FundAllocationUnavailableError,
     TransferAllocationCreateRequest,
     TransferAllocationResponse,
     create_allocation_with_free_balance,
@@ -38,8 +37,6 @@ def transfer_and_allocate(
         session, payload.destination_account_id, payload.amount, free
     )
     positive_allocations = [item for item in preview.allocations if item.amount > 0]
-    if not positive_allocations:
-        raise FundAllocationUnavailableError
     event = create_allocation_with_free_balance(
         session,
         AllocationCreateRequest(

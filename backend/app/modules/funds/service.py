@@ -2,13 +2,20 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import ROUND_DOWN, Decimal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, func, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.modules.accounts.contracts import account_names, list_account_identities
-from app.modules.funds.models import Fund, FundEvent, FundEventType, FundMovement
+from app.modules.funds.models import (
+    Fund,
+    FundEvent,
+    FundEventType,
+    FundMovement,
+    FundReserveMovement,
+)
 from app.modules.funds.schemas import (
     AccountCoverageResponse,
     AllocationCreateRequest,
@@ -17,13 +24,19 @@ from app.modules.funds.schemas import (
     FundEventResponse,
     FundMovementResponse,
     FundPositionResponse,
+    FundReserveMovementResponse,
+    FundReserveReleaseRequest,
     FundResponse,
     FundSummaryResponse,
     FundTransferCreateRequest,
     FundUpdateRequest,
     RedistributionCreateRequest,
 )
-from app.modules.settings.contracts import FundAllocationMode, fund_allocation_mode
+from app.modules.settings.contracts import (
+    FundAllocationMode,
+    application_timezone,
+    fund_allocation_mode,
+)
 
 MONEY_QUANTUM = Decimal("0.0001")
 PERCENTAGE_QUANTUM = Decimal("0.0001")
@@ -64,6 +77,14 @@ class FundArchivedMutationError(RuntimeError):
 
 
 class DynamicFundTargetsRequiredError(RuntimeError):
+    pass
+
+
+class FundReserveBalanceError(RuntimeError):
+    pass
+
+
+class FundTargetCapacityError(RuntimeError):
     pass
 
 
@@ -161,6 +182,49 @@ def complete_percentage_allocations(
     for fund_id in order[:units]:
         rounded[fund_id] += MONEY_QUANTUM
     return [AllocationItem(fund_id=fund_id, amount=rounded[fund_id]) for fund_id in sorted(rounded)]
+
+
+def dynamic_capacity_allocations(
+    amount: Decimal, states: list[FundDistributionState]
+) -> tuple[list[AllocationItem], Decimal]:
+    """Distribute exactly up to targets and return the amount left for reserve."""
+    balances = {state.fund_id: state.balance for state in states}
+    targets = {
+        state.fund_id: state.target_amount for state in states if state.target_amount is not None
+    }
+    allocated = dict.fromkeys(balances, Decimal(0))
+    remaining = amount
+    while remaining > 0:
+        percentages = dynamic_percentages(
+            [
+                FundDistributionState(fund_id, balances[fund_id], targets.get(fund_id))
+                for fund_id in sorted(balances)
+            ]
+        )
+        if not percentages:
+            break
+        proposed = complete_percentage_allocations(remaining, percentages)
+        accepted = Decimal(0)
+        for item in proposed:
+            target = targets[item.fund_id]
+            assert target is not None
+            value = min(item.amount, target - balances[item.fund_id])
+            if value <= 0:
+                continue
+            balances[item.fund_id] += value
+            allocated[item.fund_id] += value
+            accepted += value
+        if accepted == 0:
+            break
+        remaining -= accepted
+    return (
+        [
+            AllocationItem(fund_id=fund_id, amount=value)
+            for fund_id, value in sorted(allocated.items())
+            if value > 0
+        ],
+        remaining,
+    )
 
 
 def _fund_balances(session: Session, fund_ids: set[UUID]) -> dict[UUID, Decimal]:
@@ -309,12 +373,37 @@ def fund_balance(session: Session, fund_id: UUID, account_id: UUID | None = None
 
 
 def reserved_balance(session: Session, account_id: UUID) -> Decimal:
-    value = session.scalar(
+    fund_value = session.scalar(
         select(func.coalesce(func.sum(FundMovement.amount), 0)).where(
             FundMovement.account_id == account_id
         )
     )
+    return Decimal(fund_value or 0) + reserve_balance(session, account_id)
+
+
+def reserve_balance(session: Session, account_id: UUID | None = None) -> Decimal:
+    conditions = []
+    if account_id is not None:
+        conditions.append(FundReserveMovement.account_id == account_id)
+    value = session.scalar(
+        select(func.coalesce(func.sum(FundReserveMovement.amount), 0)).where(*conditions)
+    )
     return Decimal(value or 0)
+
+
+def reserve_balances(session: Session) -> dict[UUID, Decimal]:
+    return {
+        account_id: Decimal(value)
+        for account_id, value in session.execute(
+            select(
+                FundReserveMovement.account_id,
+                func.sum(FundReserveMovement.amount),
+            )
+            .group_by(FundReserveMovement.account_id)
+            .having(func.sum(FundReserveMovement.amount) > 0)
+            .order_by(FundReserveMovement.account_id)
+        )
+    }
 
 
 def reserved_balances(session: Session, account_ids: set[UUID]) -> dict[UUID, Decimal]:
@@ -329,6 +418,9 @@ def reserved_balances(session: Session, account_ids: set[UUID]) -> dict[UUID, De
     )
     for account_id, value in rows:
         balances[account_id] = Decimal(value or 0)
+    for account_id, value in reserve_balances(session).items():
+        if account_id in balances:
+            balances[account_id] += value
     return balances
 
 
@@ -336,6 +428,12 @@ def account_has_fund_history(session: Session, account_id: UUID) -> bool:
     return (
         session.scalar(
             select(FundMovement.id).where(FundMovement.account_id == account_id).limit(1)
+        )
+        is not None
+        or session.scalar(
+            select(FundReserveMovement.id)
+            .where(FundReserveMovement.account_id == account_id)
+            .limit(1)
         )
         is not None
     )
@@ -486,6 +584,8 @@ def validate_account_coverage(session: Session, physical_balances: dict[UUID, De
         )
         if any(Decimal(value) < 0 for _, value in rows):
             raise FundBalanceError
+        if reserve_balance(session, account_id) < 0:
+            raise FundReserveBalanceError
 
 
 def summary_with_physical_balances(
@@ -517,6 +617,8 @@ def summary_with_physical_balances(
     coverage: list[AccountCoverageResponse] = []
     for account in accounts:
         physical = physical_balances[account.id]
+        fund_reserved = reserved_balance(session, account.id) - reserve_balance(session, account.id)
+        reserve = reserve_balance(session, account.id)
         reserved = reserved_balance(session, account.id)
         coverage.append(
             AccountCoverageResponse(
@@ -524,6 +626,8 @@ def summary_with_physical_balances(
                 account_name=account.name,
                 physical_balance=format(physical, "f"),
                 reserved_balance=format(reserved, "f"),
+                fund_reserved_balance=format(fund_reserved, "f"),
+                reserve_balance=format(reserve, "f"),
                 free_balance=format(physical - reserved, "f"),
                 archived=account.archived,
             )
@@ -541,7 +645,12 @@ def summary_with_physical_balances(
             "f",
         ),
         allocation_mode=mode,
-        total_reserved=format(sum((Decimal(f.total_balance) for f in funds), Decimal(0)), "f"),
+        total_reserved=format(
+            sum((Decimal(f.total_balance) for f in funds), Decimal(0)) + reserve_balance(session),
+            "f",
+        ),
+        total_fund_reserved=format(sum((Decimal(f.total_balance) for f in funds), Decimal(0)), "f"),
+        total_reserve=format(reserve_balance(session), "f"),
         total_free=format(sum((Decimal(a.free_balance) for a in coverage), Decimal(0)), "f"),
     )
 
@@ -563,11 +672,17 @@ def allocation_preview_with_free_balance(
     session: Session, account_id: UUID, amount: Decimal, free: Decimal
 ) -> AllocationPreviewResponse:
     snapshot = locked_distribution_snapshot(session, shared=False)
-    allocations = (
-        complete_percentage_allocations(amount, snapshot.percentages)
-        if snapshot.mode == FundAllocationMode.DYNAMIC
-        else percentage_allocations(amount, snapshot.percentages)
-    )
+    reserve_amount = Decimal(0)
+    if snapshot.mode == FundAllocationMode.DYNAMIC:
+        allocations, reserve_amount = dynamic_capacity_allocations(
+            amount,
+            [
+                FundDistributionState(fund.id, snapshot.balances[fund.id], fund.target_amount)
+                for fund in snapshot.funds
+            ],
+        )
+    else:
+        allocations = percentage_allocations(amount, snapshot.percentages)
     percentage_by_fund = dict(snapshot.percentages)
     allocations = [
         item.model_copy(
@@ -581,9 +696,17 @@ def allocation_preview_with_free_balance(
         amount=format(amount, "f"),
         allocations=allocations,
         allocated_amount=format(allocated, "f"),
-        unallocated_amount=format(amount - allocated, "f"),
+        unallocated_amount=format(
+            (
+                amount - allocated - reserve_amount
+                if snapshot.mode == FundAllocationMode.DYNAMIC
+                else amount - allocated
+            ),
+            "f",
+        ),
+        reserve_amount=format(reserve_amount, "f"),
         free_before=format(free, "f"),
-        free_after=format(free - allocated, "f"),
+        free_after=format(free - allocated - reserve_amount, "f"),
     )
 
 
@@ -601,7 +724,27 @@ def create_allocation_with_free_balance(
     if any(fund.archived_at is not None for fund in funds.values()):
         raise FundNotFoundError
     allocated = sum((item.amount for item in payload.allocations), Decimal(0))
-    if allocated > payload.amount or allocated > free:
+    mode = fund_allocation_mode(session)
+    if mode == FundAllocationMode.DYNAMIC:
+        balances = _fund_balances(session, set(funds))
+        if any(
+            fund.target_amount is None
+            or balances[fund_id]
+            + sum(
+                (item.amount for item in payload.allocations if item.fund_id == fund_id),
+                Decimal(0),
+            )
+            > fund.target_amount
+            for fund_id, fund in funds.items()
+        ):
+            raise FundTargetCapacityError
+    if mode == FundAllocationMode.MANUAL and allocated <= 0:
+        raise FundAllocationUnavailableError
+    reserve_amount = (
+        payload.amount - allocated if mode == FundAllocationMode.DYNAMIC else Decimal(0)
+    )
+    reserved = allocated + reserve_amount
+    if allocated > payload.amount or reserved > free:
         raise FundCoverageError
     event = _event(session, FundEventType.ALLOCATION, payload.occurred_on, payload.description)
     _add_fund_movements(
@@ -617,6 +760,116 @@ def create_allocation_with_free_balance(
             for item in payload.allocations
             if item.amount != 0
         ],
+    )
+    if reserve_amount > 0:
+        session.add(
+            FundReserveMovement(
+                account_id=payload.account_id,
+                event_id=event.id,
+                amount=reserve_amount,
+            )
+        )
+    session.flush()
+    return event
+
+
+def remove_operation_reserve_distributions(session: Session, operation_id: UUID) -> None:
+    events = list(
+        session.scalars(
+            select(FundEvent)
+            .where(
+                FundEvent.caused_by_operation_id == operation_id,
+                FundEvent.type == FundEventType.RESERVE_DISTRIBUTION,
+            )
+            .with_for_update()
+        ).all()
+    )
+    for event in events:
+        session.delete(event)
+    session.flush()
+
+
+def rebalance_reserve(
+    session: Session,
+    *,
+    occurred_on: date | None = None,
+    caused_by_operation_id: UUID | None = None,
+) -> FundEvent | None:
+    """Assign every available account reserve to incomplete funds without moving cash."""
+    if fund_allocation_mode(session) != FundAllocationMode.DYNAMIC:
+        return None
+    occurred_on = occurred_on or datetime.now(ZoneInfo(application_timezone(session))).date()
+    snapshot = locked_distribution_snapshot(session, shared=False)
+    by_account = reserve_balances(session)
+    total = sum(by_account.values(), Decimal(0))
+    if total <= 0:
+        return None
+    allocations, _ = dynamic_capacity_allocations(
+        total,
+        [
+            FundDistributionState(fund.id, snapshot.balances[fund.id], fund.target_amount)
+            for fund in snapshot.funds
+        ],
+    )
+    if not allocations:
+        return None
+    event = _event(
+        session,
+        FundEventType.RESERVE_DISTRIBUTION,
+        occurred_on,
+        None,
+        caused_by_operation_id=caused_by_operation_id,
+    )
+    account_remaining = dict(by_account)
+    reserve_used = dict.fromkeys(by_account, Decimal(0))
+    fund_movements: list[FundMovement] = []
+    for allocation in allocations:
+        remaining = allocation.amount
+        for account_id in sorted(account_remaining):
+            value = min(remaining, account_remaining[account_id])
+            if value <= 0:
+                continue
+            fund_movements.append(
+                FundMovement(
+                    fund_id=allocation.fund_id,
+                    account_id=account_id,
+                    operation_id=None,
+                    event_id=event.id,
+                    amount=value,
+                )
+            )
+            account_remaining[account_id] -= value
+            reserve_used[account_id] += value
+            remaining -= value
+            if remaining == 0:
+                break
+        assert remaining == 0
+    _add_fund_movements(session, fund_movements)
+    session.add_all(
+        FundReserveMovement(account_id=account_id, event_id=event.id, amount=-value)
+        for account_id, value in reserve_used.items()
+        if value > 0
+    )
+    session.flush()
+    return event
+
+
+def release_reserve(session: Session, payload: FundReserveReleaseRequest) -> FundEvent:
+    _lock_definitions(session)
+    if reserve_balance(session, payload.account_id) < payload.amount:
+        raise FundReserveBalanceError
+    event = _event(
+        session,
+        FundEventType.RESERVE_RELEASE,
+        payload.occurred_on,
+        payload.description,
+    )
+    session.add(
+        FundReserveMovement(
+            account_id=payload.account_id,
+            event_id=event.id,
+            amount=-payload.amount,
+        )
     )
     session.flush()
     return event
@@ -686,13 +939,19 @@ def create_fund_transfer(session: Session, payload: FundTransferCreateRequest) -
 
 
 def _event(
-    session: Session, event_type: FundEventType, occurred_on: date, description: str | None
+    session: Session,
+    event_type: FundEventType,
+    occurred_on: date,
+    description: str | None,
+    *,
+    caused_by_operation_id: UUID | None = None,
 ) -> FundEvent:
     now = datetime.now(UTC)
     event = FundEvent(
         type=event_type,
         occurred_on=occurred_on,
         description=description,
+        caused_by_operation_id=caused_by_operation_id,
         created_at=now,
     )
     session.add(event)
@@ -782,6 +1041,12 @@ def event_response(session: Session, event: FundEvent) -> FundEventResponse:
         for fund in session.scalars(select(Fund).where(Fund.id.in_({row[0] for row in rows}))).all()
     }
     names = account_names(session, {row[1] for row in rows})
+    reserve_rows = session.execute(
+        select(FundReserveMovement.account_id, FundReserveMovement.amount)
+        .where(FundReserveMovement.event_id == event.id)
+        .order_by(FundReserveMovement.account_id)
+    ).all()
+    reserve_names = account_names(session, {row[0] for row in reserve_rows})
     return FundEventResponse(
         id=event.id,
         type=event.type,
@@ -796,6 +1061,14 @@ def event_response(session: Session, event: FundEvent) -> FundEventResponse:
                 amount=format(amount, "f"),
             )
             for fund_id, account_id, amount in rows
+        ],
+        reserve_movements=[
+            FundReserveMovementResponse(
+                account_id=account_id,
+                account_name=reserve_names[account_id],
+                amount=format(amount, "f"),
+            )
+            for account_id, amount in reserve_rows
         ],
         created_at=event.created_at,
     )
@@ -813,6 +1086,16 @@ def history_source_ids(
         select(FundMovement.event_id, FundMovement.operation_id).where(*conditions)
     ).all()
     event_ids = {event_id for event_id, _ in sources if event_id is not None}
+    if fund_id is None:
+        reserve_conditions = []
+        if account_id is not None:
+            reserve_conditions.append(FundReserveMovement.account_id == account_id)
+        event_ids.update(
+            event_id
+            for (event_id,) in session.execute(
+                select(FundReserveMovement.event_id).where(*reserve_conditions)
+            )
+        )
     operation_ids = {operation_id for _, operation_id in sources if operation_id is not None}
     return event_ids, operation_ids
 

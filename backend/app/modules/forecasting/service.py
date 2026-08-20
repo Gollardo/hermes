@@ -28,10 +28,11 @@ from app.modules.forecasting.schemas import (
 from app.modules.funds.contracts import (
     FundDistributionState,
     FundResponse,
-    complete_percentage_allocations,
+    dynamic_capacity_allocations,
     dynamic_percentages,
     locked_active_funds,
     percentage_allocations,
+    reserve_balances,
     reserved_balances,
 )
 from app.modules.operations.contracts import OperationType, account_balances
@@ -65,6 +66,7 @@ class ProjectedAllocation:
     incoming_amount: Decimal
     percentages: dict[UUID, Decimal]
     amounts: dict[UUID, Decimal]
+    reserve_amount: Decimal = Decimal(0)
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,11 +117,17 @@ def project_fund_allocations(
         if not occurrence.allocate_to_funds:
             continue
         current_percentages = percentages()
-        allocations = (
-            complete_percentage_allocations(occurrence.amount, current_percentages)
-            if mode == FundAllocationMode.DYNAMIC
-            else percentage_allocations(occurrence.amount, current_percentages)
-        )
+        if mode == FundAllocationMode.DYNAMIC:
+            allocations, reserve_amount = dynamic_capacity_allocations(
+                occurrence.amount,
+                [
+                    FundDistributionState(fund.id, balances[fund.id], targets[fund.id])
+                    for fund in funds
+                ],
+            )
+        else:
+            allocations = percentage_allocations(occurrence.amount, current_percentages)
+            reserve_amount = Decimal(0)
         amounts = {item.fund_id: item.amount for item in allocations if item.amount > 0}
         for fund_id, amount in amounts.items():
             balances[fund_id] += amount
@@ -130,6 +138,7 @@ def project_fund_allocations(
                 incoming_amount=occurrence.amount,
                 percentages=dict(current_percentages),
                 amounts=amounts,
+                reserve_amount=reserve_amount,
             )
         )
     return FundAllocationProjection(
@@ -374,6 +383,7 @@ def build_fund_forecast(
     list_account_identities(session, shared_lock=True)
     funds = locked_active_funds(session)
     mode = fund_allocation_mode(session)
+    starting_reserve = sum(reserve_balances(session).values(), Decimal(0))
     projection = project_fund_allocations(funds, schedule.occurrences, mode)
     changes: dict[UUID, dict[date, Decimal]] = {fund.id: defaultdict(Decimal) for fund in funds}
     planned_transfer_total = Decimal(0)
@@ -434,14 +444,24 @@ def build_fund_forecast(
         planned_transfer_total=_money(planned_transfer_total),
         planned_allocation_total=_money(planned_allocation_total),
         unallocated_total=_money(planned_transfer_total - planned_allocation_total),
-        blocked_allocation_count=sum(not event.amounts for event in projection.events),
+        starting_reserve=_money(starting_reserve),
+        ending_reserve=_money(
+            starting_reserve
+            + sum((event.reserve_amount for event in projection.events), Decimal(0))
+        ),
+        blocked_allocation_count=(
+            0
+            if mode == FundAllocationMode.DYNAMIC
+            else sum(not event.amounts for event in projection.events)
+        ),
         allocation_events=[
             FundForecastAllocationEventResponse(
                 occurrence_id=event.occurrence_id,
                 due_on=event.due_on,
                 incoming_amount=_money(event.incoming_amount),
                 allocated_amount=_money(sum(event.amounts.values(), Decimal(0))),
-                executable=bool(event.amounts),
+                reserve_amount=_money(event.reserve_amount),
+                executable=bool(event.amounts) or mode == FundAllocationMode.DYNAMIC,
                 allocations=[
                     FundForecastAllocationItemResponse(
                         fund_id=fund_id,

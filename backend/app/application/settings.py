@@ -4,8 +4,9 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.modules.accounts.contracts import lock_account_references
+from app.modules.accounts.contracts import list_account_identities, lock_account_references
 from app.modules.funds.contracts import (
+    rebalance_reserve,
     snapshot_dynamic_percentages_as_manual,
     validate_dynamic_targets,
 )
@@ -25,6 +26,8 @@ class TimezoneLockedByScheduleError(RuntimeError):
 
 
 def replace_fund_allocation_mode(session: Session, mode: FundAllocationMode) -> ApplicationSettings:
+    account_ids = {account.id for account in list_account_identities(session)}
+    lock_account_references(session, account_ids, allow_archived_ids=account_ids)
     settings = lock_application_settings(session)
     current = FundAllocationMode(settings.fund_allocation_mode)
     if current == mode:
@@ -33,7 +36,10 @@ def replace_fund_allocation_mode(session: Session, mode: FundAllocationMode) -> 
         validate_dynamic_targets(session)
     else:
         snapshot_dynamic_percentages_as_manual(session)
-    return set_fund_allocation_mode(settings, mode)
+    updated = set_fund_allocation_mode(settings, mode)
+    if mode == FundAllocationMode.DYNAMIC:
+        rebalance_reserve(session)
+    return updated
 
 
 def replace_application_settings(

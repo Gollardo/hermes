@@ -50,6 +50,8 @@ interface Coverage {
   account_name: string;
   physical_balance: string;
   reserved_balance: string;
+  fund_reserved_balance: string;
+  reserve_balance: string;
   free_balance: string;
   archived: boolean;
 }
@@ -61,6 +63,8 @@ interface Summary {
   active_percentage: string;
   allocation_mode: 'manual' | 'dynamic';
   total_reserved: string;
+  total_fund_reserved: string;
+  total_reserve: string;
   total_free: string;
 }
 
@@ -76,6 +80,7 @@ interface Preview {
   allocations: AllocationItem[];
   allocated_amount: string;
   unallocated_amount: string;
+  reserve_amount: string;
   free_before: string;
   free_after: string;
 }
@@ -90,10 +95,22 @@ interface FundMovement {
 
 interface FundEvent {
   id: string;
-  type: 'allocation' | 'redistribution' | 'fund_transfer' | 'expense' | 'transfer';
+  type:
+    | 'allocation'
+    | 'redistribution'
+    | 'fund_transfer'
+    | 'reserve_distribution'
+    | 'reserve_release'
+    | 'expense'
+    | 'transfer';
   occurred_on: string;
   description: string | null;
   movements: FundMovement[];
+  reserve_movements: {
+    account_id: string;
+    account_name: string;
+    amount: string;
+  }[];
 }
 
 interface History {
@@ -147,7 +164,7 @@ export class FundsPage implements OnInit {
   protected readonly baseCurrency = signal('RUB');
   protected readonly Math = Math;
   protected readonly activeModal = signal<
-    'fund' | 'allocation' | 'transfer' | 'redistribution' | 'fundTransfer' | null
+    'fund' | 'allocation' | 'transfer' | 'redistribution' | 'fundTransfer' | 'reserveRelease' | null
   >(null);
 
   protected readonly fundForm = this.builder.group({
@@ -192,6 +209,12 @@ export class FundsPage implements OnInit {
     occurredOn: ['', Validators.required],
     description: ['', Validators.maxLength(2000)],
   });
+  protected readonly reserveReleaseForm = this.builder.group({
+    accountId: ['', Validators.required],
+    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)]],
+    occurredOn: ['', Validators.required],
+    description: ['', Validators.maxLength(2000)],
+  });
 
   protected get allocationControls(): FormArray {
     return this.allocationForm.controls.allocations;
@@ -210,6 +233,14 @@ export class FundsPage implements OnInit {
 
   protected dynamicMode(): boolean {
     return this.summary()?.allocation_mode === 'dynamic';
+  }
+
+  protected reserveVisible(): boolean {
+    return this.dynamicMode() || (moneyUnits(this.summary()?.total_reserve ?? '0') ?? 0n) > 0n;
+  }
+
+  protected reserveHasBalance(account: Coverage): boolean {
+    return (moneyUnits(account.reserve_balance) ?? 0n) > 0n;
   }
 
   protected fundIsEmpty(fund: Fund): boolean {
@@ -263,6 +294,16 @@ export class FundsPage implements OnInit {
         detail: `${balance === 'free' ? 'Свободно' : 'Остаток'} ${formatMoney(
           balance === 'free' ? account.free_balance : account.physical_balance,
         )} ${this.baseCurrency()}`,
+      }));
+  }
+
+  protected reserveAccountOptions(): EntityOption[] {
+    return (this.summary()?.accounts ?? [])
+      .filter((account) => (moneyUnits(account.reserve_balance) ?? 0n) > 0n)
+      .map((account) => ({
+        id: account.account_id,
+        label: account.account_name,
+        detail: `В резерве ${formatMoney(account.reserve_balance)} ${this.baseCurrency()}`,
       }));
   }
 
@@ -419,6 +460,48 @@ export class FundsPage implements OnInit {
 
   protected openFundTransfer(): void {
     this.activeModal.set('fundTransfer');
+  }
+
+  protected openReserveRelease(account: Coverage): void {
+    this.reserveReleaseForm.patchValue({ accountId: account.account_id, amount: '' });
+    this.activeModal.set('reserveRelease');
+  }
+
+  protected releaseReserve(): void {
+    const value = this.reserveReleaseForm.getRawValue();
+    if (!this.canReleaseReserve()) {
+      this.reserveReleaseForm.markAllAsTouched();
+      return;
+    }
+    this.saving.set(true);
+    this.http
+      .post(`${environment.apiBaseUrl}/funds/reserve-release`, {
+        account_id: value.accountId,
+        amount: decimalPayload(value.amount),
+        occurred_on: value.occurredOn,
+        description: value.description || null,
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.reserveReleaseForm.patchValue({ amount: '', description: '' });
+          this.activeModal.set(null);
+          this.load();
+        },
+        error: (error: unknown) => this.failed(error, 'Не удалось вывести деньги из резерва.'),
+      });
+  }
+
+  protected canReleaseReserve(): boolean {
+    const value = this.reserveReleaseForm.getRawValue();
+    const account = this.summary()?.accounts.find((item) => item.account_id === value.accountId);
+    const amount = moneyUnits(value.amount);
+    return Boolean(
+      this.reserveReleaseForm.valid &&
+      amount !== null &&
+      amount > 0n &&
+      amount <= (moneyUnits(account?.reserve_balance ?? '0') ?? 0n),
+    );
   }
 
   protected closeModal(): void {
@@ -657,7 +740,8 @@ export class FundsPage implements OnInit {
       amount !== null &&
       amount > 0n &&
       amount <= (moneyUnits(source?.physical_balance ?? '0') ?? 0n) &&
-      (percentageUnits(this.summary()?.active_percentage ?? '0') ?? 0n) > 0n,
+      (this.dynamicMode() ||
+        (percentageUnits(this.summary()?.active_percentage ?? '0') ?? 0n) > 0n),
     );
   }
 
@@ -684,11 +768,13 @@ export class FundsPage implements OnInit {
       return null;
     }
     const allocated = (amounts as bigint[]).reduce((total, value) => total + value, 0n);
+    const reserved = this.dynamicMode() ? amount : allocated;
     return {
       allocated: formatUnits(allocated),
-      unallocated: formatUnits(amount - allocated),
-      freeAfter: formatUnits(freeBefore - allocated),
-      valid: allocated > 0n && allocated <= amount && allocated <= freeBefore,
+      unallocated: formatUnits(this.dynamicMode() ? 0n : amount - allocated),
+      freeAfter: formatUnits(freeBefore - reserved),
+      valid:
+        allocated <= amount && reserved <= freeBefore && (this.dynamicMode() || allocated > 0n),
     };
   }
 
@@ -727,6 +813,8 @@ export class FundsPage implements OnInit {
       allocation: 'Распределение',
       redistribution: 'Перераспределение',
       fund_transfer: 'Перевод между фондами',
+      reserve_distribution: 'Автопополнение из резерва',
+      reserve_release: 'Вывод резерва',
       expense: 'Расход из фонда',
       transfer: 'Перевод с фондом',
     }[event.type];
@@ -795,6 +883,7 @@ export class FundsPage implements OnInit {
         this.redistributionForm.patchValue({ occurredOn: today });
         this.transferAllocationForm.patchValue({ occurredOn: today });
         this.fundTransferForm.patchValue({ occurredOn: today });
+        this.reserveReleaseForm.patchValue({ occurredOn: today });
         this.fundForm.patchValue({ initialOccurredOn: today });
       });
   }

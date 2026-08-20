@@ -4,11 +4,14 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.application.funds import (
     allocate_funds,
+    change_fund_lifecycle,
     create_fund_with_initial_allocation,
     fund_history,
     fund_summary,
     preview_allocation,
     redistribute_fund,
+    release_fund_reserve,
+    replace_fund_definition,
     transfer_between_funds,
 )
 from app.application.transfer_allocation import transfer_and_allocate
@@ -22,6 +25,7 @@ from app.modules.funds.schemas import (
     FundEventResponse,
     FundHistoryResponse,
     FundLifecycleRequest,
+    FundReserveReleaseRequest,
     FundResponse,
     FundSummaryResponse,
     FundTransferCreateRequest,
@@ -39,10 +43,9 @@ from app.modules.funds.service import (
     FundCoverageError,
     FundNotFoundError,
     FundPercentageLimitError,
-    archive_fund,
-    get_fund_response,
+    FundReserveBalanceError,
+    FundTargetCapacityError,
     list_funds,
-    update_fund,
 )
 from app.modules.operations.contracts import InsufficientBalanceError
 
@@ -74,6 +77,8 @@ def _raise_domain_error(error: RuntimeError) -> None:
             "Fund must have zero balance before archive",
         ),
         (FundBalanceError, 409, "insufficient_fund_balance", "Insufficient fund balance"),
+        (FundReserveBalanceError, 409, "insufficient_fund_reserve", "Insufficient fund reserve"),
+        (FundTargetCapacityError, 409, "fund_target_capacity", "Fund allocation exceeds target"),
         (
             FundCoverageError,
             409,
@@ -123,6 +128,7 @@ def add_fund(payload: FundCreateRequest, session: DatabaseSession) -> FundRespon
         FundNotFoundError,
         FundPercentageLimitError,
         DynamicFundTargetsRequiredError,
+        FundTargetCapacityError,
     ) as error:
         _raise_domain_error(error)
         raise AssertionError from error
@@ -133,8 +139,9 @@ def replace_fund(
     fund_id: UUID, payload: FundUpdateRequest, session: DatabaseSession
 ) -> FundResponse:
     try:
-        return get_fund_response(session, update_fund(session, fund_id, payload).id)
+        return replace_fund_definition(session, fund_id, payload)
     except (
+        AccountReferenceError,
         FundNotFoundError,
         FundConflictError,
         FundPercentageLimitError,
@@ -147,8 +154,9 @@ def replace_fund(
 @write_router.post("/{fund_id}/archive", response_model=FundResponse)
 def archive(fund_id: UUID, payload: FundLifecycleRequest, session: DatabaseSession) -> FundResponse:
     try:
-        fund = archive_fund(session, fund_id, restore=False, expected_version=payload.version)
-        return get_fund_response(session, fund.id)
+        return change_fund_lifecycle(
+            session, fund_id, restore=False, expected_version=payload.version
+        )
     except (FundNotFoundError, FundConflictError, FundArchiveBalanceError) as error:
         _raise_domain_error(error)
         raise AssertionError from error
@@ -157,9 +165,11 @@ def archive(fund_id: UUID, payload: FundLifecycleRequest, session: DatabaseSessi
 @write_router.post("/{fund_id}/restore", response_model=FundResponse)
 def restore(fund_id: UUID, payload: FundLifecycleRequest, session: DatabaseSession) -> FundResponse:
     try:
-        fund = archive_fund(session, fund_id, restore=True, expected_version=payload.version)
-        return get_fund_response(session, fund.id)
+        return change_fund_lifecycle(
+            session, fund_id, restore=True, expected_version=payload.version
+        )
     except (
+        AccountReferenceError,
         FundNotFoundError,
         FundConflictError,
         FundPercentageLimitError,
@@ -186,7 +196,13 @@ def preview(
 def allocate(payload: AllocationCreateRequest, session: DatabaseSession) -> FundEventResponse:
     try:
         return allocate_funds(session, payload)
-    except (AccountReferenceError, FundNotFoundError, FundCoverageError, FundBalanceError) as error:
+    except (
+        AccountReferenceError,
+        FundNotFoundError,
+        FundCoverageError,
+        FundBalanceError,
+        FundTargetCapacityError,
+    ) as error:
         _raise_domain_error(error)
         raise AssertionError from error
 
@@ -218,6 +234,19 @@ def transfer_fund(
 
 
 @write_router.post(
+    "/reserve-release", response_model=FundEventResponse, status_code=status.HTTP_201_CREATED
+)
+def release_reserve_to_free(
+    payload: FundReserveReleaseRequest, session: DatabaseSession
+) -> FundEventResponse:
+    try:
+        return release_fund_reserve(session, payload)
+    except (AccountReferenceError, FundReserveBalanceError) as error:
+        _raise_domain_error(error)
+        raise AssertionError from error
+
+
+@write_router.post(
     "/transfer-and-allocate",
     response_model=TransferAllocationResponse,
     status_code=status.HTTP_201_CREATED,
@@ -233,6 +262,7 @@ def transfer_allocation(
         FundAllocationUnavailableError,
         FundCoverageError,
         FundBalanceError,
+        FundTargetCapacityError,
         InsufficientBalanceError,
     ) as error:
         _raise_domain_error(error)

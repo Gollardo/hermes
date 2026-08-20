@@ -8,7 +8,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.modules.accounts.contracts import account_names, lock_account_references
+from app.modules.accounts.contracts import (
+    account_names,
+    list_account_identities,
+    lock_account_references,
+)
 from app.modules.categories.contracts import (
     CategoryType,
     category_name,
@@ -19,6 +23,8 @@ from app.modules.categories.contracts import (
 from app.modules.funds.contracts import (
     fund_names,
     operation_fund_movements,
+    rebalance_reserve,
+    remove_operation_reserve_distributions,
     replace_operation_movements,
     validate_account_coverage,
 )
@@ -116,8 +122,9 @@ def _lock_and_check_balances(
     *,
     old_amounts: dict[UUID, Decimal],
     new_amounts: dict[UUID, Decimal],
+    extra_account_ids: set[UUID] | None = None,
 ) -> None:
-    account_ids = set(old_amounts) | set(new_amounts)
+    account_ids = set(old_amounts) | set(new_amounts) | (extra_account_ids or set())
     lock_account_references(
         session,
         account_ids,
@@ -144,7 +151,11 @@ def create_operation(session: Session, payload: OperationCreateRequest) -> Finan
     draft = _draft(payload)
     _validate_category(session, draft, None)
     amounts = _movement_amounts(draft)
-    _lock_and_check_balances(session, old_amounts={}, new_amounts=amounts)
+    fund_amounts = _fund_movement_amounts(draft)
+    extra_ids = {item.id for item in list_account_identities(session)} if fund_amounts else set()
+    _lock_and_check_balances(
+        session, old_amounts={}, new_amounts=amounts, extra_account_ids=extra_ids
+    )
     now = datetime.now(UTC)
     operation = FinancialOperation(
         type=draft.type,
@@ -163,9 +174,15 @@ def create_operation(session: Session, payload: OperationCreateRequest) -> Finan
     replace_operation_movements(
         session,
         operation.id,
-        _fund_movement_amounts(draft),
+        fund_amounts,
         allow_archived_fund_ids=set(),
     )
+    if fund_amounts:
+        rebalance_reserve(
+            session,
+            occurred_on=operation.occurred_on,
+            caused_by_operation_id=operation.id,
+        )
     validate_account_coverage(
         session, {account_id: account_balance(session, account_id) for account_id in amounts}
     )
@@ -208,7 +225,19 @@ def update_operation(
     draft = _draft(payload)
     _validate_category(session, draft, operation.category_id)
     new_amounts = _movement_amounts(draft)
-    _lock_and_check_balances(session, old_amounts=old_amounts, new_amounts=new_amounts)
+    new_fund_amounts = _fund_movement_amounts(draft)
+    extra_ids = (
+        {item.id for item in list_account_identities(session)}
+        if old_fund_amounts or new_fund_amounts
+        else set()
+    )
+    _lock_and_check_balances(
+        session,
+        old_amounts=old_amounts,
+        new_amounts=new_amounts,
+        extra_account_ids=extra_ids,
+    )
+    remove_operation_reserve_distributions(session, operation.id)
     session.execute(delete(AccountMovement).where(AccountMovement.operation_id == operation.id))
     operation.type = draft.type
     operation.occurred_on = draft.occurred_on
@@ -222,9 +251,15 @@ def update_operation(
     replace_operation_movements(
         session,
         operation.id,
-        _fund_movement_amounts(draft),
+        new_fund_amounts,
         allow_archived_fund_ids={fund_id for fund_id, _ in old_fund_amounts},
     )
+    if old_fund_amounts or new_fund_amounts:
+        rebalance_reserve(
+            session,
+            occurred_on=operation.occurred_on,
+            caused_by_operation_id=operation.id,
+        )
     affected_ids = set(old_amounts) | set(new_amounts)
     validate_account_coverage(
         session, {account_id: account_balance(session, account_id) for account_id in affected_ids}
@@ -238,7 +273,16 @@ def delete_operation(session: Session, operation_id: UUID, *, expected_version: 
         raise OperationConflictError
     old_amounts = _amounts_for_operation(session, operation.id)
     old_fund_amounts = operation_fund_movements(session, operation.id)
-    _lock_and_check_balances(session, old_amounts=old_amounts, new_amounts={})
+    extra_ids = (
+        {item.id for item in list_account_identities(session)} if old_fund_amounts else set()
+    )
+    _lock_and_check_balances(
+        session,
+        old_amounts=old_amounts,
+        new_amounts={},
+        extra_account_ids=extra_ids,
+    )
+    remove_operation_reserve_distributions(session, operation.id)
     replace_operation_movements(
         session,
         operation.id,
