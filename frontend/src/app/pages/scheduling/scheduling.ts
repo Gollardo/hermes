@@ -122,6 +122,13 @@ interface CalendarDay {
   occurrences: ExpectedOccurrence[];
 }
 
+interface UpcomingGroup {
+  dueOn: string;
+  occurrences: ExpectedOccurrence[];
+}
+
+const CALENDAR_DAY_PREVIEW_LIMIT = 2;
+
 @Component({
   selector: 'app-scheduling-page',
   imports: [ReactiveFormsModule, RouterLink, MoneyPipe, DateTextPipe, EntityCombobox, DecimalInput],
@@ -152,6 +159,8 @@ export class SchedulingPage implements OnInit {
   protected readonly busyOccurrenceId = signal<string | null>(null);
   protected readonly postponeDates = signal<Record<string, string>>({});
   protected readonly confirmationAmounts = signal<Record<string, string>>({});
+  protected readonly editingConfirmationId = signal<string | null>(null);
+  protected readonly selectedCalendarDay = signal<CalendarDay | null>(null);
   protected readonly actionNotice = signal<string | null>(null);
 
   protected readonly filters = this.builder.group({
@@ -188,6 +197,16 @@ export class SchedulingPage implements OnInit {
     return new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' }).format(
       new Date(parsed.year, parsed.month - 1, 1),
     );
+  });
+
+  protected readonly upcomingGroups = computed<UpcomingGroup[]>(() => {
+    const groups = new Map<string, ExpectedOccurrence[]>();
+    for (const occurrence of this.upcoming()) {
+      const items = groups.get(occurrence.due_on) ?? [];
+      items.push(occurrence);
+      groups.set(occurrence.due_on, items);
+    }
+    return Array.from(groups, ([dueOn, occurrences]) => ({ dueOn, occurrences }));
   });
 
   protected readonly calendarDays = computed<CalendarDay[]>(() => {
@@ -486,6 +505,22 @@ export class SchedulingPage implements OnInit {
     return occurrence.status === 'pending' || occurrence.status === 'postponed';
   }
 
+  protected calendarDayPreview(day: CalendarDay): ExpectedOccurrence[] {
+    return day.occurrences.slice(0, CALENDAR_DAY_PREVIEW_LIMIT);
+  }
+
+  protected hiddenCalendarOccurrences(day: CalendarDay): number {
+    return Math.max(0, day.occurrences.length - CALENDAR_DAY_PREVIEW_LIMIT);
+  }
+
+  protected openCalendarDay(day: CalendarDay): void {
+    this.selectedCalendarDay.set(day);
+  }
+
+  protected closeCalendarDay(): void {
+    this.selectedCalendarDay.set(null);
+  }
+
   protected postponeDate(occurrence: ExpectedOccurrence): string {
     return this.postponeDates()[occurrence.id] ?? occurrence.due_on;
   }
@@ -508,6 +543,23 @@ export class SchedulingPage implements OnInit {
 
   protected confirmationAmount(occurrence: ExpectedOccurrence): string {
     return this.confirmationAmounts()[occurrence.id] ?? occurrence.amount;
+  }
+
+  protected confirmationAmountDisplay(occurrence: ExpectedOccurrence): string {
+    return formatMoney(this.confirmationAmount(occurrence));
+  }
+
+  protected editConfirmationAmount(occurrence: ExpectedOccurrence): void {
+    this.editingConfirmationId.set(occurrence.id);
+  }
+
+  protected cancelConfirmationAmountEdit(occurrence: ExpectedOccurrence): void {
+    this.confirmationAmounts.update((amounts) => {
+      const next = { ...amounts };
+      delete next[occurrence.id];
+      return next;
+    });
+    this.editingConfirmationId.set(null);
   }
 
   protected setConfirmationAmount(occurrenceId: string, value: string): void {

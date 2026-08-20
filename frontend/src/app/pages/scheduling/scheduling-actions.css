@@ -4,9 +4,16 @@
   gap: 0.65rem;
 }
 
-.upcoming-list {
-  display: grid;
-  gap: 0;
+.upcoming-date-heading {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  padding: 0.8rem 0 0.25rem;
+}
+
+.upcoming-date-heading h3 {
+  font-size: 0.82rem;
+  margin: 0;
 }
 
 .list-limit-note {
@@ -17,11 +24,11 @@
 
 .upcoming-item {
   align-items: center;
-  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   display: grid;
-  gap: 1rem;
-  grid-template-columns: 8rem minmax(0, 1fr) auto minmax(19rem, 0.8fr);
-  padding: 1rem 0;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, auto);
+  padding: 0.75rem 0;
 }
 
 .upcoming-item.overdue {
@@ -30,17 +37,22 @@
   padding-left: 0.75rem;
 }
 
-.occurrence-date,
 .occurrence-copy {
   display: grid;
 }
 
-.occurrence-date strong {
+.occurrence-kicker {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.occurrence-kicker strong {
   color: var(--danger);
   font-size: 0.72rem;
 }
 
-.occurrence-date span,
+.occurrence-kicker > span:not(.badge),
 .occurrence-copy p {
   color: var(--muted);
   font-size: 0.76rem;
@@ -51,16 +63,35 @@
   margin: 0.1rem 0 0;
 }
 
+.occurrence-decision {
+  align-items: center;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.occurrence-value {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
 .occurrence-amount {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
+.amount-edit-trigger {
+  font-size: 0.72rem;
+  min-height: 1.75rem;
+  padding: 0.2rem 0.35rem;
+}
+
 .quick-actions {
-  align-items: stretch;
-  display: grid;
+  align-items: center;
+  display: flex;
   gap: 0.55rem;
-  grid-template-columns: minmax(0, 1fr);
+  justify-content: flex-end;
 }
 
 .quick-actions button {
@@ -92,6 +123,17 @@
   grid-template-columns: minmax(8.5rem, 1fr) auto;
 }
 
+.confirmation-action:not(.editing) {
+  display: block;
+}
+
+.confirmation-editor {
+  display: grid;
+  gap: 0.5rem;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(10rem, 1fr) auto;
+}
+
 .confirmation-action label,
 .postpone-action label {
   grid-column: 1 / -1;
@@ -109,7 +151,6 @@
 }
 
 .secondary-actions {
-  align-self: end;
   min-width: 0;
 }
 
@@ -125,6 +166,7 @@
   font-weight: 680;
   justify-content: center;
   min-height: 2.35rem;
+  min-width: 3.25rem;
   padding: 0.45rem 0.65rem;
 }
 
@@ -150,6 +192,7 @@
 
 .rules-grid {
   grid-template-columns: minmax(0, 1.35fr) minmax(20rem, 0.65fr);
+  order: 3;
 }
 
 .date-fields {
@@ -183,17 +226,6 @@
   width: auto;
 }
 
-@media (max-width: 75rem) {
-  .upcoming-item {
-    grid-template-columns: 7rem minmax(0, 1fr) auto;
-  }
-
-  .quick-actions {
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 67rem) {
   .rules-grid {
     grid-template-columns: 1fr;
@@ -201,37 +233,32 @@
 }
 
 @media (max-width: 44rem) {
-  .upcoming-panel {
-    order: 1;
-  }
-
-  .calendar-panel {
-    order: 2;
-  }
-
-  .rules-grid {
-    order: 3;
-  }
-
   .upcoming-item {
     align-items: start;
-    grid-template-columns: 1fr auto;
-  }
-
-  .occurrence-copy,
-  .quick-actions {
-    grid-column: 1 / -1;
-  }
-
-  .quick-actions {
+    gap: 0.65rem;
     grid-template-columns: 1fr;
   }
 
-  .quick-actions,
-  .confirmation-action,
-  .secondary-actions,
+  .occurrence-decision {
+    align-items: center;
+    grid-template-columns: auto minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .occurrence-decision.editing {
+    grid-template-columns: 1fr;
+  }
+
+  .occurrence-decision.editing .occurrence-value {
+    justify-content: flex-start;
+  }
+
   .postpone-action {
     width: 100%;
+  }
+
+  .quick-actions {
+    justify-content: flex-end;
   }
 
   .cancel-action {
@@ -240,6 +267,30 @@
   }
 
   .date-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 32rem) {
+  .occurrence-decision {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .occurrence-value {
+    justify-content: space-between;
+  }
+
+  .quick-actions {
+    justify-content: stretch;
+  }
+
+  .confirmation-action,
+  .secondary-actions {
+    flex: 1 1 auto;
+  }
+
+  .confirmation-editor {
     grid-template-columns: 1fr;
   }
 }

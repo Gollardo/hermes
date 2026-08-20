@@ -262,6 +262,12 @@ describe('SchedulingPage recurrence editor', () => {
 
   it('allows correcting only the confirmed occurrence amount', () => {
     flushInitial([OCCURRENCE]);
+    expect(fixture.nativeElement.querySelector('#confirm-amount-occurrence-1')).toBeNull();
+    clickButton('Изменить');
+    expect(
+      (fixture.nativeElement.querySelector('#confirm-amount-occurrence-1') as HTMLInputElement)
+        .value,
+    ).toBe('12,50');
     setValue('#confirm-amount-occurrence-1', '12000 + 345,75');
     const amountInput = fixture.nativeElement.querySelector(
       '#confirm-amount-occurrence-1',
@@ -274,6 +280,34 @@ describe('SchedulingPage recurrence editor', () => {
     expect(request.request.body).toEqual({ version: 1, amount: '12345.75' });
     request.flush({ ...OCCURRENCE, amount: '12345.7500', status: 'confirmed' });
     flushOccurrenceRequests([]);
+  });
+
+  it('bounds a busy calendar day and exposes every occurrence on demand', () => {
+    const occurrences = Array.from({ length: 5 }, (_, index) => ({
+      ...OCCURRENCE,
+      id: `occurrence-${index + 1}`,
+      description: `Событие ${index + 1}`,
+    }));
+    flushInitial(occurrences);
+
+    const day = fixture.nativeElement.querySelector(
+      '.calendar-day[aria-label="2026-08-10"]',
+    ) as HTMLElement;
+    expect(day.querySelectorAll('.calendar-event')).toHaveLength(2);
+    const more = day.querySelector('.calendar-day-more') as HTMLButtonElement;
+    expect(more.textContent.trim()).toBe('Ещё 3');
+
+    more.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.calendar-day-dialog-item')).toHaveLength(5);
+  });
+
+  it('groups attention items by due date without repeating the date', () => {
+    flushInitial([OCCURRENCE, { ...OCCURRENCE, id: 'occurrence-2', description: 'Телефон' }]);
+
+    expect(fixture.nativeElement.querySelectorAll('.upcoming-date-group')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelectorAll('.upcoming-date-heading time')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelectorAll('.upcoming-item')).toHaveLength(2);
   });
 
   it('explains and submits an enabled series shift with the rule version', () => {

@@ -82,7 +82,7 @@
           >
             <time [attr.datetime]="day.iso">{{ day.day }}</time>
             <div class="day-events">
-              @for (occurrence of day.occurrences; track occurrence.id) {
+              @for (occurrence of calendarDayPreview(day); track occurrence.id) {
                 @if (occurrence.status === 'confirmed' && occurrence.actual_operation_id) {
                   <a
                     [id]="'occurrence-' + occurrence.id"
@@ -119,6 +119,18 @@
                   </div>
                 }
               }
+              @if (hiddenCalendarOccurrences(day); as hiddenCount) {
+                <button
+                  type="button"
+                  class="secondary calendar-day-more"
+                  (click)="openCalendarDay(day)"
+                  [attr.aria-label]="
+                    'Показать все события за ' + day.iso + ', скрыто: ' + hiddenCount
+                  "
+                >
+                  Ещё {{ hiddenCount }}
+                </button>
+              }
             </div>
           </article>
         }
@@ -142,109 +154,161 @@
       <p class="empty-state">На сегодня нет ожидаемых или просроченных операций.</p>
     } @else {
       <div class="upcoming-list">
-        @for (occurrence of upcoming(); track occurrence.id) {
-          <article class="upcoming-item" [class.overdue]="occurrence.overdue">
-            <div class="occurrence-date">
-              <time [attr.datetime]="occurrence.due_on">{{ occurrence.due_on | textDate }}</time>
-              @if (occurrence.overdue) {
-                <strong>Просрочено</strong>
-              } @else {
-                <span>{{ statusLabel(occurrence.status) }}</span>
-              }
+        @for (group of upcomingGroups(); track group.dueOn) {
+          <section class="upcoming-date-group" [attr.aria-labelledby]="'date-' + group.dueOn">
+            <div class="upcoming-date-heading">
+              <h3 [id]="'date-' + group.dueOn">
+                <time [attr.datetime]="group.dueOn">{{ group.dueOn | textDate }}</time>
+              </h3>
             </div>
-            <div class="occurrence-copy">
-              <span class="badge">{{ typeLabel(occurrence.type) }}</span>
-              <h3>{{ occurrenceTitle(occurrence) }}</h3>
-              <p>
-                {{ accountDirection(occurrence) }} ·
-                {{ occurrence.category_name || 'Без категории' }}
-              </p>
-              @if (occurrence.allocate_to_funds) {
-                <p>
-                  <strong>После перевода сумма распределится по процентам активных фондов.</strong>
-                </p>
-              }
-            </div>
-            <strong class="occurrence-amount"
-              >{{ occurrence.amount | money }} {{ baseCurrency() }}</strong
-            >
-            @if (actionable(occurrence)) {
-              <div class="quick-actions">
-                <div class="confirmation-action">
-                  <label [for]="'confirm-amount-' + occurrence.id">
-                    Сумма подтверждения, {{ baseCurrency() }}
-                  </label>
-                  <input
-                    appDecimalInput="expression"
-                    [id]="'confirm-amount-' + occurrence.id"
-                    type="text"
-                    inputmode="text"
-                    autocomplete="off"
-                    [value]="confirmationAmount(occurrence)"
-                    [attr.aria-invalid]="!validConfirmationAmount(occurrence)"
-                    [attr.aria-describedby]="
-                      !validConfirmationAmount(occurrence) ? 'confirm-error-' + occurrence.id : null
-                    "
-                    (input)="setConfirmationAmount(occurrence.id, $any($event.target).value)"
-                  />
-                  <button
-                    type="button"
-                    (click)="confirm(occurrence)"
-                    [disabled]="
-                      busyOccurrenceId() === occurrence.id || !validConfirmationAmount(occurrence)
-                    "
-                  >
-                    {{ occurrence.allocate_to_funds ? 'Перевести и распределить' : 'Подтвердить' }}
-                  </button>
-                  @if (!validConfirmationAmount(occurrence)) {
-                    <span class="field-error" [id]="'confirm-error-' + occurrence.id">
-                      Введите положительную сумму, не более четырёх знаков дроби.
-                    </span>
+            @for (occurrence of group.occurrences; track occurrence.id) {
+              <article class="upcoming-item" [class.overdue]="occurrence.overdue">
+                <div class="occurrence-copy">
+                  <div class="occurrence-kicker">
+                    <span class="badge">{{ typeLabel(occurrence.type) }}</span>
+                    @if (occurrence.overdue) {
+                      <strong>Просрочено</strong>
+                    } @else {
+                      <span>{{ statusLabel(occurrence.status) }}</span>
+                    }
+                  </div>
+                  <h3>{{ occurrenceTitle(occurrence) }}</h3>
+                  <p>
+                    {{ accountDirection(occurrence) }} ·
+                    {{ occurrence.category_name || 'Без категории' }}
+                  </p>
+                  @if (occurrence.allocate_to_funds) {
+                    <p>
+                      <strong
+                        >После перевода сумма распределится по процентам активных фондов.</strong
+                      >
+                    </p>
                   }
                 </div>
-                <details class="secondary-actions">
-                  <summary>Перенести или отменить</summary>
-                  <div class="secondary-actions-body">
-                    <div class="postpone-action">
-                      <label [for]="'postpone-' + occurrence.id">Новая дата</label>
-                      <input
-                        [id]="'postpone-' + occurrence.id"
-                        type="date"
-                        [value]="postponeDate(occurrence)"
-                        (input)="setPostponeDate(occurrence.id, $any($event.target).value)"
-                      />
+                <div
+                  class="occurrence-decision"
+                  [class.editing]="editingConfirmationId() === occurrence.id"
+                >
+                  <div class="occurrence-value">
+                    <strong class="occurrence-amount"
+                      >{{ occurrence.amount | money }} {{ baseCurrency() }}</strong
+                    >
+                    @if (actionable(occurrence) && editingConfirmationId() !== occurrence.id) {
                       <button
                         type="button"
-                        class="secondary"
-                        (click)="postpone(occurrence)"
-                        [disabled]="
-                          busyOccurrenceId() === occurrence.id ||
-                          postponeDate(occurrence) === occurrence.due_on
+                        class="secondary amount-edit-trigger"
+                        (click)="editConfirmationAmount(occurrence)"
+                        [attr.aria-label]="
+                          'Изменить сумму для «' + occurrenceTitle(occurrence) + '»'
                         "
                       >
-                        {{
-                          occurrenceRule(occurrence)?.shift_future_on_postpone
-                            ? 'Перенести серию'
-                            : 'Перенести'
-                        }}
+                        Изменить
                       </button>
-                      @if (postponeConsequence(occurrence); as consequence) {
-                        <p class="hint">{{ consequence }}</p>
-                      }
-                    </div>
-                    <button
-                      type="button"
-                      class="danger cancel-action"
-                      (click)="cancel(occurrence)"
-                      [disabled]="busyOccurrenceId() === occurrence.id"
-                    >
-                      Отменить
-                    </button>
+                    }
                   </div>
-                </details>
-              </div>
+                  @if (actionable(occurrence)) {
+                    <div class="quick-actions">
+                      <div
+                        class="confirmation-action"
+                        [class.editing]="editingConfirmationId() === occurrence.id"
+                      >
+                        @if (editingConfirmationId() === occurrence.id) {
+                          <label [for]="'confirm-amount-' + occurrence.id">
+                            Сумма подтверждения, {{ baseCurrency() }}
+                          </label>
+                          <div class="confirmation-editor">
+                            <input
+                              appDecimalInput="expression"
+                              [id]="'confirm-amount-' + occurrence.id"
+                              type="text"
+                              inputmode="text"
+                              autocomplete="off"
+                              [value]="confirmationAmountDisplay(occurrence)"
+                              [attr.aria-invalid]="!validConfirmationAmount(occurrence)"
+                              [attr.aria-describedby]="
+                                !validConfirmationAmount(occurrence)
+                                  ? 'confirm-error-' + occurrence.id
+                                  : null
+                              "
+                              (input)="
+                                setConfirmationAmount(occurrence.id, $any($event.target).value)
+                              "
+                            />
+                            <button
+                              type="button"
+                              class="secondary amount-edit-cancel"
+                              (click)="cancelConfirmationAmountEdit(occurrence)"
+                            >
+                              Отмена
+                            </button>
+                          </div>
+                        }
+                        <button
+                          type="button"
+                          (click)="confirm(occurrence)"
+                          [disabled]="
+                            busyOccurrenceId() === occurrence.id ||
+                            !validConfirmationAmount(occurrence)
+                          "
+                        >
+                          {{
+                            occurrence.allocate_to_funds
+                              ? 'Перевести и распределить'
+                              : 'Подтвердить'
+                          }}
+                        </button>
+                        @if (!validConfirmationAmount(occurrence)) {
+                          <span class="field-error" [id]="'confirm-error-' + occurrence.id">
+                            Введите положительную сумму, не более четырёх знаков дроби.
+                          </span>
+                        }
+                      </div>
+                      <details class="secondary-actions">
+                        <summary>Ещё</summary>
+                        <div class="secondary-actions-body">
+                          <div class="postpone-action">
+                            <label [for]="'postpone-' + occurrence.id">Новая дата</label>
+                            <input
+                              [id]="'postpone-' + occurrence.id"
+                              type="date"
+                              [value]="postponeDate(occurrence)"
+                              (input)="setPostponeDate(occurrence.id, $any($event.target).value)"
+                            />
+                            <button
+                              type="button"
+                              class="secondary"
+                              (click)="postpone(occurrence)"
+                              [disabled]="
+                                busyOccurrenceId() === occurrence.id ||
+                                postponeDate(occurrence) === occurrence.due_on
+                              "
+                            >
+                              {{
+                                occurrenceRule(occurrence)?.shift_future_on_postpone
+                                  ? 'Перенести серию'
+                                  : 'Перенести'
+                              }}
+                            </button>
+                            @if (postponeConsequence(occurrence); as consequence) {
+                              <p class="hint">{{ consequence }}</p>
+                            }
+                          </div>
+                          <button
+                            type="button"
+                            class="danger cancel-action"
+                            (click)="cancel(occurrence)"
+                            [disabled]="busyOccurrenceId() === occurrence.id"
+                          >
+                            Отменить
+                          </button>
+                        </div>
+                      </details>
+                    </div>
+                  }
+                </div>
+              </article>
             }
-          </article>
+          </section>
         }
       </div>
       @if (upcomingTotal() > upcoming().length) {
@@ -335,6 +399,62 @@
       }
     </section>
   </div>
+
+  @if (selectedCalendarDay(); as selectedDay) {
+    <div class="modal-backdrop" role="presentation" (keydown.escape)="closeCalendarDay()">
+      <section
+        class="modal-card calendar-day-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calendar-day-dialog-title"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="section-label">События дня</p>
+            <h2 id="calendar-day-dialog-title">{{ selectedDay.iso | textDate }}</h2>
+          </div>
+          <button
+            type="button"
+            class="modal-close"
+            (click)="closeCalendarDay()"
+            aria-label="Закрыть"
+          >
+            ×
+          </button>
+        </div>
+        <div class="calendar-day-dialog-list">
+          @for (occurrence of selectedDay.occurrences; track occurrence.id) {
+            @if (occurrence.status === 'confirmed' && occurrence.actual_operation_id) {
+              <a
+                class="calendar-day-dialog-item confirmed-link"
+                routerLink="/operations"
+                [queryParams]="{ focus: occurrence.actual_operation_id }"
+              >
+                <span>
+                  <strong>{{ occurrenceTitle(occurrence) }}</strong>
+                  <small
+                    >{{ typeLabel(occurrence.type) }} · {{ statusLabel(occurrence.status) }}</small
+                  >
+                </span>
+                <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
+              </a>
+            } @else {
+              <div class="calendar-day-dialog-item">
+                <span>
+                  <strong>{{ occurrenceTitle(occurrence) }}</strong>
+                  <small>
+                    {{ typeLabel(occurrence.type) }} ·
+                    {{ occurrence.overdue ? 'Просрочено' : statusLabel(occurrence.status) }}
+                  </small>
+                </span>
+                <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
+              </div>
+            }
+          }
+        </div>
+      </section>
+    </div>
+  }
 
   @if (ruleFormOpen()) {
     <div class="modal-backdrop" role="presentation" (keydown.escape)="cancelEdit()">

@@ -14,15 +14,15 @@ monthly context, an action-oriented upcoming list and recurring-rule management.
 ## Information hierarchy
 
 1. Explanation that expected events do not affect actual balances.
-2. Month navigation and visible account/type filters.
-3. Seven-column monthly grid with status/type summaries.
-4. Only today's and overdue actionable occurrences with confirm, date-specific
+2. Only today's and overdue actionable occurrences with confirm, date-specific
    postpone and cancel actions; future items remain in the calendar grid.
+3. Month navigation and visible account/type filters.
+4. Seven-column monthly grid with status/type summaries.
 5. Rule list and create/edit form.
 
-The calendar uses an internally scrollable grid on narrow screens instead of
-expanding the document. The attention list becomes the primary mobile action
-surface and is placed before the dense monthly grid. It never includes future
+The attention list is the primary action surface and remains before the dense
+monthly grid at every width. The calendar uses an internally scrollable grid on
+narrow screens instead of expanding the document. It never includes future
 events merely because they are within the next 30 days.
 
 ## States and actions
@@ -41,8 +41,12 @@ events merely because they are within the next 30 days.
 - An automatically cancelled dated exception protected during a series shift
   remains cancelled and carries a visible preservation explanation; it is not
   presented as an occurrence that received the new offset.
-- An actionable occurrence exposes its confirmation amount so an approximate
-  template amount can be corrected without editing the rule.
+- An actionable occurrence presents its formatted template amount first. Its
+  confirmation amount becomes editable through an explicit secondary action so
+  an approximate amount can still be corrected without editing the rule.
+- Actionable occurrences are grouped by due date. Each date is stated once,
+  while type and status remain visible on every occurrence. Amount correction,
+  confirmation and secondary actions form one compact decision area.
 - A fund-allocating transfer names that side effect beside the action and uses
   an explicit transfer-and-allocate action.
 - Disabling a rule explains that untouched future occurrences are cancelled;
@@ -71,6 +75,9 @@ events merely because they are within the next 30 days.
   year is materialized at any given time.
 - Long checkbox choices retain their native control size and align the control
   with the first text line when the label wraps on a narrow screen.
+- A calendar day shows a bounded preview of occurrences. When more are present,
+  an explicit count opens the complete list without changing the height of the
+  compact month row.
 
 ## Deliberately deferred
 
