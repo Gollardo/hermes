@@ -208,6 +208,11 @@ def test_restore_complete_backup_into_clean_initialized_target(
             headers=headers,
             json={"name": "Reserve", "description": None, "allocation_percentage": "10"},
         ).json()
+        destination_fund = client.post(
+            "/api/v1/funds",
+            headers=headers,
+            json={"name": "Goal", "description": None, "allocation_percentage": "0"},
+        ).json()
         assert (
             client.post(
                 "/api/v1/funds/allocations",
@@ -218,6 +223,21 @@ def test_restore_complete_backup_into_clean_initialized_target(
                     "occurred_on": "2026-08-12",
                     "description": "Reserve",
                     "allocations": [{"fund_id": fund["id"], "amount": "10"}],
+                },
+            ).status_code
+            == 201
+        )
+        assert (
+            client.post(
+                "/api/v1/funds/transfers",
+                headers=headers,
+                json={
+                    "source_fund_id": fund["id"],
+                    "destination_fund_id": destination_fund["id"],
+                    "account_id": account["id"],
+                    "amount": "4",
+                    "occurred_on": "2026-08-12",
+                    "description": "Move between goals",
                 },
             ).status_code
             == 201
@@ -303,9 +323,14 @@ def test_restore_complete_backup_into_clean_initialized_target(
             },
         )
         assert restored.status_code == 200
-        assert restored.json()["counts"]["fund_movements"] == 1
+        assert restored.json()["counts"]["fund_movements"] == 3
         assert restored.json()["counts"]["recurring_rules"] == 1
         assert client.get("/api/v1/funds/summary").json()["total_reserved"] == "10.0000"
+        restored_positions = {
+            item["fund_id"]: item["balance"]
+            for item in client.get("/api/v1/funds/summary").json()["positions"]
+        }
+        assert restored_positions == {fund["id"]: "6.0000", destination_fund["id"]: "4.0000"}
         restored_rule = client.get("/api/v1/scheduling/rules").json()[0]
         assert restored_rule["shift_future_on_postpone"] is True
         assert restored_rule["series_shift_days"] == 4

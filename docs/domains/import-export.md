@@ -47,7 +47,9 @@ movements, recurring rules and expected occurrences. Stable identifiers,
 calendar dates, timestamps, archive state and optimistic versions are retained.
 Optional fund targets and recurrence interval/weekday fields are included.
 Schema 1 readers supply compatible defaults for backups written before these
-fields existed.
+fields existed. Fund-event validation preserves the distinct shapes of an
+allocation into one account, redistribution of one fund between accounts, and
+a transfer between two funds within one account.
 
 Owner credential, password hash, login throttle and sessions are deliberately
 excluded: they are security state of the destination instance, not portable

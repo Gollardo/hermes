@@ -308,13 +308,21 @@ def validate_document(data: BackupData) -> None:
                 or len({item.account_id for item in event_movements}) != 1
             ):
                 raise BackupInvariantError("Fund allocation event is empty or negative")
-        elif (
+        elif event.type == FundEventType.REDISTRIBUTION:
+            if (
+                len(event_movements) != 2
+                or len({item.fund_id for item in event_movements}) != 1
+                or len({item.account_id for item in event_movements}) != 2
+                or sum((item.amount for item in event_movements), Decimal(0)) != 0
+            ):
+                raise BackupInvariantError("Fund redistribution is not balanced")
+        elif event.type == FundEventType.FUND_TRANSFER and (
             len(event_movements) != 2
-            or len({item.fund_id for item in event_movements}) != 1
-            or len({item.account_id for item in event_movements}) != 2
+            or len({item.fund_id for item in event_movements}) != 2
+            or len({item.account_id for item in event_movements}) != 1
             or sum((item.amount for item in event_movements), Decimal(0)) != 0
         ):
-            raise BackupInvariantError("Fund redistribution is not balanced")
+            raise BackupInvariantError("Fund transfer is not balanced")
     for operation_id, operation_fund_movements in fund_movements_by_operation.items():
         if not operation_fund_movements:
             continue

@@ -12,6 +12,12 @@ assigned.
 
 ## [Unreleased]
 
+### Fixed
+
+- Backup validation now distinguishes fund-to-fund transfers from
+  redistributions between accounts, so valid schema-1 backups containing a
+  `fund_transfer` event can be previewed and restored.
+
 ## [0.4.6] - 2026-08-20
 
 ### Changed

@@ -116,6 +116,77 @@ def archive_default_account(data: dict[str, Any]) -> None:
     data["accounts"][0]["archived_at"] = data["settings"]["updated_at"]
 
 
+def add_valid_fund_transfer(data: dict[str, Any]) -> None:
+    now = data["settings"]["updated_at"]
+    account_id = data["accounts"][0]["id"]
+    source_fund_id = str(uuid4())
+    destination_fund_id = str(uuid4())
+    allocation_event_id = str(uuid4())
+    transfer_event_id = str(uuid4())
+    for fund_id, name in (
+        (source_fund_id, "Source"),
+        (destination_fund_id, "Destination"),
+    ):
+        data["funds"].append(
+            {
+                "id": fund_id,
+                "name": name,
+                "description": None,
+                "allocation_percentage": "0",
+                "archived_at": None,
+                "created_at": now,
+                "updated_at": now,
+                "version": 1,
+            }
+        )
+    data["fund_events"].extend(
+        [
+            {
+                "id": allocation_event_id,
+                "type": "allocation",
+                "occurred_on": date.today().isoformat(),
+                "description": None,
+                "created_at": now,
+            },
+            {
+                "id": transfer_event_id,
+                "type": "fund_transfer",
+                "occurred_on": date.today().isoformat(),
+                "description": None,
+                "created_at": now,
+            },
+        ]
+    )
+    data["fund_movements"].extend(
+        [
+            {
+                "id": str(uuid4()),
+                "fund_id": source_fund_id,
+                "account_id": account_id,
+                "operation_id": None,
+                "event_id": allocation_event_id,
+                "amount": "30.0000",
+            },
+            {
+                "id": str(uuid4()),
+                "fund_id": source_fund_id,
+                "account_id": account_id,
+                "operation_id": None,
+                "event_id": transfer_event_id,
+                "amount": "-10.0000",
+            },
+            {
+                "id": str(uuid4()),
+                "fund_id": destination_fund_id,
+                "account_id": account_id,
+                "operation_id": None,
+                "event_id": transfer_event_id,
+                "amount": "10.0000",
+            },
+        ]
+    )
+
+
 def valid_data() -> dict[str, Any]:
     now = datetime.now(UTC).isoformat()
     account = str(uuid4())
@@ -272,6 +343,28 @@ def test_valid_backup_domain_shape() -> None:
     assert data.expected_occurrences[0].series_shift_days == 0
     assert data.expected_occurrences[0].preserve_from_series_shift is False
     validate_document(data)
+
+
+def test_backup_accepts_balanced_transfer_between_funds_on_one_account() -> None:
+    data = valid_data()
+    add_valid_fund_transfer(data)
+
+    validate_document(BackupData.model_validate(data))
+
+
+def test_backup_rejects_fund_transfer_between_accounts() -> None:
+    data = valid_data()
+    add_valid_fund_transfer(data)
+    transfer_event_id = next(
+        item["id"] for item in data["fund_events"] if item["type"] == "fund_transfer"
+    )
+    transfer_movements = [
+        item for item in data["fund_movements"] if item["event_id"] == transfer_event_id
+    ]
+    transfer_movements[1]["account_id"] = data["accounts"][1]["id"]
+
+    with pytest.raises(BackupInvariantError, match="Fund transfer is not balanced"):
+        validate_document(BackupData.model_validate(data))
 
 
 def test_backup_rejects_series_shift_outside_calendar_range() -> None:
