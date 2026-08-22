@@ -11,7 +11,12 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.operations.contracts import OperationType
-from app.modules.scheduling.models import ExpectedOccurrence, OccurrenceStatus, RecurringRule
+from app.modules.scheduling.models import (
+    ExpectedOccurrence,
+    OccurrenceSourceKind,
+    OccurrenceStatus,
+    RecurringRule,
+)
 
 if TYPE_CHECKING:
     from app.modules.scheduling.schemas import ExpectedOccurrenceResponse
@@ -55,7 +60,7 @@ def confirm_occurrence(
 @dataclass(frozen=True, slots=True)
 class PlannedOccurrence:
     id: UUID
-    rule_id: UUID
+    rule_id: UUID | None
     due_on: date
     type: OperationType
     amount: Decimal
@@ -64,6 +69,7 @@ class PlannedOccurrence:
     destination_account_id: UUID | None
     allocate_to_funds: bool
     status: OccurrenceStatus
+    source_kind: OccurrenceSourceKind = OccurrenceSourceKind.RECURRING
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +118,7 @@ def forecast_schedule_snapshot(
         [
             PlannedOccurrence(
                 id=item.id,
+                source_kind=item.source_kind,
                 rule_id=item.rule_id,
                 due_on=item.due_on,
                 type=item.type,
@@ -189,13 +196,17 @@ def category_has_schedule_reference(session: Session, category_id: UUID) -> bool
 
 def has_schedule_data(session: Session) -> bool:
     """Return whether calendar-date semantics have become persistent."""
-    return session.scalar(select(RecurringRule.id).limit(1)) is not None
+    return (
+        session.scalar(select(RecurringRule.id).limit(1)) is not None
+        or session.scalar(select(ExpectedOccurrence.id).limit(1)) is not None
+    )
 
 
 __all__ = [
     "ForecastScheduleSnapshot",
     "OccurrenceConfirmationDraft",
     "OccurrencePoster",
+    "OccurrenceSourceKind",
     "OccurrenceStatus",
     "PlannedOccurrence",
     "account_has_schedule_reference",

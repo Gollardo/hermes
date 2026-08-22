@@ -6,7 +6,7 @@ map lives in [index.md](./index.md).
 
 ## Last updated
 
-2026-08-21
+2026-08-22
 
 ## Current phase
 
@@ -97,6 +97,12 @@ access. Direct public-internet exposure is unsupported.
   incomplete funds automatically; operation-caused refills roll back with the
   operation. Funds and forecast show reserve totals separately, while the only
   manual action returns reserve to free money on the same account.
+- The current worktree adds one-off future plans on the existing Scheduling
+  occurrence lifecycle. Future ordinary operations are rejected by the public
+  journal API; planned income, expense and transfers remain balance-neutral
+  until explicitly applied today. The local backend unit suite, full disposable
+  PostgreSQL integration suite, frontend suite, lint, type checks, documentation
+  check and Alembic model/schema check pass against migration `0014`.
 - The owner decision from 2026-08-18 confirms the decision-first “Oracle · What
   if?” direction. Temporary alternatives compare with a baseline, change neither
   ledger nor plan, and persist only by choice. The owner may set a stop-loss,
@@ -118,7 +124,7 @@ access. Direct public-internet exposure is unsupported.
   databases upgraded through `0013_fund_reserve`; this includes reserve
   creation with no funds, cross-account automatic refill, manual release,
   exact operation-linked rollback, backup restore and forecast contracts.
-- Backend unit tests pass 101/101 and frontend tests pass 121/121. Ruff, Python
+- Before the one-off-plan worktree change, backend unit tests passed 101/101 and frontend tests passed 121/121. Ruff, Python
   formatting, Angular lint, Prettier, mypy, TypeScript, documentation checks,
   `git diff --check`, and the production Angular build pass. Alembic reports one
   head at `0013_fund_reserve` and no ungenerated upgrade operations. Existing

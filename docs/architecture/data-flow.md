@@ -154,6 +154,7 @@ transfer is rejected and rolled back.
 ```mermaid
 flowchart LR
     Rule["Recurrence rule"] --> Generate["Materialize expected occurrence"]
+    OneOff["One-off plan"] --> Pending
     Generate --> Pending["pending"]
     Pending -->|postpone| Postponed["postponed with new date"]
     Pending -->|cancel| Cancelled["cancelled"]
@@ -191,6 +192,11 @@ For a transfer marked for fund allocation, the application layer also invokes
 the Funds workflow before linking confirmation; every effect shares the request
 transaction. Funds protects the percentage snapshot from concurrent definition
 changes until that transaction finishes.
+One-off plans share the occurrence persistence and forecast read contract but
+have no rule and are never materialized. Applying one locks the plan, posts the
+actual operation with `occurred_on` equal to application today and records the
+link in that same transaction; it is therefore idempotent and cannot leave a
+partial ledger write.
 
 ## Forecast calculation
 

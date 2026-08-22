@@ -14,7 +14,7 @@ from app.modules.funds.contracts import (
     FundCoverageError,
 )
 from app.modules.operations.contracts import InsufficientBalanceError, OperationType
-from app.modules.scheduling.models import OccurrenceStatus
+from app.modules.scheduling.models import OccurrenceSourceKind, OccurrenceStatus
 from app.modules.scheduling.schemas import (
     ExpectedOccurrenceResponse,
     MaterializationResponse,
@@ -23,6 +23,8 @@ from app.modules.scheduling.schemas import (
     OccurrencePostponeRequest,
     OccurrencePostponeResponse,
     OccurrenceVersionRequest,
+    OneOffPlanCreateRequest,
+    OneOffPlanUpdateRequest,
     RecurringRuleCreateRequest,
     RecurringRuleResponse,
     RecurringRuleUpdateRequest,
@@ -33,12 +35,15 @@ from app.modules.scheduling.service import (
     RecurringRuleNotFoundError,
     SchedulingConflictError,
     cancel_occurrence,
+    create_one_off_plan,
     create_rule,
+    get_occurrence_response,
     get_rule_response,
     list_occurrence_responses,
     list_rule_responses,
     materialize_all,
     postpone_occurrence,
+    update_one_off_plan,
     update_rule,
 )
 
@@ -119,6 +124,7 @@ def read_occurrences(
     account_id: UUID | None = None,
     type: OperationType | None = None,
     statuses: Annotated[list[OccurrenceStatus] | None, Query(alias="status")] = None,
+    source_kinds: Annotated[list[OccurrenceSourceKind] | None, Query(alias="source_kind")] = None,
 ) -> OccurrencePageResponse:
     return list_occurrence_responses(
         session,
@@ -129,7 +135,17 @@ def read_occurrences(
         account_id=account_id,
         operation_type=type,
         statuses=set(statuses) if statuses else None,
+        source_kinds=set(source_kinds) if source_kinds else None,
     )
+
+
+@read_router.get("/occurrences/{occurrence_id}", response_model=ExpectedOccurrenceResponse)
+def read_occurrence(occurrence_id: UUID, session: DatabaseSession) -> ExpectedOccurrenceResponse:
+    try:
+        return get_occurrence_response(session, occurrence_id)
+    except ExpectedOccurrenceNotFoundError as error:
+        _raise_domain_error(error)
+        raise AssertionError from error
 
 
 @write_router.post(
@@ -142,6 +158,38 @@ def add_rule(
         rule = create_rule(session, payload)
         return get_rule_response(session, rule.id)
     except (AccountReferenceError, CategoryReferenceError) as error:
+        _raise_domain_error(error)
+        raise AssertionError from error
+
+
+@write_router.post(
+    "/one-off-plans", response_model=ExpectedOccurrenceResponse, status_code=status.HTTP_201_CREATED
+)
+def add_one_off_plan(
+    payload: OneOffPlanCreateRequest, session: DatabaseSession
+) -> ExpectedOccurrenceResponse:
+    try:
+        occurrence = create_one_off_plan(session, payload)
+        return get_occurrence_response(session, occurrence.id)
+    except (AccountReferenceError, CategoryReferenceError) as error:
+        _raise_domain_error(error)
+        raise AssertionError from error
+
+
+@write_router.put("/one-off-plans/{occurrence_id}", response_model=ExpectedOccurrenceResponse)
+def replace_one_off_plan(
+    occurrence_id: UUID, payload: OneOffPlanUpdateRequest, session: DatabaseSession
+) -> ExpectedOccurrenceResponse:
+    try:
+        occurrence = update_one_off_plan(session, occurrence_id, payload)
+        return get_occurrence_response(session, occurrence.id)
+    except (
+        AccountReferenceError,
+        CategoryReferenceError,
+        ExpectedOccurrenceNotFoundError,
+        InvalidOccurrenceTransitionError,
+        SchedulingConflictError,
+    ) as error:
         _raise_domain_error(error)
         raise AssertionError from error
 

@@ -14,6 +14,12 @@ assigned.
 
 ### Added
 
+- One-off income, expense and transfer plans backed by Scheduling occurrences,
+  with Calendar origin labels, edit/cancel actions, forecast participation,
+  transactional application and a durable link to the posted operation.
+- Migration `0014_one_off_plans`, backup validation for one-off origin, and the
+  server-provided application-today value consumed by the operation composer.
+
 - Versioned `.hermes` backup envelopes with Argon2id-derived KEKs, random
   256-bit DEKs and independent XChaCha20-Poly1305-IETF operations for the DEK
   and financial payload.
@@ -23,6 +29,9 @@ assigned.
 
 ### Changed
 
+- Future dates submitted to the public Operations API now return
+  `future_operation_requires_plan` instead of creating a future journal fact.
+
 - Settings now offers both the recommended protected `.hermes` download and an
   explicit plaintext JSON download. Legacy `hermes-json-backup` schema 1 remains
   importable for backward compatibility.
@@ -31,8 +40,8 @@ assigned.
 
 ### Migration
 
-- No database migration is required. PyNaCl 1.6.2 is the new locked runtime
-  dependency.
+- Migration `0014_one_off_plans` follows `0013_fund_reserve`. PyNaCl 1.6.2 is
+  the new locked runtime dependency.
 
 ### Fixed
 

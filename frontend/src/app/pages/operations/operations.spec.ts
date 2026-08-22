@@ -76,6 +76,7 @@ describe('OperationsPage', () => {
     total?: number;
     totalAmount?: string;
     timezone?: string;
+    applicationToday?: string;
     defaultAccountId?: string | null;
     focusedOperation?: TestOperation;
     expectedJournalParams?: Record<string, string>;
@@ -89,6 +90,7 @@ describe('OperationsPage', () => {
     http.expectOne('/api/v1/settings').flush({
       base_currency: 'RUB',
       timezone: options?.timezone ?? 'UTC',
+      application_today: options?.applicationToday ?? '2026-08-31',
       default_account_id: options?.defaultAccountId ?? null,
     });
     http
@@ -182,6 +184,88 @@ describe('OperationsPage', () => {
     http
       .expectOne((candidate) => candidate.url === '/api/v1/operations')
       .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+  });
+
+  it('sends a future date to one-off planning and explains the delayed balance effect', () => {
+    flushInitial({ applicationToday: '2026-08-31' });
+    setValue('#operation-type', 'expense');
+    setValue('#operation-category', 'category-1');
+    setValue('#operation-amount', '12,50');
+    setValue('#operation-account', 'account-1');
+    setValue('#operation-date', '2026-09-10');
+    expect(fixture.nativeElement.textContent).toContain('Баланс изменится только после применения');
+    expect(
+      fixture.nativeElement.querySelector('.entry-panel button[type="submit"]').textContent,
+    ).toContain('Запланировать');
+
+    fixture.nativeElement.querySelector('.entry-panel form').dispatchEvent(new Event('submit'));
+    const request = http.expectOne('/api/v1/scheduling/one-off-plans');
+    expect(request.request.body).toMatchObject({
+      type: 'expense',
+      scheduled_on: '2026-09-10',
+      amount: '12.50',
+      category_id: 'category-1',
+    });
+    request.flush({ scheduled_on: '2026-09-10' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Разовая операция запланирована на 10 сентября 2026.',
+    );
+    http.expectOne('/api/v1/accounts').flush([]);
+    http.expectOne('/api/v1/categories').flush([]);
+    http.expectOne('/api/v1/funds/summary').flush({ funds: [], positions: [] });
+    http
+      .expectOne((candidate) => candidate.url === '/api/v1/operations')
+      .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+  });
+
+  it('keeps a one-off plan date when the settings response arrives after the plan', () => {
+    queryParams = { plan: 'plan-1' };
+    fixture.detectChanges();
+
+    http.expectOne('/api/v1/scheduling/occurrences/plan-1').flush({
+      id: 'plan-1',
+      source_kind: 'one_off',
+      rule_id: null,
+      scheduled_on: '2026-09-10',
+      due_on: '2026-09-10',
+      status: 'pending',
+      type: 'expense',
+      amount: '12.5000',
+      description: 'Insurance',
+      account_id: 'account-1',
+      destination_account_id: null,
+      category_id: 'category-1',
+      allocate_to_funds: false,
+      version: 1,
+    });
+    http.expectOne('/api/v1/settings').flush({
+      base_currency: 'RUB',
+      timezone: 'UTC',
+      application_today: '2026-08-31',
+      default_account_id: null,
+    });
+    http
+      .expectOne('/api/v1/accounts')
+      .flush([{ id: 'account-1', name: 'Main', balance: '100.0000', archived: false }]);
+    http.expectOne('/api/v1/categories').flush([
+      {
+        id: 'category-1',
+        name: 'Food',
+        type: 'expense',
+        archived: false,
+        parent_id: null,
+      },
+    ]);
+    http.expectOne('/api/v1/funds/summary').flush({ funds: [], positions: [] });
+    http
+      .expectOne((request) => request.url === '/api/v1/operations')
+      .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement.querySelector('#operation-date') as HTMLInputElement).value).toBe(
+      '2026-09-10',
+    );
   });
 
   it('prefills an active default account for a new expense', () => {
@@ -451,7 +535,7 @@ describe('OperationsPage', () => {
   it('uses application timezone for the default financial date', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-01T22:30:00Z'));
-    flushInitial({ timezone: 'Europe/Moscow' });
+    flushInitial({ timezone: 'Europe/Moscow', applicationToday: '2026-08-02' });
     const date = fixture.nativeElement.querySelector('#operation-date') as HTMLInputElement;
     expect(date.value).toBe('2026-08-02');
   });

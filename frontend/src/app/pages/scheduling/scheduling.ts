@@ -13,7 +13,7 @@ import { EMPTY, Observable, expand, forkJoin, reduce } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
-import { DateTextPipe } from '../../shared/date-text.pipe';
+import { DateTextPipe, formatTextDate } from '../../shared/date-text.pipe';
 import { currencySymbol, formatMoney, MoneyPipe } from '../../shared/money.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 import {
@@ -69,7 +69,8 @@ interface RecurringRule {
 
 interface ExpectedOccurrence {
   id: string;
-  rule_id: string;
+  source_kind: 'recurring' | 'one_off';
+  rule_id: string | null;
   scheduled_on: string;
   due_on: string;
   status: OccurrenceStatus;
@@ -462,6 +463,10 @@ export class SchedulingPage implements OnInit {
     return this.typeLabel(occurrence.type);
   }
 
+  protected sourceLabel(occurrence: ExpectedOccurrence): string {
+    return occurrence.source_kind === 'one_off' ? 'Разовая' : 'Повторяющаяся';
+  }
+
   protected ruleTitle(rule: RecurringRule): string {
     return rule.description || `${this.typeLabel(rule.type)} · ${formatMoney(rule.amount)}`;
   }
@@ -574,6 +579,23 @@ export class SchedulingPage implements OnInit {
     if (!rule?.shift_future_on_postpone || !next || next === occurrence.due_on) return null;
     const days = daysBetween(occurrence.due_on, next);
     return `Текущая дата и следующие нетронутые события сдвинутся на ${signedDays(days)}.`;
+  }
+
+  protected earlyApplicationWarning(occurrence: ExpectedOccurrence): string | null {
+    if (occurrence.source_kind !== 'one_off' || occurrence.due_on <= this.today()) return null;
+    return `Плановая дата — ${formatTextDate(occurrence.due_on)}. Вы применяете операцию раньше срока.`;
+  }
+
+  protected oneOffConfirmationConsequence(occurrence: ExpectedOccurrence): string | null {
+    if (occurrence.source_kind !== 'one_off') return null;
+    const amount = `${formatMoney(occurrence.amount)} ${this.baseCurrency()}`;
+    if (occurrence.type === 'expense') {
+      return `Сегодня со счёта «${occurrence.account_name}» будет списано ${amount}.`;
+    }
+    if (occurrence.type === 'income') {
+      return `Сегодня на счёт «${occurrence.account_name}» будет зачислено ${amount}.`;
+    }
+    return `Сегодня ${amount} будет переведено со счёта «${occurrence.account_name}» на счёт «${occurrence.destination_account_name ?? '—'}».`;
   }
 
   protected postpone(occurrence: ExpectedOccurrence): void {
@@ -788,8 +810,22 @@ export class SchedulingPage implements OnInit {
         error: (error: unknown) => {
           this.busyOccurrenceId.set(null);
           this.error.set(apiErrorMessage(error, fallback));
+          if (this.isSchedulingConflict(error)) this.loadOccurrences();
         },
       });
+  }
+
+  private isSchedulingConflict(error: unknown): boolean {
+    if (!error || typeof error !== 'object' || !('error' in error)) return false;
+    const payload = error.error;
+    if (!payload || typeof payload !== 'object' || !('detail' in payload)) return false;
+    const detail = payload.detail;
+    return Boolean(
+      detail &&
+      typeof detail === 'object' &&
+      'code' in detail &&
+      detail.code === 'scheduling_conflict',
+    );
   }
 
   private resetDependentFields(): void {

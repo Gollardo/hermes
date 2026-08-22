@@ -28,6 +28,9 @@ events merely because they are within the next 30 days.
 ## States and actions
 
 - `pending` and `postponed` expose quick actions.
+- A one-off plan is visibly labelled “One-off”, never presented as a recurrence
+  rule, and offers Apply today, edit, move and cancel. Apply today warns that
+  an early plan posts today rather than its planned date.
 - `confirmed` remains visible and links to the exact posted operation; route
   navigation resets scroll so the linked-fact context is visible immediately.
 - `cancelled` remains visible but visually secondary.

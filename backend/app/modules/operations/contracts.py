@@ -9,7 +9,11 @@ from sqlalchemy.orm import Session
 from app.modules.operations.ledger import account_balance, account_balances
 from app.modules.operations.models import AccountMovement, FinancialOperation, OperationType
 from app.modules.operations.schemas import OperationCreateRequest
-from app.modules.operations.service import InsufficientBalanceError, create_operation
+from app.modules.operations.service import (
+    FutureOperationDateError,
+    InsufficientBalanceError,
+    create_operation,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,6 +187,7 @@ def operation_history_references(
 
 __all__ = [
     "InsufficientBalanceError",
+    "FutureOperationDateError",
     "OperationHistoryReference",
     "OperationType",
     "PhysicalTransferDraft",

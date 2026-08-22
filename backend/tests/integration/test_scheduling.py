@@ -916,6 +916,93 @@ def test_scheduled_transfer_and_percentage_allocation_are_atomic(
         assert movements[0].amount == 6
 
 
+def test_one_off_plan_stays_unposted_until_application_today_confirmation(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        account = _account(client, headers, "Main", "100")
+        category = _category(client, headers, "Insurance", "expense")
+        today = _horizon_today(client, headers)
+        planned_on = today + timedelta(days=10)
+
+        created = client.post(
+            "/api/v1/scheduling/one-off-plans",
+            headers=headers,
+            json={
+                "type": "expense",
+                "scheduled_on": planned_on.isoformat(),
+                "amount": "20",
+                "description": "Insurance",
+                "account_id": account,
+                "category_id": category,
+            },
+        )
+        assert created.status_code == 201
+        plan = created.json()
+        assert plan["source_kind"] == "one_off"
+        assert plan["rule_id"] is None
+        assert client.get("/api/v1/accounts").json()[0]["balance"] == "100.0000"
+        assert client.get("/api/v1/operations").json()["total"] == 1
+        forecast = client.get("/api/v1/forecast?horizon=two_weeks").json()
+        assert forecast["ending_balance"] == "80.0000"
+
+        edited = client.put(
+            f"/api/v1/scheduling/one-off-plans/{plan['id']}",
+            headers=headers,
+            json={
+                "type": "expense",
+                "scheduled_on": (today - timedelta(days=1)).isoformat(),
+                "amount": "25",
+                "description": "Updated insurance",
+                "account_id": account,
+                "category_id": category,
+                "version": plan["version"],
+            },
+        )
+        assert edited.status_code == 200
+        assert edited.json()["status"] == "pending"
+        assert client.get("/api/v1/accounts").json()[0]["balance"] == "100.0000"
+
+        confirmed = client.post(
+            f"/api/v1/scheduling/occurrences/{plan['id']}/confirm",
+            headers=headers,
+            json={"version": edited.json()["version"]},
+        )
+        assert confirmed.status_code == 200
+        operation_id = confirmed.json()["actual_operation_id"]
+        assert operation_id is not None
+        operation = client.get(f"/api/v1/operations/{operation_id}").json()
+        assert operation["occurred_on"] == today.isoformat()
+        assert client.get("/api/v1/accounts").json()[0]["balance"] == "75.0000"
+        repeated = client.post(
+            f"/api/v1/scheduling/occurrences/{plan['id']}/confirm",
+            headers=headers,
+            json={"version": plan["version"]},
+        )
+        assert repeated.status_code == 200
+        assert repeated.json()["actual_operation_id"] == operation_id
+
+        future_fact = client.post(
+            "/api/v1/operations",
+            headers=headers,
+            json={
+                "type": "expense",
+                "occurred_on": planned_on.isoformat(),
+                "amount": "1",
+                "account_id": account,
+                "category_id": category,
+            },
+        )
+        assert future_fact.status_code == 422
+        assert future_fact.json()["detail"]["code"] == "future_operation_requires_plan"
+
+    with pytest.raises(RuntimeError, match="one-off plans exist"):
+        command.downgrade(Config("alembic.ini"), "0013_fund_reserve")
+
+
 def test_concurrent_confirmation_and_rule_edit_are_serial_and_idempotent(
     postgres_database_settings: Settings,
 ) -> None:
@@ -1120,6 +1207,7 @@ def test_alpha4_database_upgrades_and_beta1_schema_downgrades(
     config = Config("alembic.ini")
     command.downgrade(config, "0005_virtual_funds")
     command.upgrade(config, "head")
+    command.check(config)
     upgraded_app = create_app(postgres_database_settings)
     with TestClient(upgraded_app) as client:
         assert (

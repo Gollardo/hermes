@@ -49,6 +49,7 @@ from app.modules.operations.backup import AccountMovement, FinancialOperation
 from app.modules.operations.contracts import OperationType
 from app.modules.scheduling.backup import (
     ExpectedOccurrence,
+    OccurrenceSourceKind,
     OccurrenceStatus,
     RecurringRule,
 )
@@ -517,23 +518,37 @@ def validate_document(data: BackupData) -> None:
     ):
         raise BackupInvariantError("Recurring rule date range is invalid")
     for occurrence in data.expected_occurrences:
-        if occurrence.rule_id not in rule_ids:
+        if (
+            occurrence.source_kind == OccurrenceSourceKind.RECURRING
+            and occurrence.rule_id not in rule_ids
+        ):
             raise BackupInvariantError("Occurrence rule is missing")
         if (
             (occurrence.status == OccurrenceStatus.CONFIRMED)
             != (occurrence.actual_operation_id is not None)
             or (
-                occurrence.status == OccurrenceStatus.POSTPONED and not occurrence.manually_modified
+                occurrence.source_kind == OccurrenceSourceKind.RECURRING
+                and (
+                    occurrence.status == OccurrenceStatus.POSTPONED
+                    and not occurrence.manually_modified
+                )
             )
-            or (occurrence.status == OccurrenceStatus.PENDING and occurrence.manually_modified)
             or (
-                occurrence.preserve_from_series_shift
+                occurrence.source_kind == OccurrenceSourceKind.RECURRING
+                and occurrence.status == OccurrenceStatus.PENDING
+                and occurrence.manually_modified
+            )
+            or (
+                occurrence.source_kind == OccurrenceSourceKind.RECURRING
+                and occurrence.preserve_from_series_shift
                 and (
                     occurrence.status != OccurrenceStatus.CANCELLED or occurrence.manually_modified
                 )
             )
             or (
-                occurrence.status not in {OccurrenceStatus.POSTPONED, OccurrenceStatus.CONFIRMED}
+                occurrence.source_kind == OccurrenceSourceKind.RECURRING
+                and occurrence.status
+                not in {OccurrenceStatus.POSTPONED, OccurrenceStatus.CONFIRMED}
                 and occurrence.due_on
                 != occurrence.scheduled_on + timedelta(days=occurrence.series_shift_days)
             )
@@ -549,7 +564,11 @@ def validate_document(data: BackupData) -> None:
         for item in data.expected_occurrences
     ):
         raise BackupInvariantError("Occurrence reference is missing")
-    occurrence_keys = [(item.rule_id, item.scheduled_on) for item in data.expected_occurrences]
+    occurrence_keys = [
+        (item.rule_id, item.scheduled_on)
+        for item in data.expected_occurrences
+        if item.source_kind == OccurrenceSourceKind.RECURRING
+    ]
     if len(occurrence_keys) != len(set(occurrence_keys)):
         raise BackupInvariantError("A rule has duplicate expected dates")
 

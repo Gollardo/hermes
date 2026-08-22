@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, field_validator
@@ -14,6 +14,7 @@ class SettingsResponse(BaseModel):
     fund_allocation_mode: FundAllocationMode
     base_currency_locked: bool
     updated_at: datetime
+    application_today: date
 
 
 class SettingsUpdateRequest(BaseModel):

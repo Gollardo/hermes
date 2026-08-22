@@ -345,6 +345,43 @@ def test_valid_backup_domain_shape() -> None:
     validate_document(data)
 
 
+@pytest.mark.parametrize(
+    ("status", "manually_modified", "actual_operation"),
+    [
+        ("pending", False, False),
+        ("cancelled", True, False),
+        ("confirmed", False, True),
+    ],
+)
+def test_backup_accepts_one_off_plan_lifecycle_records(
+    status: str, manually_modified: bool, actual_operation: bool
+) -> None:
+    data = valid_data()
+    occurrence = data["expected_occurrences"][0]
+    occurrence.update(
+        {
+            "source_kind": "one_off",
+            "rule_id": None,
+            "status": status,
+            "manually_modified": manually_modified,
+            "actual_operation_id": data["operations"][0]["id"] if actual_operation else None,
+        }
+    )
+
+    validate_document(BackupData.model_validate(data))
+
+
+def test_backup_rejects_recurring_state_on_one_off_plan() -> None:
+    data = valid_data()
+    occurrence = data["expected_occurrences"][0]
+    occurrence["source_kind"] = "one_off"
+
+    with pytest.raises(
+        ValidationError, match="one-off plans cannot contain recurring series state"
+    ):
+        BackupData.model_validate(data)
+
+
 def test_backup_category_validation_is_independent_of_parent_order() -> None:
     data = valid_data()
     parent = data["categories"][1]

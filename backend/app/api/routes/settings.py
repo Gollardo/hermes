@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, HTTPException, status
 
 from app.application.settings import (
@@ -28,6 +31,7 @@ def _response(settings: ApplicationSettings) -> SettingsResponse:
         fund_allocation_mode=settings.fund_allocation_mode,
         base_currency_locked=settings.base_currency_locked_at is not None,
         updated_at=settings.updated_at,
+        application_today=datetime.now(UTC).astimezone(ZoneInfo(settings.timezone)).date(),
     )
 
 

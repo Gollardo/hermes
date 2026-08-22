@@ -10,6 +10,21 @@ Only confirmation creates an actual financial operation that affects balance.
 Postponing one occurrence changes only that occurrence by default. A rule may
 explicitly opt into shifting its untouched later occurrences by the same delta.
 
+## One-off plans
+
+A future income, expense or transfer is stored as a one-off expected occurrence,
+not as a future journal fact. It has `source_kind = one_off`, no recurrence rule
+and the same pending/confirmed/cancelled lifecycle used by Calendar. Creation,
+editing, cancellation and date changes create no physical or fund movements.
+The forecast includes pending one-off plans and excludes confirmed or cancelled
+ones.
+
+Applying a one-off plan always posts the fact on application today in the
+configured Hermes timezone, even when the plan is early or overdue. Posting and
+linking `actual_operation_id` share one transaction; a retry returns the linked
+operation. Confirmed and cancelled plans cannot be edited. Balance adjustments
+are deliberately excluded because they describe an already-known fact.
+
 ## Terms and boundary
 
 - **Recurrence rule** describes a repeating intent.
@@ -72,7 +87,16 @@ Re-enabling or another edit may restore an automatically cancelled occurrence,
 but never one cancelled manually. If a later series shift preserves an
 automatically cancelled occurrence as a dated exception, subsequent
 materialization does not restore it. This protection is represented by the
-explicit preservation marker rather than inferred from offset differences.
+  explicit preservation marker rather than inferred from offset differences.
+
+The uniqueness identity applies only to recurring occurrences. A database
+constraint requires a recurrence rule for `recurring` and forbids one for
+`one_off`, so materialization never touches a one-off plan.
+
+Migration `0014_one_off_plans` refuses a downgrade while one-off plans exist.
+The preceding schema cannot preserve them, so a rollback requires their
+intentional removal or a restore to a pre-plan backup rather than silently
+discarding plan history.
 
 In practical terms, changing a rule updates only untouched current and future
 instances. Anything already confirmed, postponed or manually cancelled keeps

@@ -1,11 +1,12 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { apiErrorMessage } from '../../core/auth.service';
-import { DateTextPipe } from '../../shared/date-text.pipe';
+import { DateTextPipe, formatTextDate } from '../../shared/date-text.pipe';
 import { currencySymbol, formatMoney, MoneyPipe } from '../../shared/money.pipe';
 import { EntityCombobox, EntityOption } from '../../shared/entity-combobox';
 import {
@@ -96,6 +97,23 @@ interface ApplicationSettings {
   base_currency: string;
   timezone: string;
   default_account_id: string | null;
+  application_today: string;
+}
+
+interface OneOffPlan {
+  id: string;
+  source_kind: 'one_off';
+  scheduled_on: string;
+  due_on: string;
+  status: 'pending' | 'postponed' | 'confirmed' | 'cancelled';
+  type: Exclude<OperationType, 'balance_adjustment'>;
+  amount: string;
+  description: string | null;
+  account_id: string;
+  destination_account_id: string | null;
+  category_id: string | null;
+  allocate_to_funds: boolean;
+  version: number;
 }
 
 @Component({
@@ -107,6 +125,7 @@ interface ApplicationSettings {
     EntityCombobox,
     DecimalInput,
     OperationCreateMenu,
+    RouterLink,
   ],
   templateUrl: './operations.html',
   styleUrl: './operations.css',
@@ -127,7 +146,7 @@ export class OperationsPage implements OnInit {
   protected readonly total = signal(0);
   protected readonly totalAmount = signal('0.0000');
   protected readonly baseCurrency = signal('RUB');
-  private readonly timezone = signal('UTC');
+  private readonly applicationToday = signal('');
   private readonly settingsReady = signal(false);
   private readonly defaultAccountId = signal<string | null>(null);
   protected readonly page = signal(1);
@@ -135,7 +154,9 @@ export class OperationsPage implements OnInit {
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly scheduledNotice = signal<string | null>(null);
   protected readonly editingId = signal<string | null>(null);
+  protected readonly editingPlan = signal<OneOffPlan | null>(null);
   protected readonly expandedId = signal<string | null>(null);
   protected readonly formOpen = signal(false);
   protected readonly filtersOpen = signal(false);
@@ -170,6 +191,8 @@ export class OperationsPage implements OnInit {
     const query = this.route?.snapshot.queryParamMap;
     const focusedId = query?.get('focus');
     if (focusedId) this.loadFocusedOperation(focusedId);
+    const planId = query?.get('plan');
+    if (planId) this.loadOneOffPlan(planId);
     const queryType = query?.get('type');
     const filterType: OperationType | '' =
       queryType === 'income' ||
@@ -350,7 +373,15 @@ export class OperationsPage implements OnInit {
         fundAmount,
         amount,
       ) &&
-      this.fundSelectionIsValid(value.type, value.accountId, value.fundId, amount, fundAmount)
+      this.fundSelectionIsValid(value.type, value.accountId, value.fundId, amount, fundAmount) &&
+      !(this.isPlanMode() && value.type === 'balance_adjustment')
+    );
+  }
+
+  protected isPlanMode(): boolean {
+    return (
+      Boolean(this.editingPlan()) ||
+      (!this.editingId() && this.isFutureDate(this.form.controls.occurredOn.value))
     );
   }
 
@@ -400,15 +431,36 @@ export class OperationsPage implements OnInit {
           : null,
     };
     const id = this.editingId();
+    const plan = this.editingPlan();
     const existing = this.operations().find((item) => item.id === id);
-    if (existing) body['version'] = existing.version;
+    if (this.isPlanMode()) {
+      body['scheduled_on'] = value.occurredOn;
+      body['allocate_to_funds'] = value.type === 'transfer' && value.fundId === 'allocate';
+      body['fund_id'] = null;
+      body['fund_amount'] = null;
+      delete body['occurred_on'];
+      delete body['reason'];
+      if (plan) body['version'] = plan.version;
+    } else if (existing) body['version'] = existing.version;
     this.saving.set(true);
-    const request = id
-      ? this.http.put<Operation>(`${environment.apiBaseUrl}/operations/${id}`, body)
-      : this.http.post<Operation>(`${environment.apiBaseUrl}/operations`, body);
+    const request: Observable<Operation | OneOffPlan> = this.isPlanMode()
+      ? plan
+        ? this.http.put<OneOffPlan>(
+            `${environment.apiBaseUrl}/scheduling/one-off-plans/${plan.id}`,
+            body,
+          )
+        : this.http.post<OneOffPlan>(`${environment.apiBaseUrl}/scheduling/one-off-plans`, body)
+      : id
+        ? this.http.put<Operation>(`${environment.apiBaseUrl}/operations/${id}`, body)
+        : this.http.post<Operation>(`${environment.apiBaseUrl}/operations`, body);
     request.subscribe({
-      next: () => {
+      next: (result) => {
         this.saving.set(false);
+        if (this.isPlanMode() && 'scheduled_on' in result) {
+          this.scheduledNotice.set(
+            `Разовая операция запланирована на ${formatTextDate(result.scheduled_on)}.`,
+          );
+        }
         this.cancelEdit();
         this.load();
         this.loadDirectories();
@@ -451,6 +503,7 @@ export class OperationsPage implements OnInit {
   protected cancelEdit(): void {
     this.defaultAccountWasApplied = false;
     this.editingId.set(null);
+    this.editingPlan.set(null);
     this.form.reset({
       type: '',
       occurredOn: this.today(),
@@ -588,12 +641,12 @@ export class OperationsPage implements OnInit {
     this.http.get<ApplicationSettings>(`${environment.apiBaseUrl}/settings`).subscribe({
       next: (settings) => {
         this.baseCurrency.set(currencySymbol(settings.base_currency));
-        this.timezone.set(settings.timezone);
+        this.applicationToday.set(settings.application_today);
         this.defaultAccountId.set(settings.default_account_id);
         this.settingsReady.set(true);
         this.applyDefaultAccount();
-        if (!this.editingId() && this.form.controls.occurredOn.pristine) {
-          this.form.controls.occurredOn.setValue(this.today());
+        if (!this.editingId() && !this.editingPlan() && this.form.controls.occurredOn.pristine) {
+          this.form.controls.occurredOn.setValue(settings.application_today);
           this.form.controls.occurredOn.markAsPristine();
         }
       },
@@ -608,6 +661,40 @@ export class OperationsPage implements OnInit {
       error: (error: unknown) =>
         this.error.set(apiErrorMessage(error, 'Не удалось открыть связанную операцию.')),
     });
+  }
+
+  private loadOneOffPlan(planId: string): void {
+    this.http
+      .get<OneOffPlan>(`${environment.apiBaseUrl}/scheduling/occurrences/${planId}`)
+      .subscribe({
+        next: (plan) => {
+          if (
+            plan.source_kind !== 'one_off' ||
+            plan.status === 'confirmed' ||
+            plan.status === 'cancelled'
+          ) {
+            this.error.set('Этот план нельзя редактировать.');
+            return;
+          }
+          this.defaultAccountWasApplied = false;
+          this.editingPlan.set(plan);
+          this.form.setValue({
+            type: plan.type,
+            occurredOn: plan.scheduled_on,
+            categoryId: plan.category_id ?? '',
+            amount: plan.amount,
+            accountId: plan.account_id,
+            destinationAccountId: plan.destination_account_id ?? '',
+            description: plan.description ?? '',
+            reason: '',
+            fundId: plan.allocate_to_funds ? 'allocate' : '',
+            fundAmount: '',
+          });
+          this.formOpen.set(true);
+        },
+        error: (error: unknown) =>
+          this.error.set(apiErrorMessage(error, 'Не удалось открыть разовый план.')),
+      });
   }
 
   private loadDirectories(): void {
@@ -662,7 +749,11 @@ export class OperationsPage implements OnInit {
   }
 
   private today(): string {
-    return dateInTimezone(new Date(), this.timezone());
+    return this.applicationToday();
+  }
+
+  protected isFutureDate(value: string): boolean {
+    return Boolean(value && this.applicationToday() && value > this.applicationToday());
   }
 
   private applyDefaultAccount(): void {
@@ -723,15 +814,4 @@ function subtractMoney(minuend: string, subtrahend: string): string | null {
   const left = moneyUnits(minuend);
   const right = moneyUnits(subtrahend);
   return left === null || right === null ? null : formatMoneyUnits(left - right);
-}
-
-function dateInTimezone(now: Date, timezone: string): string {
-  const parts = new Intl.DateTimeFormat('en', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now);
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${value['year']}-${value['month']}-${value['day']}`;
 }

@@ -19,7 +19,11 @@ from app.modules.accounts.contracts import AccountType
 from app.modules.categories.contracts import CategoryType
 from app.modules.funds.backup import FundEventType
 from app.modules.operations.contracts import OperationType
-from app.modules.scheduling.backup import OccurrenceStatus, RecurrenceFrequency
+from app.modules.scheduling.backup import (
+    OccurrenceSourceKind,
+    OccurrenceStatus,
+    RecurrenceFrequency,
+)
 from app.modules.settings.models import FundAllocationMode
 
 
@@ -172,7 +176,8 @@ class RecurringRuleRecord(BackupModel):
 
 class ExpectedOccurrenceRecord(BackupModel):
     id: UUID
-    rule_id: UUID
+    source_kind: OccurrenceSourceKind = OccurrenceSourceKind.RECURRING
+    rule_id: UUID | None
     scheduled_on: date
     due_on: date
     status: OccurrenceStatus
@@ -199,6 +204,16 @@ class ExpectedOccurrenceRecord(BackupModel):
             raise ValueError("series shift exceeds the calendar range") from error
         if self.allocate_to_funds and self.type != OperationType.TRANSFER:
             raise ValueError("only transfers can allocate to funds")
+        if self.source_kind == OccurrenceSourceKind.ONE_OFF:
+            if (
+                self.rule_id is not None
+                or self.series_shift_days != 0
+                or self.preserve_from_series_shift
+            ):
+                raise ValueError("one-off plans cannot contain recurring series state")
+            return self
+        if self.rule_id is None:
+            raise ValueError("recurring occurrence requires a rule")
         if self.preserve_from_series_shift and (
             self.status != OccurrenceStatus.CANCELLED or self.manually_modified
         ):

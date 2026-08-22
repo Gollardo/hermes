@@ -11,6 +11,11 @@
   @if (error(); as message) {
     <p class="form-error" role="alert">{{ message }}</p>
   }
+  @if (scheduledNotice(); as message) {
+    <p class="status-note" role="status">
+      {{ message }} <a routerLink="/calendar">Открыть календарь</a>
+    </p>
+  }
 
   @if (focusedOperation(); as operation) {
     <section class="panel focused-operation" aria-labelledby="focused-operation-title">
@@ -40,9 +45,17 @@
       >
         <div class="modal-header">
           <div>
-            <p class="section-label">{{ editingId() ? 'Изменение' : 'Новая запись' }}</p>
+            <p class="section-label">
+              {{ editingId() || editingPlan() ? 'Изменение' : 'Новая запись' }}
+            </p>
             <h2 id="entry-title">
-              {{ editingId() ? 'Редактировать операцию' : 'Добавить операцию' }}
+              {{
+                editingPlan()
+                  ? 'Редактировать разовый план'
+                  : editingId()
+                    ? 'Редактировать операцию'
+                    : 'Добавить операцию'
+              }}
             </h2>
           </div>
           <button type="button" class="modal-close" (click)="cancelEdit()" aria-label="Закрыть">
@@ -140,7 +153,8 @@
               }
 
               @if (
-                form.controls.type.value === 'expense' || form.controls.type.value === 'transfer'
+                !isPlanMode() &&
+                (form.controls.type.value === 'expense' || form.controls.type.value === 'transfer')
               ) {
                 <div class="form-field">
                   <label for="operation-fund">Фонд</label>
@@ -173,10 +187,37 @@
                 }
               }
 
+              @if (isPlanMode() && form.controls.type.value === 'transfer') {
+                <fieldset class="form-field form-field-wide">
+                  <legend>После перевода</legend>
+                  <label
+                    ><input
+                      type="checkbox"
+                      [checked]="form.controls.fundId.value === 'allocate'"
+                      (change)="
+                        form.controls.fundId.setValue($any($event.target).checked ? 'allocate' : '')
+                      "
+                    />
+                    Распределить сумму по активным фондам</label
+                  >
+                  <p class="hint">
+                    Проценты фондов будут применены только в момент применения плана.
+                  </p>
+                </fieldset>
+              }
+
               <div class="form-field">
-                <label for="operation-date">Дата факта</label>
+                <label for="operation-date">{{
+                  isPlanMode() ? 'Плановая дата' : 'Дата факта'
+                }}</label>
                 <input id="operation-date" type="date" formControlName="occurredOn" />
               </div>
+              @if (isPlanMode()) {
+                <p class="impact-preview form-field-wide">
+                  Операция будет добавлена в план и прогноз. Баланс изменится только после
+                  применения.
+                </p>
+              }
 
               @if (form.controls.type.value === 'balance_adjustment') {
                 <div class="form-field form-field-wide">
@@ -211,7 +252,7 @@
               <p class="field-error">Заполните обязательные поля и проверьте финансовый эффект.</p>
             }
             <div class="modal-action-buttons">
-              @if (editingId()) {
+              @if (editingId() || editingPlan()) {
                 <button type="button" class="secondary" (click)="cancelEdit()">
                   Отменить изменение
                 </button>
@@ -220,9 +261,13 @@
                 {{
                   saving()
                     ? 'Сохраняем…'
-                    : editingId()
-                      ? 'Сохранить изменения'
-                      : 'Добавить в журнал'
+                    : editingPlan()
+                      ? 'Сохранить план'
+                      : editingId()
+                        ? 'Сохранить изменения'
+                        : isPlanMode()
+                          ? 'Запланировать'
+                          : 'Добавить в журнал'
                 }}
               </button>
             </div>

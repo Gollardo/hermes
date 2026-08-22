@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -39,6 +40,7 @@ from app.modules.operations.schemas import (
     OperationPageResponse,
     OperationResponse,
 )
+from app.modules.settings.contracts import application_timezone
 
 
 class OperationNotFoundError(RuntimeError):
@@ -54,6 +56,10 @@ class InsufficientBalanceError(RuntimeError):
 
 
 class OperationLinkedError(RuntimeError):
+    pass
+
+
+class FutureOperationDateError(RuntimeError):
     pass
 
 
@@ -76,6 +82,13 @@ class OperationDraft:
 
 def _draft(payload: OperationCreateRequest) -> OperationDraft:
     return OperationDraft(**payload.model_dump(exclude={"version"}))
+
+
+def reject_future_operation_date(session: Session, occurred_on: date) -> None:
+    """Keep the public Operations journal factual in the Hermes calendar."""
+    today = datetime.now(UTC).astimezone(ZoneInfo(application_timezone(session))).date()
+    if occurred_on > today:
+        raise FutureOperationDateError
 
 
 def _movement_amounts(draft: OperationDraft) -> dict[UUID, Decimal]:

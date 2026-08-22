@@ -83,6 +83,12 @@ financial time. Integer optimistic versions reject lost edits and deletes.
 Defaults and migration from the old timestamp resolve calendar dates through the
 configured application timezone.
 
+The public create and replace API rejects a date later than application today
+with `future_operation_requires_plan`. The operations posting contract remains
+available to approved cross-module use cases; Scheduling uses it only while
+applying a one-off plan on application today or retaining the established
+recurring-confirmation behavior.
+
 Journal totals are calculated over the complete filtered selection, not the
 visible page. Without an account filter they represent the net change across all
 modelled accounts, so transfers contribute zero. With an account filter they sum

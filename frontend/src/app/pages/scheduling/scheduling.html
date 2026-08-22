@@ -94,7 +94,8 @@
                   >
                     <strong class="calendar-event-title">{{ occurrenceTitle(occurrence) }}</strong>
                     <span
-                      >{{ typeLabel(occurrence.type) }} · {{ statusLabel(occurrence.status) }}</span
+                      >{{ sourceLabel(occurrence) }} · {{ typeLabel(occurrence.type) }} ·
+                      {{ statusLabel(occurrence.status) }}</span
                     >
                     <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
                   </a>
@@ -109,7 +110,7 @@
                   >
                     <strong class="calendar-event-title">{{ occurrenceTitle(occurrence) }}</strong>
                     <span>
-                      {{ typeLabel(occurrence.type) }} ·
+                      {{ sourceLabel(occurrence) }} · {{ typeLabel(occurrence.type) }} ·
                       {{ occurrence.overdue ? 'Просрочено' : statusLabel(occurrence.status) }}
                     </span>
                     @if (occurrence.preserve_from_series_shift) {
@@ -165,7 +166,9 @@
               <article class="upcoming-item" [class.overdue]="occurrence.overdue">
                 <div class="occurrence-copy">
                   <div class="occurrence-kicker">
-                    <span class="badge">{{ typeLabel(occurrence.type) }}</span>
+                    <span class="badge"
+                      >{{ sourceLabel(occurrence) }} · {{ typeLabel(occurrence.type) }}</span
+                    >
                     @if (occurrence.overdue) {
                       <strong>Просрочено</strong>
                     } @else {
@@ -240,6 +243,12 @@
                             </button>
                           </div>
                         }
+                        @if (earlyApplicationWarning(occurrence); as warning) {
+                          <p class="hint">{{ warning }}</p>
+                        }
+                        @if (oneOffConfirmationConsequence(occurrence); as consequence) {
+                          <p class="hint">{{ consequence }}</p>
+                        }
                         <button
                           type="button"
                           (click)="confirm(occurrence)"
@@ -249,9 +258,11 @@
                           "
                         >
                           {{
-                            occurrence.allocate_to_funds
-                              ? 'Перевести и распределить'
-                              : 'Подтвердить'
+                            occurrence.source_kind === 'one_off'
+                              ? 'Применить сегодня'
+                              : occurrence.allocate_to_funds
+                                ? 'Перевести и распределить'
+                                : 'Подтвердить'
                           }}
                         </button>
                         @if (!validConfirmationAmount(occurrence)) {
@@ -298,6 +309,14 @@
                           >
                             Отменить
                           </button>
+                          @if (occurrence.source_kind === 'one_off') {
+                            <a
+                              class="secondary button-link"
+                              routerLink="/operations"
+                              [queryParams]="{ plan: occurrence.id }"
+                              >Изменить</a
+                            >
+                          }
                         </div>
                       </details>
                     </div>

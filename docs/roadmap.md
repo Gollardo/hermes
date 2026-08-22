@@ -345,6 +345,10 @@ The release goal was to add planned financial events.
 - [x] Postpone an individual occurrence.
 - [x] Cancel an individual occurrence.
 - [x] Link a confirmed occurrence to the actual operation.
+- [x] Create and edit one-off income, expense and transfer plans from a future
+  operation date; apply them explicitly today without creating a future journal
+  fact. The current worktree passes local backend, PostgreSQL integration,
+  frontend, static and Alembic model/schema checks.
 
 ## Calendar
 

@@ -18,6 +18,7 @@ from app.modules.operations.contracts import OperationType
 from app.modules.scheduling.contracts import OccurrenceConfirmationDraft, OccurrencePoster
 from app.modules.scheduling.models import (
     ExpectedOccurrence,
+    OccurrenceSourceKind,
     OccurrenceStatus,
     RecurrenceFrequency,
     RecurringRule,
@@ -27,6 +28,8 @@ from app.modules.scheduling.schemas import (
     MaterializationResponse,
     OccurrencePageResponse,
     OccurrencePostponeResponse,
+    OneOffPlanCreateRequest,
+    OneOffPlanUpdateRequest,
     RecurringRuleCreateRequest,
     RecurringRuleResponse,
     RecurringRuleUpdateRequest,
@@ -144,8 +147,11 @@ def _today(session: Session) -> date:
     return datetime.now(UTC).astimezone(ZoneInfo(application_timezone(session))).date()
 
 
-def _validate_rule_references(
-    session: Session, payload: RecurringRuleCreateRequest, *, require_active: bool
+def _validate_schedule_references(
+    session: Session,
+    payload: RecurringRuleCreateRequest | OneOffPlanCreateRequest,
+    *,
+    require_active: bool,
 ) -> None:
     if payload.category_id is not None:
         expected_type = (
@@ -214,6 +220,7 @@ def _shift_date(value: date, days: int) -> date:
 
 def _new_occurrence(rule: RecurringRule, scheduled_on: date, now: datetime) -> ExpectedOccurrence:
     return ExpectedOccurrence(
+        source_kind=OccurrenceSourceKind.RECURRING,
         rule_id=rule.id,
         scheduled_on=scheduled_on,
         due_on=_shift_date(scheduled_on, rule.series_shift_days),
@@ -388,7 +395,7 @@ def create_rule(
     session: Session, payload: RecurringRuleCreateRequest, *, today: date | None = None
 ) -> RecurringRule:
     lock_application_timezone(session)
-    _validate_rule_references(session, payload, require_active=True)
+    _validate_schedule_references(session, payload, require_active=True)
     now = datetime.now(UTC)
     rule = RecurringRule(
         **payload.model_dump(), active=True, version=1, created_at=now, updated_at=now
@@ -416,7 +423,7 @@ def update_rule(
     if rule.version != payload.version:
         raise SchedulingConflictError
     existing = _lock_rule_occurrences(session, rule.id)
-    _validate_rule_references(session, payload, require_active=payload.active)
+    _validate_schedule_references(session, payload, require_active=payload.active)
     for name, value in payload.model_dump(exclude={"version"}).items():
         setattr(rule, name, value)
     rule.version += 1
@@ -500,6 +507,69 @@ def get_rule_response(session: Session, rule_id: UUID) -> RecurringRuleResponse:
     return _rule_response(session, _get_rule(session, rule_id, lock=False))
 
 
+def create_one_off_plan(session: Session, payload: OneOffPlanCreateRequest) -> ExpectedOccurrence:
+    """Create a plan snapshot without posting ledger or fund movements."""
+    lock_application_timezone(session)
+    _validate_schedule_references(session, payload, require_active=True)
+    now = datetime.now(UTC)
+    occurrence = ExpectedOccurrence(
+        source_kind=OccurrenceSourceKind.ONE_OFF,
+        rule_id=None,
+        scheduled_on=payload.scheduled_on,
+        due_on=payload.scheduled_on,
+        status=OccurrenceStatus.PENDING,
+        manually_modified=False,
+        series_shift_days=0,
+        preserve_from_series_shift=False,
+        type=payload.type,
+        amount=payload.amount,
+        description=payload.description,
+        account_id=payload.account_id,
+        destination_account_id=payload.destination_account_id,
+        category_id=payload.category_id,
+        allocate_to_funds=payload.allocate_to_funds,
+        actual_operation_id=None,
+        version=1,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(occurrence)
+    session.flush()
+    return occurrence
+
+
+def get_occurrence_response(session: Session, occurrence_id: UUID) -> ExpectedOccurrenceResponse:
+    return _occurrence_response(
+        session,
+        _get_occurrence(session, occurrence_id, lock=False),
+        today=_today(session),
+    )
+
+
+def update_one_off_plan(
+    session: Session, occurrence_id: UUID, payload: OneOffPlanUpdateRequest
+) -> ExpectedOccurrence:
+    occurrence = _get_occurrence(session, occurrence_id, lock=True)
+    if occurrence.source_kind != OccurrenceSourceKind.ONE_OFF:
+        raise ExpectedOccurrenceNotFoundError
+    if occurrence.version != payload.version:
+        raise SchedulingConflictError
+    if occurrence.status not in {OccurrenceStatus.PENDING, OccurrenceStatus.POSTPONED}:
+        raise InvalidOccurrenceTransitionError
+    _validate_schedule_references(session, payload, require_active=True)
+    for name, value in payload.model_dump(exclude={"version"}).items():
+        setattr(occurrence, name, value)
+    occurrence.due_on = payload.scheduled_on
+    occurrence.status = OccurrenceStatus.PENDING
+    occurrence.manually_modified = False
+    occurrence.series_shift_days = 0
+    occurrence.preserve_from_series_shift = False
+    occurrence.version += 1
+    occurrence.updated_at = datetime.now(UTC)
+    session.flush()
+    return occurrence
+
+
 def _occurrence_response(
     session: Session, occurrence: ExpectedOccurrence, *, today: date
 ) -> ExpectedOccurrenceResponse:
@@ -509,6 +579,7 @@ def _occurrence_response(
     names = account_names(session, ids)
     return ExpectedOccurrenceResponse(
         id=occurrence.id,
+        source_kind=occurrence.source_kind,
         rule_id=occurrence.rule_id,
         scheduled_on=occurrence.scheduled_on,
         due_on=occurrence.due_on,
@@ -553,6 +624,7 @@ def list_occurrence_responses(
     account_id: UUID | None,
     operation_type: OperationType | None,
     statuses: set[OccurrenceStatus] | None,
+    source_kinds: set[OccurrenceSourceKind] | None = None,
     today: date | None = None,
 ) -> OccurrencePageResponse:
     conditions: list[ColumnElement[bool]] = []
@@ -571,6 +643,8 @@ def list_occurrence_responses(
         conditions.append(ExpectedOccurrence.type == operation_type)
     if statuses:
         conditions.append(ExpectedOccurrence.status.in_(statuses))
+    if source_kinds:
+        conditions.append(ExpectedOccurrence.source_kind.in_(source_kinds))
     total = session.scalar(select(func.count()).select_from(ExpectedOccurrence).where(*conditions))
     occurrences = session.scalars(
         select(ExpectedOccurrence)
@@ -610,7 +684,9 @@ def confirm_occurrence(
     effective_amount = Decimal(amount if amount is not None else occurrence.amount)
     draft = OccurrenceConfirmationDraft(
         type=occurrence.type,
-        occurred_on=occurrence.due_on,
+        occurred_on=(today or _today(session))
+        if occurrence.source_kind == OccurrenceSourceKind.ONE_OFF
+        else occurrence.due_on,
         amount=effective_amount,
         description=occurrence.description,
         account_id=occurrence.account_id,
@@ -643,9 +719,36 @@ def postpone_occurrence(
     expected_rule_version: int | None = None,
     today: date | None = None,
 ) -> OccurrencePostponeResponse:
-    rule_id = session.scalar(
-        select(ExpectedOccurrence.rule_id).where(ExpectedOccurrence.id == occurrence_id)
-    )
+    source_kind, rule_id = session.execute(
+        select(ExpectedOccurrence.source_kind, ExpectedOccurrence.rule_id).where(
+            ExpectedOccurrence.id == occurrence_id
+        )
+    ).one_or_none() or (None, None)
+    if source_kind == OccurrenceSourceKind.ONE_OFF:
+        occurrence = _get_occurrence(session, occurrence_id, lock=True)
+        if occurrence.version != expected_version:
+            raise SchedulingConflictError
+        if (
+            occurrence.status not in {OccurrenceStatus.PENDING, OccurrenceStatus.POSTPONED}
+            or occurrence.due_on == due_on
+        ):
+            raise InvalidOccurrenceTransitionError
+        occurrence.scheduled_on = due_on
+        occurrence.due_on = due_on
+        occurrence.status = OccurrenceStatus.PENDING
+        occurrence.manually_modified = False
+        occurrence.version += 1
+        occurrence.updated_at = datetime.now(UTC)
+        session.flush()
+        response = _occurrence_response(session, occurrence, today=today or _today(session))
+        return OccurrencePostponeResponse(
+            **response.model_dump(),
+            series_shift_applied=False,
+            shift_days=0,
+            shifted_occurrences=0,
+            preserved_occurrences=0,
+            rule_version=0,
+        )
     if rule_id is None:
         raise ExpectedOccurrenceNotFoundError
     rule = _get_rule(session, rule_id, lock=True)

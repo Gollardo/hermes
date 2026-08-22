@@ -2,6 +2,7 @@
 
 from app.modules.scheduling.models import (
     ExpectedOccurrence,
+    OccurrenceSourceKind,
     OccurrenceStatus,
     RecurrenceFrequency,
     RecurringRule,
@@ -9,6 +10,7 @@ from app.modules.scheduling.models import (
 
 __all__ = [
     "ExpectedOccurrence",
+    "OccurrenceSourceKind",
     "OccurrenceStatus",
     "RecurrenceFrequency",
     "RecurringRule",

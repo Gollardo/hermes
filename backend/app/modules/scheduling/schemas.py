@@ -7,7 +7,11 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.core.validation import Money
 from app.modules.operations.contracts import OperationType
-from app.modules.scheduling.models import OccurrenceStatus, RecurrenceFrequency
+from app.modules.scheduling.models import (
+    OccurrenceSourceKind,
+    OccurrenceStatus,
+    RecurrenceFrequency,
+)
 
 
 class RecurringRuleCreateRequest(BaseModel):
@@ -76,6 +80,45 @@ class RecurringRuleUpdateRequest(RecurringRuleCreateRequest):
     version: int = Field(ge=1)
 
 
+class OneOffPlanCreateRequest(BaseModel):
+    type: OperationType
+    scheduled_on: date
+    amount: Money
+    description: str | None = Field(default=None, max_length=2000)
+    account_id: UUID
+    destination_account_id: UUID | None = None
+    category_id: UUID | None = None
+    allocate_to_funds: bool = False
+
+    @field_validator("description")
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> Self:
+        if self.type == OperationType.BALANCE_ADJUSTMENT:
+            raise ValueError("balance adjustments cannot be planned")
+        if self.amount <= 0:
+            raise ValueError("amount must be positive")
+        if self.type in {OperationType.INCOME, OperationType.EXPENSE}:
+            if self.allocate_to_funds:
+                raise ValueError("only transfers can allocate to funds")
+            if self.category_id is None or self.destination_account_id is not None:
+                raise ValueError("income and expense require category and one account")
+        elif (
+            self.category_id is not None
+            or self.destination_account_id is None
+            or self.destination_account_id == self.account_id
+        ):
+            raise ValueError("transfer requires two different accounts and no category")
+        return self
+
+
+class OneOffPlanUpdateRequest(OneOffPlanCreateRequest):
+    version: int = Field(ge=1)
+
+
 class RecurringRuleResponse(BaseModel):
     id: UUID
     type: OperationType
@@ -103,7 +146,8 @@ class RecurringRuleResponse(BaseModel):
 
 class ExpectedOccurrenceResponse(BaseModel):
     id: UUID
-    rule_id: UUID
+    source_kind: OccurrenceSourceKind
+    rule_id: UUID | None
     scheduled_on: date
     due_on: date
     status: OccurrenceStatus

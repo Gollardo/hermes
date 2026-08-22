@@ -14,7 +14,6 @@ from sqlalchemy import (
     Numeric,
     SmallInteger,
     Text,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -37,6 +36,11 @@ class OccurrenceStatus(StrEnum):
     CONFIRMED = "confirmed"
     POSTPONED = "postponed"
     CANCELLED = "cancelled"
+
+
+class OccurrenceSourceKind(StrEnum):
+    RECURRING = "recurring"
+    ONE_OFF = "one_off"
 
 
 def _operation_type_column() -> Enum:
@@ -155,23 +159,36 @@ class ExpectedOccurrence(Base):
             name="ck_expected_occurrences_confirmation_link",
         ),
         CheckConstraint(
-            "status <> 'postponed' OR manually_modified",
+            "source_kind = 'one_off' OR status <> 'postponed' OR manually_modified",
             name="ck_expected_occurrences_postponed_manual",
         ),
         CheckConstraint(
-            "NOT (status = 'pending' AND manually_modified)",
+            "source_kind = 'one_off' OR NOT (status = 'pending' AND manually_modified)",
             name="ck_expected_occurrences_pending_automatic",
         ),
         CheckConstraint(
-            "status IN ('postponed', 'confirmed') OR due_on = scheduled_on + series_shift_days",
+            "source_kind = 'one_off' OR status IN ('postponed', 'confirmed') "
+            "OR due_on = scheduled_on + series_shift_days",
             name="ck_expected_occurrences_due_date",
         ),
         CheckConstraint(
-            "NOT preserve_from_series_shift OR (status = 'cancelled' AND NOT manually_modified)",
+            "source_kind = 'one_off' OR NOT preserve_from_series_shift "
+            "OR (status = 'cancelled' AND NOT manually_modified)",
             name="ck_expected_occurrences_series_shift_preservation",
         ),
-        UniqueConstraint("rule_id", "scheduled_on", name="uq_expected_occurrences_rule_date"),
+        CheckConstraint(
+            "(source_kind = 'recurring' AND rule_id IS NOT NULL) OR "
+            "(source_kind = 'one_off' AND rule_id IS NULL)",
+            name="ck_expected_occurrences_source_rule",
+        ),
         Index("ix_expected_occurrences_calendar", "due_on", "status", "id"),
+        Index(
+            "uq_expected_occurrences_recurring_rule_date",
+            "rule_id",
+            "scheduled_on",
+            unique=True,
+            postgresql_where=text("source_kind = 'recurring'"),
+        ),
         Index(
             "ix_expected_occurrences_series_shift_candidates",
             "rule_id",
@@ -186,10 +203,19 @@ class ExpectedOccurrence(Base):
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    rule_id: Mapped[UUID] = mapped_column(
+    source_kind: Mapped[OccurrenceSourceKind] = mapped_column(
+        Enum(
+            OccurrenceSourceKind,
+            name="expected_occurrence_source_kind",
+            values_callable=lambda values: [value.value for value in values],
+        ),
+        nullable=False,
+        default=OccurrenceSourceKind.RECURRING,
+    )
+    rule_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("recurring_rules.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     scheduled_on: Mapped[date]

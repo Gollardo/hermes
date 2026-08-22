@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from app.modules.operations.contracts import OperationType
-from app.modules.scheduling.contracts import OccurrenceStatus
+from app.modules.scheduling.contracts import OccurrenceSourceKind, OccurrenceStatus
 from app.modules.settings.contracts import FundAllocationMode
 
 
@@ -34,7 +34,8 @@ class ForecastBalanceMode(StrEnum):
 
 class ForecastEventResponse(BaseModel):
     occurrence_id: UUID
-    rule_id: UUID
+    rule_id: UUID | None
+    source_kind: OccurrenceSourceKind
     due_on: date
     type: OperationType
     status: OccurrenceStatus

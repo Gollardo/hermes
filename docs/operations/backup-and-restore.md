@@ -37,6 +37,8 @@ signature, so only restore files from a trusted source.
 
 Restore accepts `hermes-json-backup` schema 1 and `hermes` envelope version 1
 containing payload schema 1. Unknown Hermes versions are rejected explicitly.
+The scheduling payload preserves one-off plan origin, status and the link to an
+applied actual operation alongside recurring rules and occurrences.
 
 ## Interim PostgreSQL backup
 

@@ -21,6 +21,7 @@ from app.modules.operations.schemas import (
     OperationUpdateRequest,
 )
 from app.modules.operations.service import (
+    FutureOperationDateError,
     InsufficientBalanceError,
     OperationConflictError,
     OperationLinkedError,
@@ -30,6 +31,7 @@ from app.modules.operations.service import (
     delete_operation,
     get_operation_response,
     list_operation_responses,
+    reject_future_operation_date,
     update_operation,
 )
 
@@ -45,6 +47,14 @@ def _raise_domain_error(error: RuntimeError) -> None:
     if isinstance(error, OperationConflictError):
         raise HTTPException(
             409, detail={"code": "operation_conflict", "message": "Operation was changed"}
+        )
+    if isinstance(error, FutureOperationDateError):
+        raise HTTPException(
+            422,
+            detail={
+                "code": "future_operation_requires_plan",
+                "message": "Future operations must be created as plans",
+            },
         )
     if isinstance(error, OperationLinkedError):
         raise HTTPException(
@@ -137,6 +147,7 @@ def read_operation(operation_id: UUID, session: DatabaseSession) -> OperationRes
 @write_router.post("", response_model=OperationResponse, status_code=status.HTTP_201_CREATED)
 def add_operation(payload: OperationCreateRequest, session: DatabaseSession) -> OperationResponse:
     try:
+        reject_future_operation_date(session, payload.occurred_on)
         operation = create_operation(session, payload)
         return get_operation_response(session, operation.id)
     except (
@@ -147,6 +158,7 @@ def add_operation(payload: OperationCreateRequest, session: DatabaseSession) -> 
         FundCoverageError,
         FundNotFoundError,
         InsufficientBalanceError,
+        FutureOperationDateError,
     ) as error:
         _raise_domain_error(error)
         raise AssertionError from error
@@ -157,6 +169,7 @@ def replace_operation(
     operation_id: UUID, payload: OperationUpdateRequest, session: DatabaseSession
 ) -> OperationResponse:
     try:
+        reject_future_operation_date(session, payload.occurred_on)
         operation = update_operation(
             session, operation_id, payload, expected_version=payload.version
         )
@@ -171,6 +184,7 @@ def replace_operation(
         InsufficientBalanceError,
         OperationConflictError,
         OperationNotFoundError,
+        FutureOperationDateError,
     ) as error:
         _raise_domain_error(error)
         raise AssertionError from error

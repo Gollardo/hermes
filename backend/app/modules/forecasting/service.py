@@ -38,6 +38,7 @@ from app.modules.funds.contracts import (
 from app.modules.operations.contracts import OperationType, account_balances
 from app.modules.scheduling.contracts import (
     ForecastScheduleSnapshot,
+    OccurrenceSourceKind,
     OccurrenceStatus,
     PlannedOccurrence,
     forecast_schedule_snapshot,
@@ -48,7 +49,7 @@ from app.modules.settings.contracts import FundAllocationMode, fund_allocation_m
 @dataclass(frozen=True, slots=True)
 class ForecastInputEvent:
     occurrence_id: UUID
-    rule_id: UUID
+    rule_id: UUID | None
     due_on: date
     type: OperationType
     status: OccurrenceStatus
@@ -57,6 +58,7 @@ class ForecastInputEvent:
     destination_account_id: UUID | None
     amount: Decimal
     allocated_to_funds: Decimal = Decimal(0)
+    source_kind: OccurrenceSourceKind = OccurrenceSourceKind.RECURRING
 
 
 @dataclass(frozen=True, slots=True)
@@ -503,6 +505,7 @@ def _input_event(
     return ForecastInputEvent(
         occurrence_id=item.id,
         rule_id=item.rule_id,
+        source_kind=item.source_kind,
         due_on=item.due_on,
         type=item.type,
         status=item.status,
@@ -520,6 +523,7 @@ def _event_response(
     return ForecastEventResponse(
         occurrence_id=event.occurrence_id,
         rule_id=event.rule_id,
+        source_kind=event.source_kind,
         due_on=event.due_on,
         type=event.type,
         status=event.status,

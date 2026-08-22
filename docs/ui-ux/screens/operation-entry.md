@@ -8,7 +8,8 @@ It uses the ADR 0001 alpha model: negative balance is blocked, a version
 conflict never overwrites silently, the current product does not require a
 separate immutable edit history, and currency-specific rounding remains open.
 No type is selected initially, the primary action is enabled only for a
-complete form, and the default date is calculated in the application timezone.
+complete form, and the default date comes from the server's application-today
+contract in the configured application timezone.
 
 For a fund-aware expense or transfer, available funds depend on the selected
 source account: the interface shows the fund position on that account rather
@@ -83,6 +84,14 @@ An adjustment brings the ledger-derived balance to a known fact. The form shows
 current balance, new expected balance, calculated difference, and reason. The
 owner neither edits an account balance field nor enters a signed delta; the
 composer calculates the journal movement from the expected balance exactly.
+
+### Future date
+
+For income, expense and transfer, a date later than server-provided application
+today changes the primary action to “Schedule”. The composer explains that the
+event enters Calendar and forecast while the balance remains unchanged until
+application. It reuses the same exact-money fields for plan editing. A balance
+adjustment cannot be scheduled.
 
 ## Important information
 
