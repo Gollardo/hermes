@@ -110,8 +110,11 @@ interface OneOffPlan {
   amount: string;
   description: string | null;
   account_id: string;
+  account_name: string;
   destination_account_id: string | null;
+  destination_account_name: string | null;
   category_id: string | null;
+  category_name: string | null;
   allocate_to_funds: boolean;
   version: number;
 }
@@ -137,6 +140,7 @@ export class OperationsPage implements OnInit {
   private readonly route = inject(ActivatedRoute, { optional: true });
 
   protected readonly operations = signal<Operation[]>([]);
+  protected readonly plannedOperations = signal<OneOffPlan[]>([]);
   protected readonly focusedOperation = signal<Operation | null>(null);
   protected readonly Math = Math;
   protected readonly accounts = signal<Account[]>([]);
@@ -322,10 +326,45 @@ export class OperationsPage implements OnInit {
       .join(' · ');
   }
 
-  protected signedAmount(operation: Operation): string {
+  protected signedAmount(operation: Pick<Operation, 'type' | 'amount'>): string {
     if (operation.type === 'income') return `+${operation.amount}`;
     if (operation.type === 'expense') return `-${operation.amount}`;
     return operation.amount;
+  }
+
+  protected plannedOperationContext(plan: OneOffPlan): string {
+    if (plan.type === 'transfer') {
+      return `${plan.account_name} → ${plan.destination_account_name ?? '—'}`;
+    }
+    return plan.account_name;
+  }
+
+  protected plannedStatusLabel(plan: OneOffPlan): string {
+    return plan.status === 'postponed' ? 'Перенесено на' : 'Запланировано на';
+  }
+
+  protected editPlan(plan: OneOffPlan): void {
+    this.loadOneOffPlan(plan.id);
+  }
+
+  protected removePlan(plan: OneOffPlan): void {
+    if (
+      !window.confirm('Удалить разовый план? Он будет отменён и перестанет отображаться в журнале.')
+    ) {
+      return;
+    }
+    this.http
+      .post<OneOffPlan>(`${environment.apiBaseUrl}/scheduling/occurrences/${plan.id}/cancel`, {
+        version: plan.version,
+      })
+      .subscribe({
+        next: () => {
+          this.cancelEdit();
+          this.load();
+        },
+        error: (error: unknown) =>
+          this.error.set(apiErrorMessage(error, 'Не удалось удалить разовый план.')),
+      });
   }
 
   protected adjustmentBaseBalance(): string | null {
@@ -746,6 +785,42 @@ export class OperationsPage implements OnInit {
         this.error.set(apiErrorMessage(error, 'Не удалось загрузить журнал.'));
       },
     });
+    this.loadPlannedOperations(filter);
+  }
+
+  private loadPlannedOperations(filter: {
+    occurredFrom: string;
+    occurredTo: string;
+    accountId: string;
+    type: OperationType | '';
+    categoryId: string;
+  }): void {
+    let params = new HttpParams()
+      .set('page_size', '367')
+      .append('source_kind', 'one_off')
+      .append('status', 'pending')
+      .append('status', 'postponed');
+    if (filter.occurredFrom) params = params.set('due_from', filter.occurredFrom);
+    if (filter.occurredTo) params = params.set('due_to', filter.occurredTo);
+    if (filter.accountId) params = params.set('account_id', filter.accountId);
+    if (filter.type && filter.type !== 'balance_adjustment')
+      params = params.set('type', filter.type);
+    if (filter.type === 'balance_adjustment') {
+      this.plannedOperations.set([]);
+      return;
+    }
+    this.http
+      .get<{ items: OneOffPlan[] }>(`${environment.apiBaseUrl}/scheduling/occurrences`, { params })
+      .subscribe({
+        next: (result) =>
+          this.plannedOperations.set(
+            filter.categoryId
+              ? result.items.filter((plan) => plan.category_id === filter.categoryId)
+              : result.items,
+          ),
+        error: (error: unknown) =>
+          this.error.set(apiErrorMessage(error, 'Не удалось загрузить разовые планы.')),
+      });
   }
 
   private today(): string {

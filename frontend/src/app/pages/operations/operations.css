@@ -118,6 +118,48 @@
   display: grid;
   gap: 0;
 }
+.planned-operation-list {
+  border-top: 1px solid var(--line-strong);
+  display: grid;
+  margin: 1.1rem 0 1.25rem;
+  padding-top: 0.85rem;
+}
+.planned-operation-heading {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0 0.25rem 0.4rem;
+}
+.planned-operation-heading h3,
+.planned-operation-heading p {
+  margin: 0;
+}
+.planned-operation-heading h3 {
+  font-size: 1rem;
+  letter-spacing: -0.015em;
+}
+.planned-operation-title {
+  align-items: center;
+  display: flex;
+  gap: 0.55rem;
+}
+.planned-operation-heading p {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+.planned-operation-row {
+  border-bottom-color: var(--line);
+}
+.planned-operation-row .row-main {
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.45rem 0.25rem;
+}
+.planned-operation-row .row-main:hover {
+  background: var(--surface-soft);
+}
+.planned-operation-row .operation-amount {
+  color: var(--ink);
+}
 .operation-row {
   border-bottom: 1px solid var(--line);
 }

@@ -64,6 +64,9 @@ describe('OperationsPage', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    http
+      .match((request) => request.url === '/api/v1/scheduling/occurrences')
+      .forEach((request) => request.flush({ items: [], page: 1, page_size: 367, total: 0 }));
     http.verify();
   });
 
@@ -80,6 +83,7 @@ describe('OperationsPage', () => {
     defaultAccountId?: string | null;
     focusedOperation?: TestOperation;
     expectedJournalParams?: Record<string, string>;
+    plans?: object[];
   }): void {
     fixture.detectChanges();
     if (focusedId) {
@@ -129,6 +133,18 @@ describe('OperationsPage', () => {
       total: options?.total ?? operations.length,
       total_amount: options?.totalAmount ?? '0.0000',
     });
+    http
+      .expectOne(
+        (request) =>
+          request.url === '/api/v1/scheduling/occurrences' &&
+          request.params.getAll('source_kind')?.includes('one_off') === true,
+      )
+      .flush({
+        items: options?.plans ?? [],
+        page: 1,
+        page_size: 367,
+        total: options?.plans?.length ?? 0,
+      });
     fixture.detectChanges();
     const add = fixture.nativeElement.querySelector('.create-menu-trigger') as HTMLButtonElement;
     add.click();
@@ -184,6 +200,111 @@ describe('OperationsPage', () => {
     http
       .expectOne((candidate) => candidate.url === '/api/v1/operations')
       .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+  });
+
+  it('shows editable one-off plans in the journal without including them in the actual total', () => {
+    flushInitial({
+      plans: [
+        {
+          id: 'plan-1',
+          source_kind: 'one_off',
+          scheduled_on: '2026-09-10',
+          due_on: '2026-09-10',
+          status: 'pending',
+          type: 'expense',
+          amount: '12.5000',
+          description: 'Insurance',
+          account_id: 'account-1',
+          account_name: 'Main',
+          destination_account_id: null,
+          destination_account_name: null,
+          category_id: 'category-1',
+          category_name: 'Food',
+          allocate_to_funds: false,
+          version: 1,
+        },
+      ],
+    });
+
+    expect(fixture.nativeElement.textContent).toContain('Разовые планы');
+    expect(fixture.nativeElement.textContent).toContain('10 сентября 2026');
+    const plan = fixture.nativeElement.querySelector(
+      '.planned-operation-row .row-main',
+    ) as HTMLButtonElement;
+    plan.click();
+    http.expectOne('/api/v1/scheduling/occurrences/plan-1').flush({
+      id: 'plan-1',
+      source_kind: 'one_off',
+      scheduled_on: '2026-09-10',
+      due_on: '2026-09-10',
+      status: 'pending',
+      type: 'expense',
+      amount: '12.5000',
+      description: 'Insurance',
+      account_id: 'account-1',
+      destination_account_id: null,
+      category_id: 'category-1',
+      allocate_to_funds: false,
+      version: 1,
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Редактировать разовый план');
+  });
+
+  it('cancels a one-off plan from its editor', () => {
+    flushInitial({
+      plans: [
+        {
+          id: 'plan-1',
+          source_kind: 'one_off',
+          scheduled_on: '2026-09-10',
+          due_on: '2026-09-10',
+          status: 'pending',
+          type: 'expense',
+          amount: '12.5000',
+          description: 'Insurance',
+          account_id: 'account-1',
+          account_name: 'Main',
+          destination_account_id: null,
+          destination_account_name: null,
+          category_id: 'category-1',
+          category_name: 'Food',
+          allocate_to_funds: false,
+          version: 3,
+        },
+      ],
+    });
+    const plan = fixture.nativeElement.querySelector(
+      '.planned-operation-row .row-main',
+    ) as HTMLButtonElement;
+    plan.click();
+    http.expectOne('/api/v1/scheduling/occurrences/plan-1').flush({
+      id: 'plan-1',
+      source_kind: 'one_off',
+      scheduled_on: '2026-09-10',
+      due_on: '2026-09-10',
+      status: 'pending',
+      type: 'expense',
+      amount: '12.5000',
+      description: 'Insurance',
+      account_id: 'account-1',
+      destination_account_id: null,
+      category_id: 'category-1',
+      allocate_to_funds: false,
+      version: 3,
+    });
+    fixture.detectChanges();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (fixture.nativeElement.querySelector('.planned-operation-cancel') as HTMLButtonElement).click();
+    const request = http.expectOne('/api/v1/scheduling/occurrences/plan-1/cancel');
+    expect(request.request.body).toEqual({ version: 3 });
+    request.flush({});
+    http
+      .expectOne((candidate) => candidate.url === '/api/v1/operations')
+      .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+    http
+      .expectOne((candidate) => candidate.url === '/api/v1/scheduling/occurrences')
+      .flush({ items: [], page: 1, page_size: 367, total: 0 });
   });
 
   it('sends a future date to one-off planning and explains the delayed balance effect', () => {

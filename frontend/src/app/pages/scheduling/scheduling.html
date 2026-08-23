@@ -100,13 +100,18 @@
                     <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
                   </a>
                 } @else {
-                  <div
+                  <button
+                    type="button"
                     [id]="'occurrence-' + occurrence.id"
-                    tabindex="-1"
                     class="calendar-event"
                     [class]="'calendar-event ' + occurrence.type + ' ' + occurrence.status"
                     [class.overdue]="occurrence.overdue"
-                    [title]="occurrenceTitle(occurrence)"
+                    (click)="openOccurrenceEditor(occurrence)"
+                    [title]="
+                      occurrence.source_kind === 'one_off'
+                        ? 'Редактировать разовый план'
+                        : 'Редактировать регулярное правило'
+                    "
                   >
                     <strong class="calendar-event-title">{{ occurrenceTitle(occurrence) }}</strong>
                     <span>
@@ -117,7 +122,7 @@
                       <span>Сохранено при сдвиге серии</span>
                     }
                     <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
-                  </div>
+                  </button>
                 }
               }
               @if (hiddenCalendarOccurrences(day); as hiddenCount) {
@@ -455,7 +460,11 @@
                 <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
               </a>
             } @else {
-              <div class="calendar-day-dialog-item">
+              <button
+                type="button"
+                class="calendar-day-dialog-item calendar-day-dialog-button"
+                (click)="openOccurrenceEditor(occurrence)"
+              >
                 <span>
                   <strong>{{ occurrenceTitle(occurrence) }}</strong>
                   <small>
@@ -464,7 +473,7 @@
                   </small>
                 </span>
                 <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
-              </div>
+              </button>
             }
           }
         </div>

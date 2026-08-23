@@ -6,7 +6,7 @@ map lives in [index.md](./index.md).
 
 ## Last updated
 
-2026-08-22
+2026-08-23
 
 ## Current phase
 
@@ -103,6 +103,12 @@ access. Direct public-internet exposure is unsupported.
   until explicitly applied today. The local backend unit suite, full disposable
   PostgreSQL integration suite, frontend suite, lint, type checks, documentation
   check and Alembic model/schema check pass against migration `0014`.
+- A busy calendar day exposes an “More” control that opens every event of that
+  day in a modal. Opening an unconfirmed recurring event edits its rule, while
+  opening an unconfirmed one-off event opens the one-off plan editor. The
+  Operations journal also shows pending and postponed one-off plans in a
+  distinct balance-neutral section; its shared filters apply where their
+  meaning is available, and a plan can be edited or cancelled from there.
 - The owner decision from 2026-08-18 confirms the decision-first “Oracle · What
   if?” direction. Temporary alternatives compare with a baseline, change neither
   ledger nor plan, and persist only by choice. The owner may set a stop-loss,

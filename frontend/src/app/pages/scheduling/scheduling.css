@@ -124,7 +124,10 @@
 }
 
 .calendar-event {
+  appearance: none;
   background: var(--surface-accent);
+  color: inherit;
+  cursor: pointer;
   border-left: 3px solid var(--accent);
   border-radius: 0.45rem;
   display: grid;
@@ -163,6 +166,15 @@
   justify-content: space-between;
   padding: 0.9rem 0;
   text-decoration: none;
+}
+
+.calendar-day-dialog-button {
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
 }
 
 .calendar-day-dialog-item:last-child {

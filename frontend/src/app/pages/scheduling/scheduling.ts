@@ -8,7 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EMPTY, Observable, expand, forkJoin, reduce } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
@@ -141,6 +141,7 @@ export class SchedulingPage implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly builder = inject(NonNullableFormBuilder);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private occurrenceRequestId = 0;
 
   protected readonly accounts = signal<Account[]>([]);
@@ -519,6 +520,15 @@ export class SchedulingPage implements OnInit {
 
   protected hiddenCalendarOccurrences(day: CalendarDay): number {
     return Math.max(0, day.occurrences.length - CALENDAR_DAY_PREVIEW_LIMIT);
+  }
+
+  protected openOccurrenceEditor(occurrence: ExpectedOccurrence): void {
+    if (occurrence.source_kind === 'one_off') {
+      void this.router.navigate(['/operations'], { queryParams: { plan: occurrence.id } });
+      return;
+    }
+    const rule = this.occurrenceRule(occurrence);
+    if (rule) this.editRule(rule);
   }
 
   protected openCalendarDay(day: CalendarDay): void {

@@ -160,6 +160,28 @@ describe('SchedulingPage recurrence editor', () => {
     expect(fixture.nativeElement.querySelector('.upcoming-item.overdue')).not.toBeNull();
   });
 
+  it('opens all hidden events for a day in a modal and opens a recurring event in its rule editor', () => {
+    flushInitial(
+      [
+        OCCURRENCE,
+        { ...OCCURRENCE, id: 'occurrence-2', description: 'Phone' },
+        { ...OCCURRENCE, id: 'occurrence-3', description: 'Rent' },
+      ],
+      [RULE],
+    );
+    const expand = fixture.nativeElement.querySelector('.calendar-day-more') as HTMLButtonElement;
+    expect(expand.textContent).toContain('Ещё 1');
+    expand.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.calendar-day-dialog-item')).toHaveLength(3);
+    (fixture.nativeElement.querySelector('.modal-close') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.calendar-event') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Обновить расписание');
+  });
+
   it('blocks a missing monthly date policy and submits an exact rule snapshot', () => {
     flushInitial([]);
     clickButton('Добавить правило');
