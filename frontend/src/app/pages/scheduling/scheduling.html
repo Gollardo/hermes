@@ -93,9 +93,11 @@
                     title="Открыть связанную фактическую операцию"
                   >
                     <strong class="calendar-event-title">{{ occurrenceTitle(occurrence) }}</strong>
-                    <span
-                      >{{ sourceLabel(occurrence) }} · {{ typeLabel(occurrence.type) }} ·
-                      {{ statusLabel(occurrence.status) }}</span
+                    <span class="calendar-event-meta">
+                      @if (occurrence.source_kind === 'one_off') {
+                        Разовая ·
+                      }
+                      {{ typeLabel(occurrence.type) }} · {{ statusLabel(occurrence.status) }}</span
                     >
                     <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
                   </a>
@@ -114,10 +116,13 @@
                     "
                   >
                     <strong class="calendar-event-title">{{ occurrenceTitle(occurrence) }}</strong>
-                    <span>
-                      {{ sourceLabel(occurrence) }} · {{ typeLabel(occurrence.type) }} ·
-                      {{ occurrence.overdue ? 'Просрочено' : statusLabel(occurrence.status) }}
-                    </span>
+                    <span class="calendar-event-meta">
+                      @if (occurrence.source_kind === 'one_off') {
+                        Разовая ·
+                      }
+                      {{ typeLabel(occurrence.type) }} ·
+                      {{ occurrence.overdue ? 'Просрочено' : statusLabel(occurrence.status) }}</span
+                    >
                     @if (occurrence.preserve_from_series_shift) {
                       <span>Сохранено при сдвиге серии</span>
                     }
@@ -125,19 +130,19 @@
                   </button>
                 }
               }
-              @if (hiddenCalendarOccurrences(day); as hiddenCount) {
-                <button
-                  type="button"
-                  class="secondary calendar-day-more"
-                  (click)="openCalendarDay(day)"
-                  [attr.aria-label]="
-                    'Показать все события за ' + day.iso + ', скрыто: ' + hiddenCount
-                  "
-                >
-                  Ещё {{ hiddenCount }}
-                </button>
-              }
             </div>
+            @if (hiddenCalendarOccurrences(day); as hiddenCount) {
+              <button
+                type="button"
+                class="secondary calendar-day-more"
+                (click)="openCalendarDay(day)"
+                [attr.aria-label]="
+                  'Показать все события за ' + day.iso + ', скрыто: ' + hiddenCount
+                "
+              >
+                Ещё {{ hiddenCount }}
+              </button>
+            }
           </article>
         }
       </div>
@@ -157,7 +162,7 @@
     @if (loading() && !upcoming().length) {
       <p class="empty-state">Загружаем ожидаемые операции…</p>
     } @else if (!upcoming().length) {
-      <p class="empty-state">На сегодня нет ожидаемых или просроченных операций.</p>
+      <p class="empty-state attention-empty">На сегодня нет ожидаемых или просроченных операций.</p>
     } @else {
       <div class="upcoming-list">
         @for (group of upcomingGroups(); track group.dueOn) {
@@ -359,7 +364,6 @@
           @for (rule of rules(); track rule.id) {
             <article class="directory-item" [class.archived]="!rule.active">
               <div class="directory-item-main">
-                <span class="item-symbol" [class.neutral]="!rule.active" aria-hidden="true">↻</span>
                 <div class="item-copy">
                   <span class="badge"
                     >{{ recurrenceLabel(rule) }} · {{ typeLabel(rule.type) }}</span
@@ -403,15 +407,20 @@
                   >
                     Изменить
                   </button>
-                  <button
-                    type="button"
-                    [class.secondary]="!rule.active"
-                    [class.danger]="rule.active"
-                    (click)="toggleRule(rule)"
-                    [disabled]="saving()"
-                  >
-                    {{ rule.active ? 'Отключить' : 'Включить' }}
-                  </button>
+                  <details class="secondary-actions rule-secondary-actions">
+                    <summary>Ещё</summary>
+                    <div class="secondary-actions-body">
+                      <button
+                        type="button"
+                        [class.secondary]="!rule.active"
+                        [class.danger]="rule.active"
+                        (click)="toggleRule(rule)"
+                        [disabled]="saving()"
+                      >
+                        {{ rule.active ? 'Отключить' : 'Включить' }}
+                      </button>
+                    </div>
+                  </details>
                 </div>
               </div>
             </article>

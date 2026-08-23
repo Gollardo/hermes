@@ -22,6 +22,11 @@
   margin: 0.75rem 0 0;
 }
 
+.attention-empty {
+  margin: 0;
+  padding: 1.15rem 1rem;
+}
+
 .upcoming-item {
   align-items: center;
   border-bottom: 1px solid var(--line);
@@ -195,6 +200,27 @@
   order: 3;
 }
 
+.rules-grid .directory-item {
+  background: transparent;
+  border-inline: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding-inline: 0;
+}
+
+.rules-grid .directory-item:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.rules-grid .directory-item:hover {
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.rules-grid .directory-item-main {
+  gap: 0;
+}
+
 .date-fields {
   display: grid;
   gap: 0.75rem;
@@ -268,6 +294,10 @@
 
   .date-fields {
     grid-template-columns: 1fr;
+  }
+
+  .rules-grid .directory-item {
+    padding-block: 0.85rem;
   }
 }
 

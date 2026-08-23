@@ -70,6 +70,11 @@ access. Direct public-internet exposure is unsupported.
   from secondary percentages, discloses rare transfers on request, and presents
   funds as one dense comparison list. Existing calculations, forms, and API did
   not change; desktop and mobile states were browser-verified.
+- The Calendar visual refinement keeps its scheduling lifecycle and actions
+  unchanged while compacting the no-attention state, preserving visible filters,
+  improving narrow-grid event readability, reserving a visible day-overflow
+  action, and flattening the recurring-rule list. The internal calendar scroll
+  and explicit day overflow dialog remain.
 - Owner feedback from 2026-08-14 added three compact circular charts to
   Overview: current-month expense and income by root category, and fund shares
   of total saved money. Categories are collapsed by default, with one parent of
