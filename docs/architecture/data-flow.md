@@ -142,6 +142,14 @@ creates its virtual event before the request transaction commits. A failure in
 either part rolls back both ledgers; this does not turn a fund into a transfer
 destination or introduce automatic income allocation.
 
+The allocation event carries the physical transfer ID as its cause. Deleting
+that operation removes the dependent allocation event in the same transaction,
+so the destination account never retains a reservation after its transferred
+money is reversed.
+The ordinary Operations editor does not accept allocation parameters, so it
+rejects edits of this composed transfer; the owner can delete it and create a
+replacement through the composed command.
+
 Funds reads the global allocation mode while holding its definition snapshot.
 Manual mode uses stored percentages. Dynamic mode derives percentages from
 current ledger balances and relative unfilled target progress before each

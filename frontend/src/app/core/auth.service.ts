@@ -181,6 +181,8 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
       operation_not_found: 'Операция не найдена.',
       operation_linked_to_occurrence:
         'Подтверждённую операцию из календаря нельзя удалить отдельно.',
+      operation_linked_to_allocation:
+        'Перевод с распределением по фондам нельзя изменить в журнале. Удалите его и создайте заново.',
       recurring_rule_not_found: 'Регулярное правило не найдено.',
       expected_occurrence_not_found: 'Ожидаемая операция не найдена.',
       forecast_account_not_found: 'Счёт для прогноза не найден.',

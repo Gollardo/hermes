@@ -22,9 +22,12 @@ from app.modules.categories.contracts import (
     validate_category_reference,
 )
 from app.modules.funds.contracts import (
+    LegacyTransferAllocationMatch,
     fund_names,
+    lock_operation_dependent_allocation,
     operation_fund_movements,
     rebalance_reserve,
+    remove_operation_dependent_events,
     remove_operation_reserve_distributions,
     replace_operation_movements,
     validate_account_coverage,
@@ -56,6 +59,10 @@ class InsufficientBalanceError(RuntimeError):
 
 
 class OperationLinkedError(RuntimeError):
+    pass
+
+
+class OperationAllocationLinkedError(RuntimeError):
     pass
 
 
@@ -223,6 +230,23 @@ def _amounts_for_operation(session: Session, operation_id: UUID) -> dict[UUID, D
     }
 
 
+def _legacy_transfer_allocation_match(
+    operation: FinancialOperation, amounts: dict[UUID, Decimal]
+) -> LegacyTransferAllocationMatch | None:
+    if operation.type != OperationType.TRANSFER:
+        return None
+    destination_account_id, amount = next(
+        (account_id, amount) for account_id, amount in amounts.items() if amount > 0
+    )
+    return LegacyTransferAllocationMatch(
+        occurred_on=operation.occurred_on,
+        description=operation.description,
+        operation_created_at=operation.created_at,
+        destination_account_id=destination_account_id,
+        amount=amount,
+    )
+
+
 def update_operation(
     session: Session,
     operation_id: UUID,
@@ -234,6 +258,7 @@ def update_operation(
     if operation.version != expected_version:
         raise OperationConflictError
     old_amounts = _amounts_for_operation(session, operation.id)
+    legacy_transfer_allocation = _legacy_transfer_allocation_match(operation, old_amounts)
     old_fund_amounts = operation_fund_movements(session, operation.id)
     draft = _draft(payload)
     _validate_category(session, draft, operation.category_id)
@@ -250,6 +275,12 @@ def update_operation(
         new_amounts=new_amounts,
         extra_account_ids=extra_ids,
     )
+    if lock_operation_dependent_allocation(
+        session,
+        operation.id,
+        legacy_transfer_allocation=legacy_transfer_allocation,
+    ):
+        raise OperationAllocationLinkedError
     remove_operation_reserve_distributions(session, operation.id)
     session.execute(delete(AccountMovement).where(AccountMovement.operation_id == operation.id))
     operation.type = draft.type
@@ -295,7 +326,12 @@ def delete_operation(session: Session, operation_id: UUID, *, expected_version: 
         new_amounts={},
         extra_account_ids=extra_ids,
     )
-    remove_operation_reserve_distributions(session, operation.id)
+    legacy_transfer_allocation = _legacy_transfer_allocation_match(operation, old_amounts)
+    remove_operation_dependent_events(
+        session,
+        operation.id,
+        legacy_transfer_allocation=legacy_transfer_allocation,
+    )
     replace_operation_movements(
         session,
         operation.id,

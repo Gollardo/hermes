@@ -47,6 +47,7 @@ def transfer_and_allocate(
             allocations=positive_allocations,
         ),
         free,
+        caused_by_operation_id=operation_id,
     )
     return TransferAllocationResponse(
         operation_id=operation_id,

@@ -643,6 +643,12 @@ access. Direct public-internet exposure is unsupported.
 
 ## Release assumptions and technical debt
 
+- Transfer-and-allocation records now persist the allocation event's causal
+  link to their physical transfer. Deleting the transfer removes the dependent
+  reservation atomically, while the ordinary operation editor rejects their
+  incomplete representation. A narrowly fingerprinted compatibility path also
+  handles a uniquely matched unlinked pair produced by the earlier implementation.
+
 - At the latest successful audit on 2026-08-20, build-only `nanoid 3.3.17` had
   two high-severity findings for one advisory while the runtime production graph
   was clean. A compatible dependency update and full recheck are required

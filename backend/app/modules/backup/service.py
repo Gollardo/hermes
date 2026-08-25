@@ -355,7 +355,11 @@ def validate_document(data: BackupData) -> None:
         event.caused_by_operation_id is not None
         and (
             event.caused_by_operation_id not in operation_ids
-            or event.type != FundEventType.RESERVE_DISTRIBUTION
+            or (
+                event.type == FundEventType.ALLOCATION
+                and operation_by_id[event.caused_by_operation_id].type != OperationType.TRANSFER
+            )
+            or event.type not in {FundEventType.ALLOCATION, FundEventType.RESERVE_DISTRIBUTION}
         )
         for event in data.fund_events
     ):
@@ -399,6 +403,24 @@ def validate_document(data: BackupData) -> None:
                 != 1
             ):
                 raise BackupInvariantError("Fund allocation event is empty or negative")
+            if event.caused_by_operation_id is not None:
+                operation = operation_by_id[event.caused_by_operation_id]
+                positive_movement = next(
+                    item for item in movements_by_operation[operation.id] if item.amount > 0
+                )
+                allocated_amount = sum((item.amount for item in event_movements), Decimal(0)) + sum(
+                    (item.amount for item in event_reserve_movements), Decimal(0)
+                )
+                if (
+                    event.occurred_on != operation.occurred_on
+                    or event.description != operation.description
+                    or any(
+                        item.account_id != positive_movement.account_id
+                        for item in event_movements + event_reserve_movements
+                    )
+                    or allocated_amount > positive_movement.amount
+                ):
+                    raise BackupInvariantError("Transfer allocation cause is invalid")
         elif event.type == FundEventType.REDISTRIBUTION:
             if (
                 len(event_movements) != 2

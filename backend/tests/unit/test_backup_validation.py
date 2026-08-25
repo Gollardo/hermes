@@ -441,6 +441,53 @@ def test_backup_rejects_operation_cause_on_non_reserve_event() -> None:
         validate_document(BackupData.model_validate(data))
 
 
+def test_backup_accepts_allocation_caused_by_transfer() -> None:
+    data = valid_data()
+    event_id = str(uuid4())
+    transfer = data["operations"][1]
+    destination_account_id = data["accounts"][1]["id"]
+    fund_id = str(uuid4())
+    data["funds"].append(
+        {
+            "id": fund_id,
+            "name": "Savings",
+            "description": None,
+            "allocation_percentage": "75",
+            "archived_at": None,
+            "created_at": transfer["created_at"],
+            "updated_at": transfer["updated_at"],
+            "version": 1,
+        }
+    )
+    data["fund_events"].append(
+        {
+            "id": event_id,
+            "type": "allocation",
+            "occurred_on": transfer["occurred_on"],
+            "description": transfer["description"],
+            "caused_by_operation_id": transfer["id"],
+            "created_at": transfer["created_at"],
+        }
+    )
+    data["fund_movements"].append(
+        {
+            "id": str(uuid4()),
+            "fund_id": fund_id,
+            "account_id": destination_account_id,
+            "operation_id": None,
+            "event_id": event_id,
+            "amount": "15.0000",
+        }
+    )
+
+    validate_document(BackupData.model_validate(data))
+
+    overallocated = deepcopy(data)
+    overallocated["fund_movements"][0]["amount"] = "25.0000"
+    with pytest.raises(BackupInvariantError, match="Transfer allocation cause is invalid"):
+        validate_document(BackupData.model_validate(overallocated))
+
+
 def test_backup_rejects_series_shift_outside_calendar_range() -> None:
     invalid_rule = valid_data()
     invalid_rule["recurring_rules"][0]["series_shift_days"] = 2**31 - 1

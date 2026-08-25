@@ -22,7 +22,8 @@ Later revisions extend the same linear history:
   automatically cancelled occurrences preserved from later series shifts. Its
   partial candidate index supports narrow deterministic locking during a shift.
 - `0013_fund_reserve` adds per-account reserve movements, reserve event types,
-  and the causal operation link used for atomic refill rollback.
+  and the causal operation link used for atomic refill rollback and composed
+  transfer-and-allocation reversal.
 
 `0013_fund_reserve` is the current single head. Revision identifiers,
 rather than migration filenames, are the stable Alembic chain.

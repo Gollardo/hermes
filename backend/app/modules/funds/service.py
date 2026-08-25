@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -42,6 +42,7 @@ MONEY_QUANTUM = Decimal("0.0001")
 PERCENTAGE_QUANTUM = Decimal("0.0001")
 MIN_DYNAMIC_PERCENTAGE = Decimal("5")
 FUND_DEFINITION_LOCK = 4_621_083_119
+LEGACY_TRANSFER_ALLOCATION_WINDOW = timedelta(seconds=1)
 
 
 class FundNotFoundError(RuntimeError):
@@ -86,6 +87,17 @@ class FundReserveBalanceError(RuntimeError):
 
 class FundTargetCapacityError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True, slots=True)
+class LegacyTransferAllocationMatch:
+    """Narrow fingerprint for allocation pairs written before their causal link existed."""
+
+    occurred_on: date
+    description: str | None
+    operation_created_at: datetime
+    destination_account_id: UUID
+    amount: Decimal
 
 
 @dataclass(frozen=True, slots=True)
@@ -718,7 +730,11 @@ def locked_percentage_allocation_preview_with_free_balance(
 
 
 def create_allocation_with_free_balance(
-    session: Session, payload: AllocationCreateRequest, free: Decimal
+    session: Session,
+    payload: AllocationCreateRequest,
+    free: Decimal,
+    *,
+    caused_by_operation_id: UUID | None = None,
 ) -> FundEvent:
     funds = _lock_fund_references(session, {item.fund_id for item in payload.allocations})
     if any(fund.archived_at is not None for fund in funds.values()):
@@ -746,7 +762,13 @@ def create_allocation_with_free_balance(
     reserved = allocated + reserve_amount
     if allocated > payload.amount or reserved > free:
         raise FundCoverageError
-    event = _event(session, FundEventType.ALLOCATION, payload.occurred_on, payload.description)
+    event = _event(
+        session,
+        FundEventType.ALLOCATION,
+        payload.occurred_on,
+        payload.description,
+        caused_by_operation_id=caused_by_operation_id,
+    )
     _add_fund_movements(
         session,
         [
@@ -787,6 +809,107 @@ def remove_operation_reserve_distributions(session: Session, operation_id: UUID)
     for event in events:
         session.delete(event)
     session.flush()
+
+
+def lock_operation_dependent_allocation(
+    session: Session,
+    operation_id: UUID,
+    *,
+    legacy_transfer_allocation: LegacyTransferAllocationMatch | None = None,
+) -> bool:
+    """Protect the immutable allocation paired with a composed transfer update."""
+    linked_event_id = session.scalar(
+        select(FundEvent.id)
+        .where(
+            FundEvent.caused_by_operation_id == operation_id,
+            FundEvent.type == FundEventType.ALLOCATION,
+        )
+        .with_for_update()
+    )
+    return linked_event_id is not None or (
+        legacy_transfer_allocation is not None
+        and bool(_legacy_transfer_allocation_events(session, legacy_transfer_allocation))
+    )
+
+
+def _legacy_transfer_allocation_events(
+    session: Session, match: LegacyTransferAllocationMatch
+) -> list[FundEvent]:
+    candidates = list(
+        session.scalars(
+            select(FundEvent)
+            .where(
+                FundEvent.caused_by_operation_id.is_(None),
+                FundEvent.type == FundEventType.ALLOCATION,
+                FundEvent.occurred_on == match.occurred_on,
+                FundEvent.description.is_not_distinct_from(match.description),
+                FundEvent.created_at >= match.operation_created_at,
+                FundEvent.created_at
+                <= match.operation_created_at + LEGACY_TRANSFER_ALLOCATION_WINDOW,
+            )
+            .with_for_update()
+        ).all()
+    )
+    return [
+        event for event in candidates if _matches_legacy_transfer_allocation(session, event, match)
+    ]
+
+
+def remove_operation_dependent_events(
+    session: Session,
+    operation_id: UUID,
+    *,
+    legacy_transfer_allocation: LegacyTransferAllocationMatch | None = None,
+) -> None:
+    """Remove Funds events which must disappear with an operation deletion.
+
+    New transfer-and-allocation pairs use ``caused_by_operation_id``.  The
+    constrained fallback is solely for pairs created before that link was
+    recorded: it accepts exactly one immediately-following, same-payload
+    allocation on the destination account and never guesses among candidates.
+    """
+    events = list(
+        session.scalars(
+            select(FundEvent)
+            .where(FundEvent.caused_by_operation_id == operation_id)
+            .with_for_update()
+        ).all()
+    )
+    if legacy_transfer_allocation is not None:
+        matched = _legacy_transfer_allocation_events(session, legacy_transfer_allocation)
+        if len(matched) == 1:
+            events.append(matched[0])
+    for event in events:
+        session.delete(event)
+    session.flush()
+
+
+def _matches_legacy_transfer_allocation(
+    session: Session, event: FundEvent, match: LegacyTransferAllocationMatch
+) -> bool:
+    fund_movements = list(
+        session.execute(
+            select(FundMovement.account_id, FundMovement.amount).where(
+                FundMovement.event_id == event.id
+            )
+        )
+    )
+    reserve_movements = list(
+        session.execute(
+            select(FundReserveMovement.account_id, FundReserveMovement.amount).where(
+                FundReserveMovement.event_id == event.id
+            )
+        )
+    )
+    movements = fund_movements + reserve_movements
+    return (
+        bool(movements)
+        and all(
+            account_id == match.destination_account_id and amount > 0
+            for account_id, amount in movements
+        )
+        and sum((Decimal(amount) for _, amount in movements), Decimal(0)) <= match.amount
+    )
 
 
 def rebalance_reserve(

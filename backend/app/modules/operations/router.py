@@ -23,6 +23,7 @@ from app.modules.operations.schemas import (
 from app.modules.operations.service import (
     FutureOperationDateError,
     InsufficientBalanceError,
+    OperationAllocationLinkedError,
     OperationConflictError,
     OperationLinkedError,
     OperationNotFoundError,
@@ -62,6 +63,14 @@ def _raise_domain_error(error: RuntimeError) -> None:
             detail={
                 "code": "operation_linked_to_occurrence",
                 "message": "Confirmed scheduled operation cannot be deleted",
+            },
+        )
+    if isinstance(error, OperationAllocationLinkedError):
+        raise HTTPException(
+            409,
+            detail={
+                "code": "operation_linked_to_allocation",
+                "message": "Transfer with fund allocation must be deleted and recreated",
             },
         )
     if isinstance(error, InsufficientBalanceError):
@@ -182,6 +191,7 @@ def replace_operation(
         FundCoverageError,
         FundNotFoundError,
         InsufficientBalanceError,
+        OperationAllocationLinkedError,
         OperationConflictError,
         OperationNotFoundError,
         FutureOperationDateError,

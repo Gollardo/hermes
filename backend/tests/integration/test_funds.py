@@ -16,7 +16,7 @@ from app.core.config import Settings
 from app.core.database import create_database_engine
 from app.main import create_app
 from app.modules.funds import service as funds_service
-from app.modules.funds.models import FundMovement
+from app.modules.funds.models import FundEvent, FundMovement
 from app.modules.operations.models import AccountMovement, FinancialOperation
 
 MASTER_PASSWORD = "correct-master-password"
@@ -662,7 +662,8 @@ def test_transfer_and_percentage_allocation_are_one_atomic_action(
         body = response.json()
         operation = client.get(f"/api/v1/operations/{body['operation_id']}")
         assert operation.status_code == 200
-        assert operation.json()["type"] == "transfer"
+        operation_body = operation.json()
+        assert operation_body["type"] == "transfer"
         allocations = {
             movement["fund_id"]: movement["amount"] for movement in body["allocation"]["movements"]
         }
@@ -691,6 +692,101 @@ def test_transfer_and_percentage_allocation_are_one_atomic_action(
         unchanged_coverage = {item["account_id"]: item for item in unchanged["accounts"]}
         assert unchanged_coverage[source]["physical_balance"] == "80.0000"
         assert unchanged_coverage[target]["reserved_balance"] == "15.0000"
+
+        with app.state.session_factory() as session:
+            allocation = session.scalar(
+                select(FundEvent).where(FundEvent.caused_by_operation_id == body["operation_id"])
+            )
+            assert allocation is not None
+
+        update = client.put(
+            f"/api/v1/operations/{body['operation_id']}",
+            headers=headers,
+            json={
+                "type": "transfer",
+                "occurred_on": "2026-08-12",
+                "amount": "20",
+                "description": "Changed savings",
+                "account_id": source,
+                "destination_account_id": target,
+                "version": operation_body["version"],
+            },
+        )
+        assert update.status_code == 409
+        assert update.json()["detail"]["code"] == "operation_linked_to_allocation"
+        assert client.get("/api/v1/funds/summary").json()["total_reserved"] == "15.0000"
+
+        deleted = client.delete(
+            f"/api/v1/operations/{body['operation_id']}?version={operation_body['version']}",
+            headers=headers,
+        )
+        assert deleted.status_code == 204
+        balances = {item["id"]: item["balance"] for item in client.get("/api/v1/accounts").json()}
+        assert balances == {source: "100.0000", target: "10.0000"}
+        assert client.get("/api/v1/funds/summary").json()["total_reserved"] == "0"
+        with app.state.session_factory() as session:
+            assert (
+                session.scalar(
+                    select(FundEvent).where(
+                        FundEvent.caused_by_operation_id == body["operation_id"]
+                    )
+                )
+                is None
+            )
+
+
+def test_deleting_legacy_unlinked_transfer_allocation_removes_its_reservation(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        source = _account(client, headers, "Main", "100")
+        target = _account(client, headers, "Savings", "0")
+        _fund(client, headers, "Savings", "100")
+        created = client.post(
+            "/api/v1/funds/transfer-and-allocate",
+            headers=headers,
+            json={
+                "source_account_id": source,
+                "destination_account_id": target,
+                "amount": "20",
+                "occurred_on": "2026-08-12",
+                "description": "Legacy pair",
+            },
+        ).json()
+        operation = client.get(f"/api/v1/operations/{created['operation_id']}").json()
+        with app.state.session_factory() as session:
+            allocation = session.scalar(
+                select(FundEvent).where(FundEvent.caused_by_operation_id == created["operation_id"])
+            )
+            assert allocation is not None
+            allocation.caused_by_operation_id = None
+            session.commit()
+
+        update = client.put(
+            f"/api/v1/operations/{created['operation_id']}",
+            headers=headers,
+            json={
+                "type": "transfer",
+                "occurred_on": "2026-08-12",
+                "amount": "20",
+                "description": "Changed legacy pair",
+                "account_id": source,
+                "destination_account_id": target,
+                "version": operation["version"],
+            },
+        )
+        assert update.status_code == 409
+        assert update.json()["detail"]["code"] == "operation_linked_to_allocation"
+
+        deleted = client.delete(
+            f"/api/v1/operations/{created['operation_id']}?version={operation['version']}",
+            headers=headers,
+        )
+        assert deleted.status_code == 204
+        assert client.get("/api/v1/funds/summary").json()["total_reserved"] == "0"
 
 
 def test_virtual_transfer_failure_rolls_back_both_ledgers(
