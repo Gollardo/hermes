@@ -133,14 +133,15 @@ definitions in deterministic order. Equal opposite virtual movements stay on
 that account, so physical balance, account reserved total and the total across
 all funds are unchanged.
 
-## Transfer and percentage allocation
+## Transfer and fund allocation
 
-The UI may compose a physical transfer and an explicit percentage allocation
-as one command. The application layer first posts one Operations-owned transfer,
-then calculates the exact Funds-owned allocation on the destination account and
-creates its virtual event before the request transaction commits. A failure in
-either part rolls back both ledgers; this does not turn a fund into a transfer
-destination or introduce automatic income allocation.
+The UI may compose a physical transfer with either an explicit percentage
+allocation or allocation of the whole amount to one selected fund. The
+application layer first posts one Operations-owned transfer, then calculates
+the percentage allocation or creates the selected allocation on the destination
+account before the request transaction commits. A failure in either part rolls
+back both ledgers; this does not turn a fund into a transfer destination or
+introduce automatic income allocation.
 
 The allocation event carries the physical transfer ID as its cause. Deleting
 that operation removes the dependent allocation event in the same transaction,
@@ -153,9 +154,10 @@ replacement through the composed command.
 Funds reads the global allocation mode while holding its definition snapshot.
 Manual mode uses stored percentages. Dynamic mode derives percentages from
 current ledger balances and relative unfilled target progress before each
-command; filled and archived funds are excluded. If no incomplete active fund
-exists, the whole composed
-transfer is rejected and rolled back.
+command; filled and archived funds are excluded. When percentage allocation has
+no incomplete active fund, the transferred amount enters the destination
+account's reserve. A selected fund without remaining target capacity instead
+rejects the whole composed transfer and rolls it back.
 
 ## Expected occurrence to actual operation
 

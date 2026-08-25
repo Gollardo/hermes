@@ -164,7 +164,14 @@ export class FundsPage implements OnInit {
   protected readonly baseCurrency = signal('RUB');
   protected readonly Math = Math;
   protected readonly activeModal = signal<
-    'fund' | 'allocation' | 'transfer' | 'redistribution' | 'fundTransfer' | 'reserveRelease' | null
+    | 'fund'
+    | 'allocation'
+    | 'specificTransfer'
+    | 'transfer'
+    | 'redistribution'
+    | 'fundTransfer'
+    | 'reserveRelease'
+    | null
   >(null);
 
   protected readonly fundForm = this.builder.group({
@@ -185,6 +192,14 @@ export class FundsPage implements OnInit {
     occurredOn: ['', Validators.required],
     description: ['', Validators.maxLength(2000)],
     allocations: this.builder.array([]),
+  });
+  protected readonly specificTransferForm = this.builder.group({
+    sourceAccountId: ['', Validators.required],
+    destinationAccountId: ['', Validators.required],
+    fundId: ['', Validators.required],
+    amount: ['', [Validators.required, Validators.pattern(/^\d{1,16}(?:[.,]\d{1,4})?$/)]],
+    occurredOn: ['', Validators.required],
+    description: ['', Validators.maxLength(2000)],
   });
   protected readonly redistributionForm = this.builder.group({
     fundId: ['', Validators.required],
@@ -450,6 +465,10 @@ export class FundsPage implements OnInit {
     this.activeModal.set('allocation');
   }
 
+  protected openSpecificTransfer(): void {
+    this.activeModal.set('specificTransfer');
+  }
+
   protected openTransferAllocation(): void {
     this.activeModal.set('transfer');
   }
@@ -620,6 +639,33 @@ export class FundsPage implements OnInit {
       });
   }
 
+  protected transferToSpecificFund(): void {
+    if (!this.canTransferToSpecificFund()) {
+      this.specificTransferForm.markAllAsTouched();
+      return;
+    }
+    const value = this.specificTransferForm.getRawValue();
+    this.saving.set(true);
+    this.http
+      .post(`${environment.apiBaseUrl}/funds/transfer-and-allocate`, {
+        source_account_id: value.sourceAccountId,
+        destination_account_id: value.destinationAccountId,
+        fund_id: value.fundId,
+        amount: decimalPayload(value.amount),
+        occurred_on: value.occurredOn,
+        description: value.description || null,
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.specificTransferForm.patchValue({ amount: '', description: '' });
+          this.activeModal.set(null);
+          this.load();
+        },
+        error: (error: unknown) => this.failed(error, 'Не удалось перевести деньги в фонд.'),
+      });
+  }
+
   protected redistribute(): void {
     if (!this.canRedistribute()) {
       this.redistributionForm.markAllAsTouched();
@@ -726,6 +772,44 @@ export class FundsPage implements OnInit {
         label: fund.name,
         detail: `${formatMoney(fund.total_balance)} ${this.baseCurrency()}`,
       }));
+  }
+
+  protected specificTransferFundOptions(): EntityOption[] {
+    return this.activeFunds()
+      .filter(
+        (fund) => !this.dynamicMode() || (moneyUnits(fund.remaining_amount ?? '0') ?? 0n) > 0n,
+      )
+      .map((fund) => ({
+        id: fund.id,
+        label: fund.name,
+        detail: this.dynamicMode()
+          ? `До цели ${formatMoney(fund.remaining_amount ?? '0')} ${this.baseCurrency()}`
+          : `В фонде ${formatMoney(fund.total_balance)} ${this.baseCurrency()}`,
+      }));
+  }
+
+  protected selectedSpecificTransferFund(): Fund | null {
+    const fundId = this.specificTransferForm.controls.fundId.value;
+    return this.activeFunds().find((fund) => fund.id === fundId) ?? null;
+  }
+
+  protected canTransferToSpecificFund(): boolean {
+    const value = this.specificTransferForm.getRawValue();
+    const amount = moneyUnits(value.amount);
+    const source = moneyUnits(
+      this.summary()?.accounts.find((account) => account.account_id === value.sourceAccountId)
+        ?.physical_balance ?? '0',
+    );
+    const remaining = moneyUnits(this.selectedSpecificTransferFund()?.remaining_amount ?? '0');
+    return Boolean(
+      this.specificTransferForm.valid &&
+      value.sourceAccountId !== value.destinationAccountId &&
+      amount !== null &&
+      amount > 0n &&
+      source !== null &&
+      amount <= source &&
+      (!this.dynamicMode() || (remaining !== null && amount <= remaining)),
+    );
   }
 
   protected canTransferAndAllocate(): boolean {
@@ -880,6 +964,7 @@ export class FundsPage implements OnInit {
         const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
         const today = `${value['year']}-${value['month']}-${value['day']}`;
         this.allocationForm.patchValue({ occurredOn: today });
+        this.specificTransferForm.patchValue({ occurredOn: today });
         this.redistributionForm.patchValue({ occurredOn: today });
         this.transferAllocationForm.patchValue({ occurredOn: today });
         this.fundTransferForm.patchValue({ occurredOn: today });

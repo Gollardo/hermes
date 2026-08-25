@@ -36,6 +36,8 @@ not another bank account.
 - see the selected manual or dynamic mode and current calculated percentages;
 - allocate a selected amount with a preview;
 - manually adjust a proposed allocation;
+- transfer an amount from one physical account to one existing active fund on
+  another account without changing its percentage for future allocation;
 - transfer money from another physical account and allocate it on the
   destination account by active-fund percentages in the same transaction;
 - open virtual-movement history;
@@ -90,6 +92,7 @@ accounts may require a matrix or table view; decide after measuring real data.
 - open details or history;
 - allocate an arbitrary incoming amount;
 - adjust allocation preview before commit;
+- transfer an amount to one selected fund without using the percentage preview;
 - redistribute the virtual portion between accounts within the approved model;
 - initiate an expense from a fund through the shared operation form;
 - archive or restore after balance handling is satisfied.
@@ -107,6 +110,13 @@ accounts may require a matrix or table view; decide after measuring real data.
 
 In dynamic mode, valid bounds include each fund's remaining target capacity;
 the server rejects stale or edited allocations that would overflow a goal.
+
+The owner may instead choose one existing active fund when moving money between
+physical accounts. The command posts one physical transfer and one allocation
+of its whole amount on the destination account in the same transaction. It
+leaves configured or calculated percentages unchanged and does not require a
+percentage preview. The same source-balance and dynamic target-capacity checks
+apply, including the server-side check at commit.
 
 Changing account or source amount invalidates the old preview. New allocations
 and redistributions offer only active physical accounts. Amounts use the base

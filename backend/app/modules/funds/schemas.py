@@ -245,6 +245,7 @@ class TransferAllocationCreateRequest(BaseModel):
     occurred_on: date
     source_account_id: UUID
     destination_account_id: UUID
+    fund_id: UUID | None = None
     amount: Money
     description: str | None = Field(default=None, max_length=2000)
 

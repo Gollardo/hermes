@@ -512,6 +512,96 @@ def test_fund_lifecycle_allocation_and_operation_invariants(
         assert history["total"] == 2
 
 
+def test_transfer_to_one_fund_bypasses_percentage_distribution(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        source = _account(client, headers, "Main", "100")
+        destination = _account(client, headers, "Savings", "0")
+        percentage_fund = _fund(client, headers, "Reserve", "100")
+        selected_fund = _fund(client, headers, "Travel", "0")
+
+        transfer = client.post(
+            "/api/v1/funds/transfer-and-allocate",
+            headers=headers,
+            json={
+                "source_account_id": source,
+                "destination_account_id": destination,
+                "fund_id": selected_fund["id"],
+                "amount": "30",
+                "occurred_on": "2026-08-25",
+            },
+        )
+
+        assert transfer.status_code == 201
+        body = transfer.json()
+        assert client.get(f"/api/v1/operations/{body['operation_id']}").json()["type"] == "transfer"
+        assert body["allocation"]["movements"] == [
+            {
+                "fund_id": selected_fund["id"],
+                "fund_name": "Travel",
+                "account_id": destination,
+                "account_name": "Savings",
+                "amount": "30.0000",
+            }
+        ]
+        summary = client.get("/api/v1/funds/summary").json()
+        funds = {fund["id"]: fund for fund in summary["funds"]}
+        assert funds[percentage_fund["id"]]["total_balance"] == "0"
+        assert funds[selected_fund["id"]]["total_balance"] == "30.0000"
+        assert funds[percentage_fund["id"]]["allocation_percentage"] == "100.0000"
+        assert funds[selected_fund["id"]]["allocation_percentage"] == "0.0000"
+        coverage = {account["account_id"]: account for account in summary["accounts"]}
+        assert coverage[source]["physical_balance"] == "70.0000"
+        assert coverage[destination]["physical_balance"] == "30.0000"
+        assert coverage[destination]["fund_reserved_balance"] == "30.0000"
+        assert coverage[destination]["free_balance"] == "0.0000"
+
+
+def test_transfer_to_one_fund_rolls_back_when_dynamic_target_is_exceeded(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        source = _account(client, headers, "Main", "100")
+        destination = _account(client, headers, "Savings", "0")
+        assert (
+            client.put(
+                "/api/v1/settings/fund-allocation-mode",
+                headers=headers,
+                json={"mode": "dynamic"},
+            ).status_code
+            == 200
+        )
+        fund = _fund(client, headers, "Goal", "0", "10")
+
+        rejected = client.post(
+            "/api/v1/funds/transfer-and-allocate",
+            headers=headers,
+            json={
+                "source_account_id": source,
+                "destination_account_id": destination,
+                "fund_id": fund["id"],
+                "amount": "11",
+                "occurred_on": "2026-08-25",
+            },
+        )
+
+        assert rejected.status_code == 409
+        assert rejected.json()["detail"]["code"] == "fund_target_capacity"
+        balances = {item["id"]: item["balance"] for item in client.get("/api/v1/accounts").json()}
+        assert balances[source] == "100.0000"
+        assert balances[destination] == "0"
+        summary = client.get("/api/v1/funds/summary").json()
+        assert summary["total_reserved"] == "0"
+        assert client.get("/api/v1/operations").json()["total"] == 1
+
+
 def test_fund_target_initial_allocation_and_same_account_fund_transfer_are_atomic(
     postgres_database_settings: Settings,
 ) -> None:

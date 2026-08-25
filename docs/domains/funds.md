@@ -24,12 +24,13 @@ posting model is recorded in [ADR 0002](../decisions/0002-virtual-fund-ledger.md
   account for the newly created fund only. It does not invoke percentage
   distribution and rolls the definition back if allocation is invalid.
 - A convenience command may atomically transfer physical money to another
-  account and explicitly distribute the transferred amount across active funds
-  by their configured percentages. It produces one ordinary transfer plus one
-  causally linked allocation event and rolls both back on failure. Deleting the
-  transfer also deletes that allocation event atomically. The ordinary operation
-  editor rejects a change to this composed transfer because it cannot represent
-  its allocation; replacement uses the composed command.
+  account and either explicitly distribute the transferred amount across active
+  funds by their configured percentages or assign its complete amount to one
+  active fund. It produces one ordinary transfer plus one causally linked
+  allocation event and rolls both back on failure. Deleting the transfer also
+  deletes that allocation event atomically. The ordinary operation editor
+  rejects a change to this composed transfer because it cannot represent its
+  allocation; replacement uses the composed command.
 - An expense may consume one fund completely or use free money. A transfer may
   carry one virtual part no greater than its physical amount.
 - Virtual redistribution moves one fund between accounts without physical

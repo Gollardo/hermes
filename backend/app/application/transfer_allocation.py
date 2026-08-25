@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.funds.contracts import (
     AllocationCreateRequest,
+    AllocationItem,
     TransferAllocationCreateRequest,
     TransferAllocationResponse,
     create_allocation_with_free_balance,
@@ -19,7 +20,7 @@ from app.modules.operations.contracts import (
 def transfer_and_allocate(
     session: Session, payload: TransferAllocationCreateRequest
 ) -> TransferAllocationResponse:
-    """Move physical money, then reserve its locked percentage shares atomically."""
+    """Move physical money, then reserve percentage shares or one selected fund atomically."""
     operation_id = post_physical_transfer(
         session,
         PhysicalTransferDraft(
@@ -33,10 +34,13 @@ def transfer_and_allocate(
     free = account_balance(session, payload.destination_account_id) - reserved_balance(
         session, payload.destination_account_id
     )
-    preview = locked_percentage_allocation_preview_with_free_balance(
-        session, payload.destination_account_id, payload.amount, free
-    )
-    positive_allocations = [item for item in preview.allocations if item.amount > 0]
+    if payload.fund_id is None:
+        preview = locked_percentage_allocation_preview_with_free_balance(
+            session, payload.destination_account_id, payload.amount, free
+        )
+        positive_allocations = [item for item in preview.allocations if item.amount > 0]
+    else:
+        positive_allocations = [AllocationItem(fund_id=payload.fund_id, amount=payload.amount)]
     event = create_allocation_with_free_balance(
         session,
         AllocationCreateRequest(

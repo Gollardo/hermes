@@ -81,7 +81,7 @@
 .fund-primary-action-controls {
   align-items: center;
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0.6rem;
   justify-content: flex-end;
 }

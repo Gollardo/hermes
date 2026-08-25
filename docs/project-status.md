@@ -346,9 +346,10 @@ access. Direct public-internet exposure is unsupported.
 - CRUD for a fund-linked operation replaces both ledgers in one transaction and
   rechecks coverage and non-negative positions.
 - History combines allocations, redistributions, expenses, and transfers.
-- The screen distinguishes reserving free money, moving an existing assignment
-  without physical movement, and an atomic physical transfer followed by
-  percentage allocation on the destination account.
+- The screen distinguishes percentage allocation of free money, an atomic
+  physical transfer followed by either percentage allocation or allocation of
+  the full amount to one existing fund without changing future percentages, and
+  moving an existing assignment without physical movement.
 - ADR 0002 records posting model, lock order, rounding, and archive policy.
 - A fund has an optional target amount with exact progress; the screen shows
   per-fund and combined progress.

@@ -102,11 +102,15 @@
         <p class="section-label">Пополнение фондов</p>
         <h2 id="fund-actions-title">Выберите, откуда взять деньги</h2>
         <p>
-          Можно назначить уже свободные деньги на счёте или сначала перевести их с другого счёта.
+          Можно распределить свободные деньги по процентам или перевести их с другого счёта — по
+          процентам либо в один выбранный фонд.
         </p>
       </div>
       <div class="fund-primary-action-controls">
         <button type="button" (click)="openAllocation()">Выделить со счёта</button>
+        <button type="button" class="secondary" (click)="openSpecificTransfer()">
+          Перевести в фонд
+        </button>
         <button type="button" class="secondary" (click)="openTransferAllocation()">
           Перевести и распределить
         </button>
@@ -331,6 +335,9 @@
                   @case ('allocation') {
                     Выделить свободные деньги в фонды
                   }
+                  @case ('specificTransfer') {
+                    Перевести деньги в конкретный фонд
+                  }
                   @case ('transfer') {
                     Перевести и распределить по фондам
                   }
@@ -541,6 +548,84 @@
                   Выделить деньги
                 </button>
               }
+            </form>
+          }
+
+          @if (activeModal() === 'specificTransfer') {
+            <p class="modal-explanation">
+              Будет создан один физический перевод. На счёте назначения вся его сумма будет
+              назначена выбранному фонду; проценты распределения не изменятся. В динамическом режиме
+              сумма не может превысить остаток до цели.
+            </p>
+            <form [formGroup]="specificTransferForm" (ngSubmit)="transferToSpecificFund()">
+              <label for="specific-transfer-source">С какого счёта перевести</label>
+              <app-entity-combobox
+                inputId="specific-transfer-source"
+                formControlName="sourceAccountId"
+                [options]="accountOptions(activeAccounts(), 'physical')"
+                recentKey="accounts"
+                placeholder="Введите название счёта"
+              />
+              <label for="specific-transfer-destination">На какой счёт зачислить</label>
+              <app-entity-combobox
+                inputId="specific-transfer-destination"
+                formControlName="destinationAccountId"
+                [options]="
+                  accountOptions(
+                    activeAccounts(),
+                    'free',
+                    specificTransferForm.controls.sourceAccountId.value
+                  )
+                "
+                recentKey="accounts"
+                placeholder="Введите название счёта"
+              />
+              <label for="specific-transfer-fund">Фонд</label>
+              <app-entity-combobox
+                inputId="specific-transfer-fund"
+                formControlName="fundId"
+                [options]="specificTransferFundOptions()"
+                recentKey="funds"
+                placeholder="Введите название фонда"
+              />
+              @if (specificTransferFundOptions().length === 0) {
+                <p class="hint">
+                  {{
+                    dynamicMode()
+                      ? 'Все активные фонды заполнены.'
+                      : 'Сначала создайте или восстановите активный фонд.'
+                  }}
+                </p>
+              }
+              @if (dynamicMode() && selectedSpecificTransferFund(); as fund) {
+                <p class="hint">
+                  До цели можно направить: {{ fund.remaining_amount | money }} {{ baseCurrency() }}.
+                </p>
+              }
+              <label for="specific-transfer-amount">Сумма перевода</label>
+              <input
+                appDecimalInput
+                id="specific-transfer-amount"
+                formControlName="amount"
+                inputmode="decimal"
+              />
+              @if (specificTransferForm.touched && !canTransferToSpecificFund()) {
+                <p class="field-error">
+                  @if (dynamicMode()) {
+                    Выберите разные счета, незаполненный фонд и сумму не больше остатка на счёте и
+                    остатка до цели.
+                  } @else {
+                    Выберите разные счета, фонд и сумму не больше остатка на исходном счёте.
+                  }
+                </p>
+              }
+              <label for="specific-transfer-date">Дата</label>
+              <input id="specific-transfer-date" type="date" formControlName="occurredOn" />
+              <label for="specific-transfer-description">Описание</label>
+              <input id="specific-transfer-description" formControlName="description" />
+              <button type="submit" [disabled]="saving() || !canTransferToSpecificFund()">
+                Перевести в фонд
+              </button>
             </form>
           }
 

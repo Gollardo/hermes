@@ -59,10 +59,10 @@ describe('FundsPage', () => {
 
   afterEach(() => http.verify());
 
-  function flushInitial(): void {
+  function flushInitial(summary = SUMMARY): void {
     fixture.detectChanges();
     http.expectOne('/api/v1/settings').flush({ timezone: 'UTC', base_currency: 'RUB' });
-    http.expectOne('/api/v1/funds/summary').flush(SUMMARY);
+    http.expectOne('/api/v1/funds/summary').flush(summary);
     http
       .expectOne((request) => request.url === '/api/v1/funds/history')
       .flush({ items: [], page: 1, page_size: 25, total: 0 });
@@ -180,6 +180,56 @@ describe('FundsPage', () => {
       total_reserved: '0',
       total_free: '0',
     });
+    http
+      .expectOne((candidate) => candidate.url === '/api/v1/funds/history')
+      .flush({ items: [], page: 1, page_size: 25, total: 0 });
+  });
+
+  it('transfers an exact amount to a selected fund without using percentages', () => {
+    flushInitial({
+      ...SUMMARY,
+      funds: [
+        ...SUMMARY.funds,
+        {
+          ...SUMMARY.funds[0],
+          id: 'fund-2',
+          name: 'Travel',
+          allocation_percentage: '0.0000',
+          manual_allocation_percentage: '0.0000',
+          total_balance: '0.0000',
+          remaining_amount: '100.0000',
+        },
+      ],
+      accounts: [
+        ...SUMMARY.accounts,
+        {
+          ...SUMMARY.accounts[0],
+          account_id: 'account-2',
+          account_name: 'Main',
+          physical_balance: '200.0000',
+          free_balance: '200.0000',
+        },
+      ],
+    });
+    localStorage.setItem('hermes-recent-accounts', JSON.stringify(['account-1', 'account-2']));
+    localStorage.setItem('hermes-recent-funds', JSON.stringify(['fund-2']));
+
+    clickButton('Перевести в фонд');
+    setValue('#specific-transfer-source', 'account-2');
+    setValue('#specific-transfer-destination', 'account-1');
+    setValue('#specific-transfer-fund', 'fund-2');
+    setValue('#specific-transfer-amount', '12,5');
+    fixture.nativeElement.querySelector('.modal-card form').dispatchEvent(new Event('submit'));
+
+    const request = http.expectOne('/api/v1/funds/transfer-and-allocate');
+    expect(request.request.body.source_account_id).toBe('account-2');
+    expect(request.request.body.destination_account_id).toBe('account-1');
+    expect(request.request.body.fund_id).toBe('fund-2');
+    expect(request.request.body.amount).toBe('12.5');
+    expect(request.request.body.occurred_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(request.request.body.description).toBeNull();
+    request.flush({});
+    http.expectOne('/api/v1/funds/summary').flush(SUMMARY);
     http
       .expectOne((candidate) => candidate.url === '/api/v1/funds/history')
       .flush({ items: [], page: 1, page_size: 25, total: 0 });
