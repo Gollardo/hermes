@@ -128,8 +128,6 @@ interface UpcomingGroup {
   occurrences: ExpectedOccurrence[];
 }
 
-const CALENDAR_DAY_PREVIEW_LIMIT = 2;
-
 @Component({
   selector: 'app-scheduling-page',
   imports: [ReactiveFormsModule, RouterLink, MoneyPipe, DateTextPipe, EntityCombobox, DecimalInput],
@@ -514,12 +512,32 @@ export class SchedulingPage implements OnInit {
     return occurrence.status === 'pending' || occurrence.status === 'postponed';
   }
 
-  protected calendarDayPreview(day: CalendarDay): ExpectedOccurrence[] {
-    return day.occurrences.slice(0, CALENDAR_DAY_PREVIEW_LIMIT);
+  protected calendarDaySummary(day: CalendarDay): string | null {
+    const terms = day.occurrences
+      .filter((occurrence) => occurrence.status !== 'cancelled' && occurrence.type !== 'transfer')
+      .map((occurrence) => `${occurrence.type === 'expense' ? '-' : '+'}${occurrence.amount}`);
+    const total = terms.length ? moneyExpressionPayload(terms.join('')) : '0';
+    if (total === null || /^0(?:\.0+)?$/.test(total)) return null;
+    return total.startsWith('-') ? total : `+${total}`;
   }
 
-  protected hiddenCalendarOccurrences(day: CalendarDay): number {
-    return Math.max(0, day.occurrences.length - CALENDAR_DAY_PREVIEW_LIMIT);
+  protected calendarDayLabel(day: CalendarDay, summary?: string): string {
+    const overdueCount = this.calendarDayOverdueCount(day);
+    const parts = [`Открыть события за ${day.iso}: ${day.occurrences.length}`];
+    if (summary) parts.push(`итог ${formatMoney(summary)} ${this.baseCurrency()}`);
+    if (overdueCount) parts.push(`просрочено: ${overdueCount}`);
+    return parts.join(', ');
+  }
+
+  protected calendarDayOverdueCount(day: CalendarDay): number {
+    return day.occurrences.filter((occurrence) => occurrence.overdue).length;
+  }
+
+  protected calendarDayFocusId(day: CalendarDay): string | null {
+    const occurrenceId = this.route.snapshot.queryParamMap.get('focus');
+    return occurrenceId && day.occurrences.some((occurrence) => occurrence.id === occurrenceId)
+      ? `occurrence-${occurrenceId}`
+      : null;
   }
 
   protected openOccurrenceEditor(occurrence: ExpectedOccurrence): void {

@@ -81,68 +81,39 @@
             [class.today]="day.today"
             [attr.aria-label]="day.iso"
           >
-            <time [attr.datetime]="day.iso">{{ day.day }}</time>
-            <div class="day-events">
-              @for (occurrence of calendarDayPreview(day); track occurrence.id) {
-                @if (occurrence.status === 'confirmed' && occurrence.actual_operation_id) {
-                  <a
-                    [id]="'occurrence-' + occurrence.id"
-                    class="calendar-event confirmed-link"
-                    [class]="'calendar-event confirmed-link ' + occurrence.type + ' confirmed'"
-                    routerLink="/operations"
-                    [queryParams]="{ focus: occurrence.actual_operation_id }"
-                    title="Открыть связанную фактическую операцию"
-                  >
-                    <strong class="calendar-event-title">{{ occurrenceTitle(occurrence) }}</strong>
-                    <span class="calendar-event-meta">
-                      @if (occurrence.source_kind === 'one_off') {
-                        Разовая ·
-                      }
-                      {{ typeLabel(occurrence.type) }} · {{ statusLabel(occurrence.status) }}</span
-                    >
-                    <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
-                  </a>
-                } @else {
-                  <button
-                    type="button"
-                    [id]="'occurrence-' + occurrence.id"
-                    class="calendar-event"
-                    [class]="'calendar-event ' + occurrence.type + ' ' + occurrence.status"
-                    [class.overdue]="occurrence.overdue"
-                    (click)="openOccurrenceEditor(occurrence)"
-                    [title]="
-                      occurrence.source_kind === 'one_off'
-                        ? 'Редактировать разовый план'
-                        : 'Редактировать регулярное правило'
-                    "
-                  >
-                    <strong class="calendar-event-title">{{ occurrenceTitle(occurrence) }}</strong>
-                    <span class="calendar-event-meta">
-                      @if (occurrence.source_kind === 'one_off') {
-                        Разовая ·
-                      }
-                      {{ typeLabel(occurrence.type) }} ·
-                      {{ occurrence.overdue ? 'Просрочено' : statusLabel(occurrence.status) }}</span
-                    >
-                    @if (occurrence.preserve_from_series_shift) {
-                      <span>Сохранено при сдвиге серии</span>
-                    }
-                    <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
-                  </button>
-                }
-              }
-            </div>
-            @if (hiddenCalendarOccurrences(day); as hiddenCount) {
+            @if (day.occurrences.length) {
               <button
                 type="button"
-                class="secondary calendar-day-more"
+                class="calendar-day-date"
                 (click)="openCalendarDay(day)"
-                [attr.aria-label]="
-                  'Показать все события за ' + day.iso + ', скрыто: ' + hiddenCount
-                "
+                [attr.aria-label]="calendarDayLabel(day)"
+                [attr.id]="calendarDayFocusId(day)"
               >
-                Ещё {{ hiddenCount }}
+                <time [attr.datetime]="day.iso">{{ day.day }}</time>
               </button>
+              @if (calendarDaySummary(day); as summary) {
+                <button
+                  type="button"
+                  class="calendar-day-summary"
+                  [class.negative]="summary.startsWith('-')"
+                  (click)="openCalendarDay(day)"
+                  [attr.aria-label]="calendarDayLabel(day, summary)"
+                >
+                  <strong>{{ summary | money }} {{ baseCurrency() }}</strong>
+                </button>
+              }
+              @if (calendarDayOverdueCount(day); as overdueCount) {
+                <button
+                  type="button"
+                  class="calendar-day-overdue"
+                  (click)="openCalendarDay(day)"
+                  [attr.aria-label]="calendarDayLabel(day)"
+                >
+                  Просрочено · {{ overdueCount }}
+                </button>
+              }
+            } @else {
+              <time [attr.datetime]="day.iso">{{ day.day }}</time>
             }
           </article>
         }
@@ -481,6 +452,9 @@
                     {{ typeLabel(occurrence.type) }} ·
                     {{ occurrence.overdue ? 'Просрочено' : statusLabel(occurrence.status) }}
                   </small>
+                  @if (occurrence.preserve_from_series_shift) {
+                    <small>Сохранено при сдвиге серии</small>
+                  }
                 </span>
                 <strong>{{ occurrence.amount | money }} {{ baseCurrency() }}</strong>
               </button>

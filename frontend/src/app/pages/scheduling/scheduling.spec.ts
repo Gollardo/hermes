@@ -151,16 +151,20 @@ describe('SchedulingPage recurrence editor', () => {
     expect(page.canSaveRule()).toBe(false);
   });
 
-  it('renders a monthly calendar and marks an overdue occurrence in text', () => {
+  it('renders a signed monthly total with a visible overdue count', () => {
     flushInitial([OCCURRENCE]);
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('август 2026');
-    expect(text).toContain('Интернет');
-    expect(text).toContain('Просрочено');
+    const day = fixture.nativeElement.querySelector(
+      '.calendar-day[aria-label="2026-08-10"]',
+    ) as HTMLElement;
+    expect(day.textContent).toContain('-12,50 ₽');
+    expect(day.textContent).toContain('Просрочено · 1');
+    expect(day.textContent).not.toContain('Интернет');
     expect(fixture.nativeElement.querySelector('.upcoming-item.overdue')).not.toBeNull();
   });
 
-  it('opens all hidden events for a day in a modal and opens a recurring event in its rule editor', () => {
+  it('opens every event for a day from its date and opens a recurring event in its rule editor', () => {
     flushInitial(
       [
         OCCURRENCE,
@@ -169,15 +173,18 @@ describe('SchedulingPage recurrence editor', () => {
       ],
       [RULE],
     );
-    const expand = fixture.nativeElement.querySelector('.calendar-day-more') as HTMLButtonElement;
-    expect(expand.textContent).toContain('Ещё 1');
-    expand.click();
+    const date = fixture.nativeElement.querySelector('.calendar-day-date') as HTMLButtonElement;
+    date.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.calendar-day-dialog-item')).toHaveLength(3);
     (fixture.nativeElement.querySelector('.modal-close') as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    (fixture.nativeElement.querySelector('.calendar-event') as HTMLButtonElement).click();
+    date.click();
+    fixture.detectChanges();
+    (
+      fixture.nativeElement.querySelector('.calendar-day-dialog-button') as HTMLButtonElement
+    ).click();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Обновить расписание');
   });
@@ -324,7 +331,7 @@ describe('SchedulingPage recurrence editor', () => {
     ).toBe('12,');
   });
 
-  it('bounds a busy calendar day and exposes every occurrence on demand', () => {
+  it('shows one exact signed total for a busy day and exposes every occurrence on demand', () => {
     const occurrences = Array.from({ length: 5 }, (_, index) => ({
       ...OCCURRENCE,
       id: `occurrence-${index + 1}`,
@@ -335,13 +342,28 @@ describe('SchedulingPage recurrence editor', () => {
     const day = fixture.nativeElement.querySelector(
       '.calendar-day[aria-label="2026-08-10"]',
     ) as HTMLElement;
-    expect(day.querySelectorAll('.calendar-event')).toHaveLength(2);
-    const more = day.querySelector('.calendar-day-more') as HTMLButtonElement;
-    expect(more.textContent.trim()).toBe('Ещё 3');
+    expect(day.querySelectorAll('.calendar-day-summary')).toHaveLength(1);
+    expect(day.textContent).toContain('-62,50 ₽');
+    expect(day.querySelector('.calendar-day-summary')?.classList.contains('negative')).toBe(true);
+    const date = day.querySelector('.calendar-day-date') as HTMLButtonElement;
 
-    more.click();
+    date.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.calendar-day-dialog-item')).toHaveLength(5);
+  });
+
+  it('leaves the summary empty for zero net flow and transfers', () => {
+    flushInitial([
+      { ...OCCURRENCE, type: 'income', amount: '12.5000' },
+      { ...OCCURRENCE, id: 'occurrence-2', type: 'expense', amount: '12.5000' },
+      { ...OCCURRENCE, id: 'occurrence-3', type: 'transfer', amount: '800.0000' },
+    ]);
+
+    const day = fixture.nativeElement.querySelector(
+      '.calendar-day[aria-label="2026-08-10"]',
+    ) as HTMLElement;
+    expect(day.querySelector('.calendar-day-summary')).toBeNull();
+    expect(day.querySelector('.calendar-day-date')).not.toBeNull();
   });
 
   it('groups attention items by due date without repeating the date', () => {
@@ -421,6 +443,8 @@ describe('SchedulingPage recurrence editor', () => {
       },
     ]);
 
+    (fixture.nativeElement.querySelector('.calendar-day-date') as HTMLButtonElement).click();
+    fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Сохранено при сдвиге серии');
   });
 
@@ -477,7 +501,7 @@ describe('SchedulingPage recurrence editor', () => {
       )
       .flush({ items: [OCCURRENCE], page: 1, page_size: 12, total: 31 });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('.calendar-event')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelectorAll('.calendar-day-summary')).toHaveLength(2);
     expect(fixture.nativeElement.textContent).toContain('1 из 31');
     expect(fixture.nativeElement.textContent).toContain('Показаны первые 1 событий');
   });
@@ -486,6 +510,8 @@ describe('SchedulingPage recurrence editor', () => {
     flushInitial([
       { ...OCCURRENCE, status: 'confirmed', overdue: false, actual_operation_id: 'operation-1' },
     ]);
+    (fixture.nativeElement.querySelector('.calendar-day-date') as HTMLButtonElement).click();
+    fixture.detectChanges();
     const link = fixture.nativeElement.querySelector('.confirmed-link') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toContain('/operations?focus=operation-1');
     expect(link.textContent).toContain('Подтверждено');

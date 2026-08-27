@@ -72,9 +72,10 @@ access. Direct public-internet exposure is unsupported.
   not change; desktop and mobile states were browser-verified.
 - The Calendar visual refinement keeps its scheduling lifecycle and actions
   unchanged while compacting the no-attention state, preserving visible filters,
-  improving narrow-grid event readability, reserving a visible day-overflow
-  action, and flattening the recurring-rule list. The internal calendar scroll
-  and explicit day overflow dialog remain.
+  replacing per-occurrence calendar cards with an exact signed daily net,
+  presenting negative nets on a soft risk surface with a textual overdue count,
+  making each populated date open the complete day dialog, and flattening the
+  recurring-rule list. The internal calendar scroll and explicit day dialog remain.
 - Owner feedback from 2026-08-14 added three compact circular charts to
   Overview: current-month expense and income by root category, and fund shares
   of total saved money. Categories are collapsed by default, with one parent of

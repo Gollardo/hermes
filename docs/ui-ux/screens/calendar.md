@@ -17,7 +17,7 @@ monthly context, an action-oriented upcoming list and recurring-rule management.
 2. Only today's and overdue actionable occurrences with confirm, date-specific
    postpone and cancel actions; future items remain in the calendar grid.
 3. Month navigation and visible account/type filters.
-4. Seven-column monthly grid with status/type summaries.
+4. Seven-column monthly grid with signed daily net summaries.
 5. Rule list and create/edit form.
 
 The attention list is the primary action surface and remains before the dense
@@ -35,8 +35,16 @@ events merely because they are within the next 30 days.
   navigation resets scroll so the linked-fact context is visible immediately.
 - `cancelled` remains visible but visually secondary.
 - Overdue is communicated by text and boundary treatment, never by color alone.
-- Every calendar chip contains a visible status label; color and strike-through
-  are supplementary signals only.
+- A calendar day displays one signed net amount for non-cancelled income and
+  expense occurrences; a zero net amount remains blank. Transfers do not enter
+  that aggregate because they are neutral for the all-account total.
+- A date with events and its daily amount open the complete day list. The list
+  retains every occurrence title, type, status and amount; color and
+  strike-through remain supplementary signals there.
+- A daily amount is a restrained bordered control, not an occurrence card.
+  Negative daily amounts use the existing soft risk surface with a textual
+  minus sign; a day with overdue occurrences also states their count in text
+  beside the aggregate.
 - A failed confirmation keeps the occurrence and entered postpone date visible.
 - A rule may expose an explicit “shift following events” option. Before a
   postpone action, the interface states the signed day delta and that only
@@ -78,9 +86,9 @@ events merely because they are within the next 30 days.
   year is materialized at any given time.
 - Long checkbox choices retain their native control size and align the control
   with the first text line when the label wraps on a narrow screen.
-- A calendar day shows a bounded preview of occurrences. When more are present,
-  an explicit count opens the complete list without changing the height of the
-  compact month row.
+- A calendar day keeps a compact, stable row height and exposes details through
+  its date or signed daily amount, without rendering individual occurrence
+  cards in the month grid.
 
 ## Deliberately deferred
 
