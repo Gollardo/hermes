@@ -1,79 +1,152 @@
+<div align="center">
+
 # Hermes
 
-Hermes is an early-stage, single-owner, self-hosted web application for personal
-finance. It is intended for a home server or local computer and keeps its data
-independent of external cloud services.
+**A self-hosted personal finance command center for exact accounting, purposeful
+savings, planned operations, and explainable cash forecasting.**
 
-Its long-term north star is decision-first planning: not only showing where
-money went, but helping the owner understand what will happen if they make a
-financial decision. The future **Oracle · What if?** capability will compare
-hypothetical scenarios with the deterministic baseline forecast; it is planned,
-not part of the current release.
+[![Status: pre-1.0](https://img.shields.io/badge/status-pre--1.0-D6A84B)](docs/project-status.md)
+[![Self-hosted](https://img.shields.io/badge/deployment-self--hosted-347A5A)](docs/operations/deployment.md)
+[![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-4C6EF5)](LICENSE)
 
-> **Current internal version:** `0.5.0` adds an account-level reserve for dynamic
-> fund allocations and atomic automatic refill when a goal becomes incomplete.
-> Versions through `0.5.0` are development milestones; no public GitHub release
-> has been published yet.
+</div>
 
-## Project priorities and contributions
+![Hermes overview showing free money, physical balance, reserved funds, near-term forecast, and category analytics](docs/assets/readme/overview.jpg)
 
-Hermes is first and foremost a personal project. Its direction and development
-priorities follow the maintainer's own needs and use of the application.
+All screenshots use a synthetic demonstration dataset; no personal financial
+data is included.
 
-Issues and pull requests are welcome, but there is no guaranteed response time,
-review schedule or commitment to implement requested features. Contributions
-and suggestions may be considered when they align with the project's direction
-and the maintainer's available time.
+Hermes helps one owner understand not only where money went, but what is free to
+use, what has already been assigned to goals, and how known plans may change the
+future balance. It runs on your own computer or home server, stores data in your
+PostgreSQL database, and does not depend on an external cloud service.
+
+> [!IMPORTANT]
+> Hermes is an internal pre-1.0 application. Version `0.5.0` is implemented, but
+> owner acceptance on restored real data and the first public-release decision
+> remain open. The current deployment boundary is loopback or a trusted network;
+> direct public-internet exposure is unsupported.
+
+## Why Hermes
+
+- **Free money first.** Physical balance, virtual funds, account reserves, and
+  genuinely free money remain distinct instead of collapsing into one total.
+- **The future is explainable.** Forecast points are derived from current
+  balances and known planned events, with the exact events behind each change.
+- **Financial operations stay exact.** Money uses `Decimal`/`NUMERIC`, writes are
+  transactional, and displayed values follow one deterministic formatting and
+  rounding contract.
+- **Your data stays yours.** Hermes is single-owner and self-hosted, with
+  protected `.hermes` backups and an explicit plaintext JSON option.
+
+## Product tour
+
+### Understand the next month
+
+Forecast free or total money across five horizons, inspect the minimum balance,
+cash-gap risk, net flow, and every event that changes the projection.
+
+![Hermes balance forecast with period controls, decision metrics, and an explainable timeline](docs/assets/readme/forecast.jpg)
+
+### Give saved money a purpose
+
+Virtual funds reserve parts of real account balances for goals without creating
+separate bank accounts. Hermes tracks progress, physical coverage, free money,
+and manual or dynamic allocation.
+
+![Hermes virtual funds showing saved totals, free money, allocation mode, and goal progress](docs/assets/readme/funds.jpg)
+
+### Plan without changing today's balance
+
+Recurring rules and one-off plans stay balance-neutral until they are confirmed.
+The calendar shows exact dated amounts and keeps overdue actions explicit.
+
+![Hermes calendar showing recurring income, expenses, and one-off plans](docs/assets/readme/calendar.jpg)
+
+<details>
+<summary><strong>Responsive interface</strong></summary>
+
+Hermes adapts its navigation and content hierarchy for narrow screens rather
+than shrinking the desktop layout mechanically.
+
+<p align="center">
+  <img src="docs/assets/readme/overview-mobile.jpg" width="390" alt="Hermes overview on a narrow mobile viewport">
+</p>
+
+</details>
+
+The current runtime interface is in Russian. A multilingual foundation and an
+English interface are planned after the stable self-hosted core.
 
 ## Current capabilities
 
-- one-time setup with atomic JSON restore or a fresh start with optional expense
-  category templates, a master password, base currency and IANA timezone;
-- Argon2id password storage and revocable server-side browser sessions;
-- protected API and application shell, login throttling and session termination;
-- base settings and master-password changes;
-- cash, debit and savings accounts with derived balances and archive/restore;
-- exact initial-balance adjustments stored in the operation ledger;
-- income/expense category trees with archive-safe lifecycle rules;
-- income, expense, transfer and balance-adjustment CRUD with exact movements;
-- collapsible journal filters, details and pagination with optimistic edit protection;
-- virtual funds, physical/fund/reserve/free coverage, an account-level dynamic
-  reserve, automatic goal refill, redistribution between accounts and funds,
-  and progress;
-- recurring income, expense and transfer rules with selectable weekly weekdays,
-  weekly/monthly intervals, exact dated snapshots and optional series shifting;
-- exact addition and subtraction directly in operation and scheduling amount
-  fields, with comma and dot decimal separators;
-- monthly calendar, upcoming/overdue list and confirm/postpone/cancel actions;
-- idempotent confirmation that atomically links one posted financial operation;
-- per-account and combined balance forecasts with five horizons, risk warnings
-  and exact explanations for every changing date;
-- income/expense reports for a month or custom period, with category drill-down;
-- an optional default account for new income and expense operations;
-- protected `.hermes` and explicit plaintext JSON export, preview and
-  transactional restore.
+### Everyday finance
 
-## Planned directions
+- cash, debit, and savings accounts with ledger-derived balances;
+- income, expense, transfer, and balance-adjustment operations;
+- required income/expense categories, nested category trees, and archive-safe
+  historical references;
+- journal filtering, details, pagination, category reports, and monthly or
+  custom reporting periods;
+- exact addition and subtraction directly in monetary inputs.
 
-- deterministic “What if?” decision scenarios with optional local-language
-  assistance that never replaces exact financial calculation;
-- simplified loans, installment plans and two-way debts;
-- staged CSV/Excel import with preview and duplicate review;
-- operation templates, improved search and saved filters;
-- automatic and rotated local backups;
-- release hardening for upgrades, reverse proxies and published container images.
+### Funds and available money
 
-## Stack
+- virtual funds backed by money on physical accounts;
+- per-account physical, fund-reserved, reserve, and free coverage;
+- manual percentages or dynamic allocation based on relative unfilled progress;
+- atomic allocation, redistribution, fund-to-fund movement, and fund-aware
+  account transfers;
+- target caps, automatic reserve refill, and deterministic rounding.
 
-- Python 3.13, FastAPI, SQLAlchemy 2, Alembic, Pydantic and PostgreSQL;
-- Angular 22 with standalone components and strict TypeScript;
-- pytest, Ruff, mypy, ESLint, Prettier and Vitest;
-- Docker and Docker Compose; modular-monolith architecture.
+### Planning and forecasting
 
-## Quick start for development
+- recurring income, expense, and transfer rules;
+- one-off future plans that remain balance-neutral until applied;
+- monthly calendar, upcoming and overdue states, confirmation, postponement,
+  cancellation, and optional recurring-series shifting;
+- per-account and combined forecasts across two weeks, one month, one quarter,
+  six months, or one year;
+- free-money and total-balance modes, risk warnings, and exact event explanations.
 
-Requirements: Python 3.13, Node.js 22.22.3 or newer within the Angular-supported
-Node 22 line, npm and Docker Compose.
+### Access and data protection
+
+- atomic first-run setup or restore, master password, base currency, and IANA
+  timezone;
+- Argon2id password storage, revocable server-side sessions, CSRF protection,
+  login throttling, and idle-session expiry;
+- authenticated `.hermes` backup envelopes plus explicit plaintext JSON export;
+- previewed, validated, transactional restore.
+
+See the [current project status](docs/project-status.md) for the factual
+verification snapshot, known limitations, and the next release gate.
+
+## Run locally
+
+The shortest production-like path requires Docker 29+ with Docker Compose v2
+and `make`.
+
+```bash
+cp .env.example .env
+# Replace POSTGRES_PASSWORD in .env.
+# For loopback-only plain HTTP, set HERMES_COOKIE_SECURE=false.
+make up
+```
+
+Open `http://localhost:8000`. Angular and the API share one HTTP entrypoint, and
+PostgreSQL remains inside the Compose network. Stop the application with
+`make down`.
+
+> [!WARNING]
+> Do not expose an uninitialized Hermes instance or PostgreSQL directly to the
+> internet. Remote access requires a protected network, VPN, or a maintained
+> HTTPS reverse proxy with secure cookies enabled. Read the
+> [security policy](SECURITY.md) before using real financial data.
+
+## Development
+
+Requirements: Python 3.13, Node.js 22.22.3 or newer within the supported Node 22
+line, npm, Docker Compose, and `make`.
 
 ```bash
 cp .env.example .env
@@ -81,35 +154,85 @@ make setup
 make dev
 ```
 
-Open `http://localhost:4200`. The frontend dev server proxies `/api` to the
-backend on `http://localhost:8000`.
+Open `http://localhost:4200`. The Angular development server proxies `/api` to
+FastAPI on `http://localhost:8000`.
 
-## Production-like Compose run
-
-Review and replace the example database password in `.env`. For a loopback-only
-plain-HTTP run, also set `HERMES_COOKIE_SECURE=false`; keep it `true` when the
-browser reaches Hermes through HTTPS. Then run:
+Run the complete local quality gates with:
 
 ```bash
-make up
+make test
+make lint
+make typecheck
 ```
 
-Open `http://localhost:8000`. Angular and the API share that one entrypoint.
-PostgreSQL is available only inside the Compose network. Stop services with
-`make down`.
+The [local development guide](docs/operations/local-development.md) documents
+individual commands, dependency changes, migrations, and disposable PostgreSQL
+integration tests.
 
-## Documentation
+## Architecture
+
+Hermes is a modular monolith: one deployable application, one PostgreSQL
+database, and explicit public boundaries between financial domains.
+
+```mermaid
+flowchart LR
+    Browser[Owner browser] --> Entry[Single HTTP entrypoint]
+    Entry --> Angular[Angular application]
+    Entry --> API[FastAPI modular monolith]
+    API --> Domains[Domain modules]
+    Domains --> PostgreSQL[(PostgreSQL)]
+```
+
+- Python 3.13, FastAPI, SQLAlchemy 2, Alembic, Pydantic, and PostgreSQL;
+- Angular 22 with standalone components and strict TypeScript;
+- pytest, Ruff, mypy, ESLint, Prettier, and Vitest;
+- Docker and Docker Compose;
+- no microservices, broker, background worker, Redis, Kubernetes, or external
+  cloud data dependency.
+
+Read the [architecture overview](docs/architecture/overview.md),
+[module boundaries](docs/architecture/module-boundaries.md), and
+[data flows](docs/architecture/data-flow.md) before changing cross-domain
+behavior.
+
+## Status and roadmap
+
+Hermes is a personal project whose direction follows the maintainer's own use.
+The current `0.x` line is internal testing; `1.0.0` requires a separate owner
+decision after real-data acceptance and release hardening.
+
+The long-term north star is **Oracle · What if?**: deterministic temporary
+scenarios that compare a financial decision with the baseline forecast without
+changing the ledger or confirmed plan. Oracle is planned and is not part of the
+current release.
 
 - [Current project status](docs/project-status.md)
 - [Development roadmap](docs/roadmap.md)
+- [Changelog](CHANGELOG.md)
+
+## Documentation and support
+
 - [Documentation map](docs/index.md)
-- [Architecture overview](docs/architecture/overview.md)
-- [Local development](docs/operations/local-development.md)
-- [Contribution guide](CONTRIBUTING.md)
+- [UI/UX contract](DESIGN.md)
+- [Deployment runbook](docs/operations/deployment.md)
+- [Backup and restore](docs/operations/backup-and-restore.md)
 - [Security policy](SECURITY.md)
+
+For defects and focused proposals, use the
+[GitHub issue tracker](https://github.com/Gollardo/hermes/issues). Do not include
+credentials, backup contents, or personal financial data in an issue.
+
+## Contributing
+
+Issues and pull requests are welcome when they align with the project's
+direction, but there is no guaranteed response or review schedule. Keep changes
+small, preserve module boundaries and financial invariants, and include checks
+appropriate to the risk.
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before starting implementation.
 
 ## License
 
-Copyright holders license Hermes under
+Copyright holders license Hermes under the
 [GNU Affero General Public License v3.0 or later](LICENSE), SPDX identifier
 `AGPL-3.0-or-later`.
