@@ -112,9 +112,12 @@ access. Direct public-internet exposure is unsupported.
 - A busy calendar day exposes an “More” control that opens every event of that
   day in a modal. Opening an unconfirmed recurring event edits its rule, while
   opening an unconfirmed one-off event opens the one-off plan editor. The
-  Operations journal also shows pending and postponed one-off plans in a
-  distinct balance-neutral section; its shared filters apply where their
-  meaning is available, and a plan can be edited or cancelled from there.
+  Operations journal shows one-off plans due on server-provided application
+  today in a distinct balance-neutral attention section. Each can be edited or
+  explicitly applied from the journal after a consequence confirmation; a
+  successful application refreshes the actual journal. Other pending or
+  postponed plans remain in a separate section, and shared filters apply where
+  their meaning is available.
 - The owner decision from 2026-08-18 confirms the decision-first “Oracle · What
   if?” direction. Temporary alternatives compare with a baseline, change neither
   ledger nor plan, and persist only by choice. The owner may set a stop-loss,

@@ -376,11 +376,60 @@
         @if (operations().length === 0) {
           <p class="empty-state">Операций по выбранным условиям нет.</p>
         }
+        @if (loadingTodayPlans()) {
+          <p class="loading-note" role="status">Загружаем разовые планы на сегодня…</p>
+        }
+        @if (todayPlannedOperations().length > 0) {
+          <section
+            class="planned-operation-list today-planned-operation-list"
+            aria-labelledby="today-plans-title"
+          >
+            <div class="planned-operation-heading">
+              <div class="planned-operation-title">
+                <h3 id="today-plans-title">Разовые планы на сегодня</h3>
+                <span class="count-pill">{{ todayPlannedOperations().length }}</span>
+              </div>
+              <p>Пока не влияют на фактический остаток</p>
+            </div>
+            @for (plan of todayPlannedOperations(); track plan.id) {
+              <article class="operation-row planned-operation-row today-planned-operation-row">
+                <button type="button" class="row-main" (click)="editPlan(plan)">
+                  <span class="operation-copy"
+                    ><strong>{{
+                      plan.description || plan.category_name || operationTypeLabel(plan.type)
+                    }}</strong
+                    ><small
+                      >На сегодня · {{ operationTypeLabel(plan.type) }} ·
+                      {{ plannedOperationContext(plan) }}</small
+                    ></span
+                  >
+                  <span class="operation-amount"
+                    >{{ signedAmount(plan) | money }} {{ baseCurrency() }}</span
+                  >
+                  <span class="operation-disclosure" aria-hidden="true">›</span>
+                  <span class="visually-hidden">Редактировать разовую плановую операцию</span>
+                </button>
+                <div class="planned-row-actions">
+                  <button type="button" class="secondary" (click)="editPlan(plan)">
+                    Редактировать
+                  </button>
+                  <button
+                    type="button"
+                    (click)="applyPlanToday(plan)"
+                    [disabled]="isConfirmingPlan(plan)"
+                  >
+                    {{ isConfirmingPlan(plan) ? 'Применяем…' : 'Применить сегодня' }}
+                  </button>
+                </div>
+              </article>
+            }
+          </section>
+        }
         @if (plannedOperations().length > 0) {
           <section class="planned-operation-list" aria-labelledby="planned-operations-title">
             <div class="planned-operation-heading">
               <div class="planned-operation-title">
-                <h3 id="planned-operations-title">Разовые планы</h3>
+                <h3 id="planned-operations-title">Другие разовые планы</h3>
                 <span class="count-pill">{{ plannedOperations().length }}</span>
               </div>
               <p>Не влияют на фактический остаток</p>

@@ -160,6 +160,29 @@
 .planned-operation-row .operation-amount {
   color: var(--ink);
 }
+.today-planned-operation-list {
+  border-top-color: var(--accent-soft);
+}
+.today-planned-operation-row {
+  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.today-planned-operation-row .row-main {
+  min-width: 0;
+}
+.planned-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  padding: 0.45rem 0.25rem 0.45rem 0.75rem;
+}
+.planned-row-actions button {
+  margin: 0;
+  min-height: 2.2rem;
+  white-space: nowrap;
+}
 .operation-row {
   border-bottom: 1px solid var(--line);
 }
@@ -354,5 +377,12 @@
   }
   .row-actions {
     justify-content: flex-start;
+  }
+  .today-planned-operation-row {
+    grid-template-columns: 1fr;
+  }
+  .planned-row-actions {
+    justify-content: flex-start;
+    padding: 0 0.25rem 0.6rem;
   }
 }

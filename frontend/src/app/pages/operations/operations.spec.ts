@@ -84,6 +84,8 @@ describe('OperationsPage', () => {
     focusedOperation?: TestOperation;
     expectedJournalParams?: Record<string, string>;
     plans?: object[];
+    todayPlans?: object[];
+    todayPlansTotal?: number;
   }): void {
     fixture.detectChanges();
     if (focusedId) {
@@ -133,17 +135,39 @@ describe('OperationsPage', () => {
       total: options?.total ?? operations.length,
       total_amount: options?.totalAmount ?? '0.0000',
     });
+    const applicationToday = options?.applicationToday ?? '2026-08-31';
+    const plans = options?.plans ?? [];
     http
       .expectOne(
         (request) =>
           request.url === '/api/v1/scheduling/occurrences' &&
-          request.params.getAll('source_kind')?.includes('one_off') === true,
+          request.params.getAll('source_kind')?.includes('one_off') === true &&
+          !(
+            request.params.get('due_from') === applicationToday &&
+            request.params.get('due_to') === applicationToday
+          ),
       )
       .flush({
-        items: options?.plans ?? [],
+        items: plans,
         page: 1,
         page_size: 367,
-        total: options?.plans?.length ?? 0,
+        total: plans.length,
+      });
+    const todayPlans =
+      options?.todayPlans ??
+      plans.filter((plan) => (plan as { due_on?: string }).due_on === applicationToday);
+    http
+      .expectOne(
+        (request) =>
+          request.url === '/api/v1/scheduling/occurrences' &&
+          request.params.get('due_from') === applicationToday &&
+          request.params.get('due_to') === applicationToday,
+      )
+      .flush({
+        items: todayPlans,
+        page: 1,
+        page_size: 367,
+        total: options?.todayPlansTotal ?? todayPlans.length,
       });
     fixture.detectChanges();
     const add = fixture.nativeElement.querySelector('.create-menu-trigger') as HTMLButtonElement;
@@ -226,7 +250,7 @@ describe('OperationsPage', () => {
       ],
     });
 
-    expect(fixture.nativeElement.textContent).toContain('Разовые планы');
+    expect(fixture.nativeElement.textContent).toContain('Другие разовые планы');
     expect(fixture.nativeElement.textContent).toContain('10 сентября 2026');
     const plan = fixture.nativeElement.querySelector(
       '.planned-operation-row .row-main',
@@ -303,8 +327,150 @@ describe('OperationsPage', () => {
       .expectOne((candidate) => candidate.url === '/api/v1/operations')
       .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
     http
-      .expectOne((candidate) => candidate.url === '/api/v1/scheduling/occurrences')
-      .flush({ items: [], page: 1, page_size: 367, total: 0 });
+      .match((candidate) => candidate.url === '/api/v1/scheduling/occurrences')
+      .forEach((candidate) => candidate.flush({ items: [], page: 1, page_size: 367, total: 0 }));
+  });
+
+  it('applies a one-off plan due today and does not duplicate it among other plans', () => {
+    const plan = {
+      id: 'plan-today',
+      source_kind: 'one_off',
+      scheduled_on: '2026-08-31',
+      due_on: '2026-08-31',
+      status: 'pending',
+      type: 'expense',
+      amount: '12.5000',
+      description: 'Insurance',
+      account_id: 'account-1',
+      account_name: 'Main',
+      destination_account_id: null,
+      destination_account_name: null,
+      category_id: 'category-1',
+      category_name: 'Food',
+      allocate_to_funds: false,
+      version: 3,
+    };
+    flushInitial({ plans: [plan] });
+
+    expect(fixture.nativeElement.textContent).toContain('Разовые планы на сегодня');
+    expect(fixture.nativeElement.textContent).not.toContain('Другие разовые планы');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (
+      fixture.nativeElement.querySelector(
+        '.planned-row-actions button:last-child',
+      ) as HTMLButtonElement
+    ).click();
+
+    const request = http.expectOne('/api/v1/scheduling/occurrences/plan-today/confirm');
+    expect(request.request.body).toEqual({ version: 3 });
+    request.flush({});
+    expect(window.confirm).toHaveBeenCalledWith(
+      expect.stringContaining('текущий день Hermes в момент применения'),
+    );
+    http.expectOne('/api/v1/accounts').flush([]);
+    http.expectOne('/api/v1/categories').flush([]);
+    http.expectOne('/api/v1/funds/summary').flush({ funds: [], positions: [] });
+    http
+      .expectOne((candidate) => candidate.url === '/api/v1/operations')
+      .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+    http
+      .match((candidate) => candidate.url === '/api/v1/scheduling/occurrences')
+      .forEach((candidate) => candidate.flush({ items: [], page: 1, page_size: 367, total: 0 }));
+  });
+
+  it('loads every page of plans due today', () => {
+    const firstPlan = {
+      id: 'plan-today-1',
+      source_kind: 'one_off',
+      scheduled_on: '2026-08-31',
+      due_on: '2026-08-31',
+      status: 'pending',
+      type: 'income',
+      amount: '1.0000',
+      description: 'First',
+      account_id: 'account-1',
+      account_name: 'Main',
+      destination_account_id: null,
+      destination_account_name: null,
+      category_id: 'category-1',
+      category_name: 'Food',
+      allocate_to_funds: false,
+      version: 1,
+    };
+    const firstPage = Array.from({ length: 367 }, (_, index) => ({
+      ...firstPlan,
+      id: `plan-today-${index + 1}`,
+      description: index === 0 ? 'First' : `Plan ${index + 1}`,
+    }));
+    flushInitial({ todayPlans: firstPage, todayPlansTotal: 368 });
+
+    http
+      .expectOne(
+        (request) =>
+          request.url === '/api/v1/scheduling/occurrences' &&
+          request.params.get('due_from') === '2026-08-31' &&
+          request.params.get('page') === '2',
+      )
+      .flush({
+        items: [
+          {
+            ...firstPlan,
+            id: 'plan-today-368',
+            description: 'Last',
+          },
+        ],
+        page: 2,
+        page_size: 367,
+        total: 368,
+      });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('First');
+    expect(fixture.nativeElement.textContent).toContain('Last');
+  });
+
+  it('keeps a plan actionable after its application is rejected', () => {
+    const plan = {
+      id: 'plan-today',
+      source_kind: 'one_off',
+      scheduled_on: '2026-08-31',
+      due_on: '2026-08-31',
+      status: 'pending',
+      type: 'expense',
+      amount: '12.5000',
+      description: 'Insurance',
+      account_id: 'account-1',
+      account_name: 'Main',
+      destination_account_id: null,
+      destination_account_name: null,
+      category_id: 'category-1',
+      category_name: 'Food',
+      allocate_to_funds: false,
+      version: 3,
+    };
+    flushInitial({ plans: [plan] });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (
+      fixture.nativeElement.querySelector(
+        '.planned-row-actions button:last-child',
+      ) as HTMLButtonElement
+    ).click();
+
+    http
+      .expectOne('/api/v1/scheduling/occurrences/plan-today/confirm')
+      .flush({ detail: 'Insufficient balance' }, { status: 409, statusText: 'Conflict' });
+    http
+      .expectOne((candidate) => candidate.url === '/api/v1/operations')
+      .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+    http
+      .match((candidate) => candidate.url === '/api/v1/scheduling/occurrences')
+      .forEach((candidate) =>
+        candidate.flush({ items: [plan], page: 1, page_size: 367, total: 1 }),
+      );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Не удалось применить разовый план.');
+    expect(fixture.nativeElement.textContent).toContain('Применить сегодня');
   });
 
   it('sends a future date to one-off planning and explains the delayed balance effect', () => {

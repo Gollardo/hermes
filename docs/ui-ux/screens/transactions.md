@@ -18,6 +18,14 @@ disclosure. Detail clearly separates type, physical movements, and virtual
 movements. A table and separate detail layer remain future alternatives rather
 than first-release requirements.
 
+Pending one-off plans due on server-provided application today appear in a
+separate, explicit attention section before actual operations. The section
+states that the plans have not changed the balance, supports editing, and
+requires a concise consequence confirmation before applying one plan. Applying
+the plan removes it from that section and refreshes the actual journal. Other
+one-off plans remain in a distinct secondary section, so an expected event is
+never presented as an actual journal row.
+
 ## Screen goal
 
 Serve as a precise, fast working journal of actual financial operations: enter

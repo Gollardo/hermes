@@ -140,6 +140,7 @@ export class OperationsPage implements OnInit {
   private readonly route = inject(ActivatedRoute, { optional: true });
 
   protected readonly operations = signal<Operation[]>([]);
+  protected readonly todayPlannedOperations = signal<OneOffPlan[]>([]);
   protected readonly plannedOperations = signal<OneOffPlan[]>([]);
   protected readonly focusedOperation = signal<Operation | null>(null);
   protected readonly Math = Math;
@@ -156,7 +157,9 @@ export class OperationsPage implements OnInit {
   protected readonly page = signal(1);
   protected readonly pageSize = 25;
   protected readonly loading = signal(true);
+  protected readonly loadingTodayPlans = signal(false);
   protected readonly saving = signal(false);
+  protected readonly confirmingPlanId = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly scheduledNotice = signal<string | null>(null);
   protected readonly editingId = signal<string | null>(null);
@@ -341,6 +344,45 @@ export class OperationsPage implements OnInit {
 
   protected plannedStatusLabel(plan: OneOffPlan): string {
     return plan.status === 'postponed' ? 'Перенесено на' : 'Запланировано на';
+  }
+
+  protected isConfirmingPlan(plan: OneOffPlan): boolean {
+    return this.confirmingPlanId() === plan.id;
+  }
+
+  protected applyPlanToday(plan: OneOffPlan): void {
+    const today = this.applicationToday();
+    if (!today || this.confirmingPlanId()) return;
+    const confirmed = window.confirm(
+      [
+        'Применить разовый план сегодня?',
+        'Дата факта: текущий день Hermes в момент применения.',
+        `${this.operationTypeLabel(plan.type)}: ${formatMoney(this.signedAmount(plan))} ${this.baseCurrency()}.`,
+        `Счёт: ${this.plannedOperationContext(plan)}.`,
+        'После применения изменится фактический остаток.',
+      ].join('\n'),
+    );
+    if (!confirmed) return;
+
+    this.error.set(null);
+    this.confirmingPlanId.set(plan.id);
+    this.http
+      .post<OneOffPlan>(`${environment.apiBaseUrl}/scheduling/occurrences/${plan.id}/confirm`, {
+        version: plan.version,
+      })
+      .subscribe({
+        next: () => {
+          this.confirmingPlanId.set(null);
+          this.scheduledNotice.set('Разовый план применён и добавлен в журнал.');
+          this.load();
+          this.loadDirectories();
+        },
+        error: (error: unknown) => {
+          this.confirmingPlanId.set(null);
+          this.error.set(apiErrorMessage(error, 'Не удалось применить разовый план.'));
+          this.load();
+        },
+      });
   }
 
   protected editPlan(plan: OneOffPlan): void {
@@ -688,6 +730,7 @@ export class OperationsPage implements OnInit {
           this.form.controls.occurredOn.setValue(settings.application_today);
           this.form.controls.occurredOn.markAsPristine();
         }
+        this.loadPlannedOperations(this.filters.getRawValue());
       },
       error: (error: unknown) =>
         this.error.set(apiErrorMessage(error, 'Не удалось загрузить валюту и часовой пояс.')),
@@ -785,7 +828,7 @@ export class OperationsPage implements OnInit {
         this.error.set(apiErrorMessage(error, 'Не удалось загрузить журнал.'));
       },
     });
-    this.loadPlannedOperations(filter);
+    if (this.applicationToday()) this.loadPlannedOperations(filter);
   }
 
   private loadPlannedOperations(filter: {
@@ -795,6 +838,48 @@ export class OperationsPage implements OnInit {
     type: OperationType | '';
     categoryId: string;
   }): void {
+    const params = this.oneOffPlanParams(filter);
+    const today = this.applicationToday();
+    if (!params || !today) {
+      this.todayPlannedOperations.set([]);
+      this.plannedOperations.set([]);
+      this.loadingTodayPlans.set(false);
+      return;
+    }
+
+    this.loadOneOffPlanPage(
+      params,
+      (items) =>
+        this.plannedOperations.set(
+          this.filterOneOffPlans(items, filter).filter((plan) => plan.due_on !== today),
+        ),
+      'Не удалось загрузить разовые планы.',
+    );
+
+    if (!this.todayIsWithinPeriod(filter, today)) {
+      this.todayPlannedOperations.set([]);
+      this.loadingTodayPlans.set(false);
+      return;
+    }
+    this.loadingTodayPlans.set(true);
+    this.loadAllOneOffPlans(
+      params.set('due_from', today).set('due_to', today),
+      (items) => {
+        this.todayPlannedOperations.set(this.filterOneOffPlans(items, filter));
+        this.loadingTodayPlans.set(false);
+      },
+      'Не удалось загрузить разовые планы на сегодня.',
+      () => this.loadingTodayPlans.set(false),
+    );
+  }
+
+  private oneOffPlanParams(filter: {
+    occurredFrom: string;
+    occurredTo: string;
+    accountId: string;
+    type: OperationType | '';
+    categoryId: string;
+  }): HttpParams | null {
     let params = new HttpParams()
       .set('page_size', '367')
       .append('source_kind', 'one_off')
@@ -806,21 +891,71 @@ export class OperationsPage implements OnInit {
     if (filter.type && filter.type !== 'balance_adjustment')
       params = params.set('type', filter.type);
     if (filter.type === 'balance_adjustment') {
-      this.plannedOperations.set([]);
-      return;
+      return null;
     }
+    return params;
+  }
+
+  private loadAllOneOffPlans(
+    params: HttpParams,
+    onSuccess: (items: OneOffPlan[]) => void,
+    fallbackError: string,
+    onError?: () => void,
+  ): void {
+    const items: OneOffPlan[] = [];
+    const loadPage = (page: number): void => {
+      this.http
+        .get<{ items: OneOffPlan[]; total: number }>(
+          `${environment.apiBaseUrl}/scheduling/occurrences`,
+          { params: params.set('page', page) },
+        )
+        .subscribe({
+          next: (result) => {
+            items.push(...result.items);
+            if (items.length < result.total) {
+              loadPage(page + 1);
+              return;
+            }
+            onSuccess(items);
+          },
+          error: (error: unknown) => {
+            onError?.();
+            this.error.set(apiErrorMessage(error, fallbackError));
+          },
+        });
+    };
+    loadPage(1);
+  }
+
+  private loadOneOffPlanPage(
+    params: HttpParams,
+    onSuccess: (items: OneOffPlan[]) => void,
+    fallbackError: string,
+  ): void {
     this.http
-      .get<{ items: OneOffPlan[] }>(`${environment.apiBaseUrl}/scheduling/occurrences`, { params })
+      .get<{ items: OneOffPlan[] }>(`${environment.apiBaseUrl}/scheduling/occurrences`, {
+        params: params.set('page', 1),
+      })
       .subscribe({
-        next: (result) =>
-          this.plannedOperations.set(
-            filter.categoryId
-              ? result.items.filter((plan) => plan.category_id === filter.categoryId)
-              : result.items,
-          ),
-        error: (error: unknown) =>
-          this.error.set(apiErrorMessage(error, 'Не удалось загрузить разовые планы.')),
+        next: (result) => onSuccess(result.items),
+        error: (error: unknown) => this.error.set(apiErrorMessage(error, fallbackError)),
       });
+  }
+
+  private filterOneOffPlans(items: OneOffPlan[], filter: { categoryId: string }): OneOffPlan[] {
+    return filter.categoryId
+      ? items.filter((plan) => plan.category_id === filter.categoryId)
+      : items;
+  }
+
+  private todayIsWithinPeriod(
+    filter: { occurredFrom: string; occurredTo: string },
+    today: string,
+  ): boolean {
+    return (
+      (!filter.occurredFrom || filter.occurredFrom <= today) &&
+      (!filter.occurredTo || filter.occurredTo >= today)
+    );
   }
 
   private today(): string {
