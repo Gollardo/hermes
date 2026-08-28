@@ -23,7 +23,7 @@ def legacy_backup() -> BackupDocument:
         BackupDocument(
             format="hermes-json-backup",
             schema_version=1,
-            app_version="0.5.0",
+            app_version="1.0.0",
             exported_at=now,
             data=BackupData(
                 settings=SettingsRecord(

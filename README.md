@@ -5,7 +5,7 @@
 **A self-hosted personal finance command center for exact accounting, purposeful
 savings, planned operations, and explainable cash forecasting.**
 
-[![Status: pre-1.0](https://img.shields.io/badge/status-pre--1.0-D6A84B)](docs/project-status.md)
+[![Status: stable](https://img.shields.io/badge/status-stable-347A5A)](docs/project-status.md)
 [![Self-hosted](https://img.shields.io/badge/deployment-self--hosted-347A5A)](docs/operations/deployment.md)
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-4C6EF5)](LICENSE)
 
@@ -22,10 +22,10 @@ future balance. It runs on your own computer or home server, stores data in your
 PostgreSQL database, and does not depend on an external cloud service.
 
 > [!IMPORTANT]
-> Hermes is an internal pre-1.0 application. Version `0.5.0` is implemented, but
-> owner acceptance on restored real data and the first public-release decision
-> remain open. The current deployment boundary is loopback or a trusted network;
-> direct public-internet exposure is unsupported.
+> Hermes `1.0.0` is the first public release. It supports a single owner in a
+> protected environment: loopback or a trusted network, with VPN or a maintained
+> HTTPS reverse proxy for remote access. Direct public-internet exposure remains
+> unsupported.
 
 ## Why Hermes
 
@@ -198,8 +198,8 @@ behavior.
 ## Status and roadmap
 
 Hermes is a personal project whose direction follows the maintainer's own use.
-The current `0.x` line is internal testing; `1.0.0` requires a separate owner
-decision after real-data acceptance and release hardening.
+Version `1.0.0` is the first stable public release. Compatibility and release
+operations are documented in the [release lifecycle](docs/operations/release.md).
 
 The long-term north star is **Oracle · What if?**: deterministic temporary
 scenarios that compare a financial decision with the baseline forecast without

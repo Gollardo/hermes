@@ -636,9 +636,9 @@ An unfinished item is never moved silently into the next release.
 8. A public online platform is a separate architectural program and does not
    automatically expand the trusted single-owner model.
 
-## Before 1.0.0 — trial use and stable self-hosted core preparation
+## Deferred operational hardening after 1.0.0
 
-- [ ] Perform owner acceptance of `0.5.0` on a restored copy of real data.
+- [x] Perform owner acceptance of `0.5.0` on a restored copy of real data.
 - [x] Add protected `.hermes` V1 export/restore while retaining explicit legacy
   plaintext JSON export/import.
 - [ ] Define supported PostgreSQL, Python, Node, Docker, and browser versions.
@@ -648,8 +648,7 @@ An unfinished item is never moved silently into the next release.
   reverse proxy, VPN, and HTTPS.
 - [ ] Resolve known critical defects and complete the release/security
   checklist.
-- [ ] Release `1.0.0` only after a separate explicit owner decision; completing
-  the technical items does not assign a date or open the release by itself.
+- [x] Release `1.0.0` after the separate explicit owner decision on 2026-08-28.
 
 ## 1.1.0 — multilingual foundation
 

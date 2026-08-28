@@ -10,19 +10,21 @@ map lives in [index.md](./index.md).
 
 ## Current phase
 
-**Internal application version `0.5.0` is implemented, but the public release
-gate remains open.** Previous version numbers were owner development milestones
-and were not published as GitHub Releases or public git tags.
+**Version `1.0.0` is the first stable public release.** Previous version numbers
+were owner development milestones and were not published as GitHub Releases or
+public git tags.
 
-The next action is owner acceptance of `0.5.0` on restored real data, followed
-by a decision on the first public tag.
+On 2026-08-28, the owner accepted Hermes on a restored copy of real data and
+approved publication of the first public tag. The next action is to maintain
+the `1.x` line through focused fixes and complete the deferred operational
+hardening listed in the roadmap.
 
-The owner confirmed the version policy on 2026-08-18: the current `0.x` series
-remains internal testing, the first stable public release will be `1.0.0` only
-after a separate owner decision, and major product generations continue as
-`2.0.0`, `3.0.0`, and so on. Intermediate improvements use minor and patch
-numbers. The scopes of those future generations remain proposals. The separate
-Hermes Online feasibility program is outside the current release gate.
+The owner confirmed the version policy on 2026-08-18: the `0.x` series remained
+internal testing, `1.0.0` is the first stable public release, and major product
+generations continue as `2.0.0`, `3.0.0`, and so on. Intermediate improvements
+use minor and patch numbers. The scopes of those future generations remain
+proposals. The separate Hermes Online feasibility program is outside the current
+release scope.
 
 The owner also changed the long-term north star on 2026-08-18. Hermes should
 primarily answer: “What will happen if I make this financial decision now?”. The
@@ -133,19 +135,19 @@ access. Direct public-internet exposure is unsupported.
 
 ## Verified capabilities
 
-### 0.5.0 verification snapshot
+### 1.0.0 verification snapshot
 
-- The full PostgreSQL integration suite passes 61/61 against disposable
-  databases upgraded through `0013_fund_reserve`; this includes reserve
-  creation with no funds, cross-account automatic refill, manual release,
-  exact operation-linked rollback, backup restore and forecast contracts.
-- Before the one-off-plan worktree change, backend unit tests passed 101/101 and frontend tests passed 121/121. Ruff, Python
-  formatting, Angular lint, Prettier, mypy, TypeScript, documentation checks,
-  `git diff --check`, and the production Angular build pass. Alembic reports one
-  head at `0013_fund_reserve` and no ungenerated upgrade operations. Angular
-  component-style warnings begin at 4 KiB and remain visible; their hard build
-  limit is 10 KiB, which accommodates the currently compiled 8.13 KiB style
-  without masking future growth.
+- On 2026-08-28, backend tests passed 107/107, frontend tests passed 131/131,
+  and the full PostgreSQL integration suite passed 65/65 against isolated
+  disposable PostgreSQL 17 databases. The suite covers migrations through
+  `0014_one_off_plans`, backups and restores, financial atomicity, reserve
+  behavior, scheduling, and concurrency boundaries.
+- Ruff, Python formatting, Angular lint, Prettier, mypy, TypeScript,
+  documentation checks, `git diff --check`, and the production Docker image
+  build pass. Alembic reports one head at `0014_one_off_plans` and no
+  ungenerated upgrade operations. Angular component-style warnings begin at
+  4 KiB and remain visible; their hard build limit is 10 KiB, which accommodates
+  the currently compiled 8.13 KiB style without masking future growth.
 
 ### First run and access
 

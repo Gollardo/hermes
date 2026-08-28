@@ -74,6 +74,7 @@ design system.
 - [Local development](operations/local-development.md)
 - [Deployment runbook](operations/deployment.md)
 - [Backup and restore](operations/backup-and-restore.md)
+- [Release lifecycle](operations/release.md)
 
 Each document distinguishes owner-confirmed rules, initialization decisions,
 assumptions, open questions and future work where those categories apply.

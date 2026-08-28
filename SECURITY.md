@@ -31,7 +31,7 @@ cookies, protected Docker volumes and tested backups.
   enforces the idle limit independently on every protected request.
 
 The authentication design is documented in
-[the authentication domain](docs/domains/authentication.md). The current
-pre-1.0 application has not undergone an external security audit. Password
+[the authentication domain](docs/domains/authentication.md). The current stable
+application has not undergone an external security audit. Password
 recovery, content-security policy and tested reverse-proxy configurations remain
 future hardening work.

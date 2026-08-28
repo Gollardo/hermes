@@ -1,6 +1,6 @@
 # Contributing
 
-Hermes is in its pre-1.0 release line. Keep changes small, explicit and
+Hermes is in its stable `1.x` release line. Keep changes small, explicit and
 supported by tests or documentation appropriate to their risk.
 
 ## Environment
