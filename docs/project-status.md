@@ -6,7 +6,7 @@ map lives in [index.md](./index.md).
 
 ## Last updated
 
-2026-08-23
+2026-08-28
 
 ## Current phase
 
@@ -142,8 +142,10 @@ access. Direct public-internet exposure is unsupported.
 - Before the one-off-plan worktree change, backend unit tests passed 101/101 and frontend tests passed 121/121. Ruff, Python
   formatting, Angular lint, Prettier, mypy, TypeScript, documentation checks,
   `git diff --check`, and the production Angular build pass. Alembic reports one
-  head at `0013_fund_reserve` and no ungenerated upgrade operations. Existing
-  Angular component-style budget warnings remain non-blocking.
+  head at `0013_fund_reserve` and no ungenerated upgrade operations. Angular
+  component-style warnings begin at 4 KiB and remain visible; their hard build
+  limit is 10 KiB, which accommodates the currently compiled 8.13 KiB style
+  without masking future growth.
 
 ### First run and access
 
