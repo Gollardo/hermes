@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormGroup } from '@angular/forms';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 
 import { SchedulingPage } from './scheduling';
 
@@ -164,7 +164,7 @@ describe('SchedulingPage recurrence editor', () => {
     expect(fixture.nativeElement.querySelector('.upcoming-item.overdue')).not.toBeNull();
   });
 
-  it('opens every event for a day from its date and opens a recurring event in its rule editor', () => {
+  it('opens every event for a day and routes a recurring occurrence to confirmation editing', () => {
     flushInitial(
       [
         OCCURRENCE,
@@ -182,11 +182,14 @@ describe('SchedulingPage recurrence editor', () => {
 
     date.click();
     fixture.detectChanges();
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     (
       fixture.nativeElement.querySelector('.calendar-day-dialog-button') as HTMLButtonElement
     ).click();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Обновить расписание');
+    expect(navigate).toHaveBeenCalledWith(['/operations'], {
+      queryParams: { occurrence: 'occurrence-1' },
+    });
   });
 
   it('blocks a missing monthly date policy and submits an exact rule snapshot', () => {

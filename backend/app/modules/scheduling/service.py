@@ -15,7 +15,11 @@ from app.modules.categories.contracts import (
     validate_category_reference,
 )
 from app.modules.operations.contracts import OperationType
-from app.modules.scheduling.contracts import OccurrenceConfirmationDraft, OccurrencePoster
+from app.modules.scheduling.contracts import (
+    OccurrenceConfirmationDraft,
+    OccurrenceConfirmationOverride,
+    OccurrencePoster,
+)
 from app.modules.scheduling.models import (
     ExpectedOccurrence,
     OccurrenceSourceKind,
@@ -149,7 +153,9 @@ def _today(session: Session) -> date:
 
 def _validate_schedule_references(
     session: Session,
-    payload: RecurringRuleCreateRequest | OneOffPlanCreateRequest,
+    payload: (
+        RecurringRuleCreateRequest | OneOffPlanCreateRequest | OccurrenceConfirmationOverride
+    ),
     *,
     require_active: bool,
 ) -> None:
@@ -671,6 +677,7 @@ def confirm_occurrence(
     *,
     expected_version: int,
     amount: Decimal | None = None,
+    override: OccurrenceConfirmationOverride | None = None,
     poster: OccurrencePoster,
     today: date | None = None,
 ) -> ExpectedOccurrenceResponse:
@@ -681,26 +688,66 @@ def confirm_occurrence(
         raise SchedulingConflictError
     if occurrence.status not in {OccurrenceStatus.PENDING, OccurrenceStatus.POSTPONED}:
         raise InvalidOccurrenceTransitionError
-    effective_amount = Decimal(amount if amount is not None else occurrence.amount)
+    if override is not None:
+        _validate_schedule_references(session, override, require_active=True)
+    effective_type = override.type if override is not None else occurrence.type
+    if override is not None:
+        effective_amount = Decimal(override.amount)
+    elif amount is not None:
+        effective_amount = Decimal(amount)
+    else:
+        effective_amount = Decimal(occurrence.amount)
+    effective_description = override.description if override is not None else occurrence.description
+    effective_account_id = override.account_id if override is not None else occurrence.account_id
+    effective_destination_account_id = (
+        override.destination_account_id
+        if override is not None
+        else occurrence.destination_account_id
+    )
+    effective_category_id = override.category_id if override is not None else occurrence.category_id
+    effective_allocate_to_funds = (
+        override.allocate_to_funds if override is not None else occurrence.allocate_to_funds
+    )
+    resolved_today = today or _today(session)
     draft = OccurrenceConfirmationDraft(
-        type=occurrence.type,
-        occurred_on=(today or _today(session))
-        if occurrence.source_kind == OccurrenceSourceKind.ONE_OFF
-        else occurrence.due_on,
+        type=effective_type,
+        occurred_on=(
+            resolved_today
+            if occurrence.source_kind == OccurrenceSourceKind.ONE_OFF
+            or occurrence.due_on > resolved_today
+            else occurrence.due_on
+        ),
         amount=effective_amount,
-        description=occurrence.description,
-        account_id=occurrence.account_id,
-        destination_account_id=occurrence.destination_account_id,
-        category_id=occurrence.category_id,
-        allocate_to_funds=occurrence.allocate_to_funds,
+        description=effective_description,
+        account_id=effective_account_id,
+        destination_account_id=effective_destination_account_id,
+        category_id=effective_category_id,
+        allocate_to_funds=effective_allocate_to_funds,
     )
     operation_id = poster(draft)
-    if Decimal(occurrence.amount) != effective_amount:
+    snapshot_changed = any(
+        (
+            occurrence.type != effective_type,
+            Decimal(occurrence.amount) != effective_amount,
+            occurrence.description != effective_description,
+            occurrence.account_id != effective_account_id,
+            occurrence.destination_account_id != effective_destination_account_id,
+            occurrence.category_id != effective_category_id,
+            occurrence.allocate_to_funds != effective_allocate_to_funds,
+        )
+    )
+    if snapshot_changed:
+        occurrence.type = effective_type
         occurrence.amount = effective_amount
+        occurrence.description = effective_description
+        occurrence.account_id = effective_account_id
+        occurrence.destination_account_id = effective_destination_account_id
+        occurrence.category_id = effective_category_id
+        occurrence.allocate_to_funds = effective_allocate_to_funds
         occurrence.manually_modified = True
     _link_confirmed_operation(occurrence, operation_id)
     session.flush()
-    return _occurrence_response(session, occurrence, today=today or _today(session))
+    return _occurrence_response(session, occurrence, today=resolved_today)
 
 
 def _link_confirmed_operation(occurrence: ExpectedOccurrence, operation_id: UUID) -> None:

@@ -34,6 +34,17 @@ class OccurrenceConfirmationDraft:
     allocate_to_funds: bool
 
 
+@dataclass(frozen=True, slots=True)
+class OccurrenceConfirmationOverride:
+    type: OperationType
+    amount: Decimal
+    description: str | None
+    account_id: UUID
+    destination_account_id: UUID | None
+    category_id: UUID | None
+    allocate_to_funds: bool
+
+
 OccurrencePoster = Callable[[OccurrenceConfirmationDraft], UUID]
 
 
@@ -43,6 +54,7 @@ def confirm_occurrence(
     *,
     expected_version: int,
     amount: Decimal | None,
+    override: OccurrenceConfirmationOverride | None,
     poster: OccurrencePoster,
 ) -> "ExpectedOccurrenceResponse":
     """Confirm through Scheduling while the supplied poster owns financial orchestration."""
@@ -53,6 +65,7 @@ def confirm_occurrence(
         occurrence_id,
         expected_version=expected_version,
         amount=amount,
+        override=override,
         poster=poster,
     )
 
@@ -205,6 +218,7 @@ def has_schedule_data(session: Session) -> bool:
 __all__ = [
     "ForecastScheduleSnapshot",
     "OccurrenceConfirmationDraft",
+    "OccurrenceConfirmationOverride",
     "OccurrencePoster",
     "OccurrenceSourceKind",
     "OccurrenceStatus",

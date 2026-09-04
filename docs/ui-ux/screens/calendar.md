@@ -41,6 +41,10 @@ events merely because they are within the next 30 days.
 - A date with events and its daily amount open the complete day list. The list
   retains every occurrence title, type, status and amount; color and
   strike-through remain supplementary signals there.
+- Opening an actionable recurring occurrence starts a reviewed confirmation in
+  the established operation composer instead of editing its rule. The composer
+  allows the selected occurrence's operation fields to change, states both the
+  plan date and application-today fact date, and keeps rule editing separate.
 - A daily amount is a restrained bordered control, not an occurrence card.
   Negative daily amounts use the existing soft risk surface with a textual
   minus sign; a day with overdue occurrences also states their count in text

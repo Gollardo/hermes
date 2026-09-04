@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
@@ -119,6 +119,12 @@ interface OneOffPlan {
   version: number;
 }
 
+interface ExpectedOccurrence extends Omit<OneOffPlan, 'source_kind'> {
+  source_kind: 'recurring' | 'one_off';
+  rule_id: string | null;
+  actual_operation_id: string | null;
+}
+
 @Component({
   selector: 'app-operations-page',
   imports: [
@@ -138,6 +144,7 @@ export class OperationsPage implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly builder = inject(NonNullableFormBuilder);
   private readonly route = inject(ActivatedRoute, { optional: true });
+  private readonly router = inject(Router);
 
   protected readonly operations = signal<Operation[]>([]);
   protected readonly todayPlannedOperations = signal<OneOffPlan[]>([]);
@@ -164,6 +171,7 @@ export class OperationsPage implements OnInit {
   protected readonly scheduledNotice = signal<string | null>(null);
   protected readonly editingId = signal<string | null>(null);
   protected readonly editingPlan = signal<OneOffPlan | null>(null);
+  protected readonly confirmingOccurrence = signal<ExpectedOccurrence | null>(null);
   protected readonly expandedId = signal<string | null>(null);
   protected readonly formOpen = signal(false);
   protected readonly filtersOpen = signal(false);
@@ -200,6 +208,8 @@ export class OperationsPage implements OnInit {
     if (focusedId) this.loadFocusedOperation(focusedId);
     const planId = query?.get('plan');
     if (planId) this.loadOneOffPlan(planId);
+    const occurrenceId = query?.get('occurrence');
+    if (occurrenceId) this.loadOccurrenceForConfirmation(occurrenceId);
     const queryType = query?.get('type');
     const filterType: OperationType | '' =
       queryType === 'income' ||
@@ -455,11 +465,21 @@ export class OperationsPage implements OnInit {
         amount,
       ) &&
       this.fundSelectionIsValid(value.type, value.accountId, value.fundId, amount, fundAmount) &&
-      !(this.isPlanMode() && value.type === 'balance_adjustment')
+      !(this.usesExpectedOperationFields() && value.type === 'balance_adjustment') &&
+      !(this.isOccurrenceConfirmationMode() && Boolean(value.fundId) && value.fundId !== 'allocate')
     );
   }
 
+  protected isOccurrenceConfirmationMode(): boolean {
+    return Boolean(this.confirmingOccurrence());
+  }
+
+  protected usesExpectedOperationFields(): boolean {
+    return this.isPlanMode() || this.isOccurrenceConfirmationMode();
+  }
+
   protected isPlanMode(): boolean {
+    if (this.isOccurrenceConfirmationMode()) return false;
     return (
       Boolean(this.editingPlan()) ||
       (!this.editingId() && this.isFutureDate(this.form.controls.occurredOn.value))
@@ -513,8 +533,15 @@ export class OperationsPage implements OnInit {
     };
     const id = this.editingId();
     const plan = this.editingPlan();
+    const occurrence = this.confirmingOccurrence();
     const existing = this.operations().find((item) => item.id === id);
-    if (this.isPlanMode()) {
+    if (occurrence) {
+      body['allocate_to_funds'] = value.type === 'transfer' && value.fundId === 'allocate';
+      delete body['occurred_on'];
+      delete body['reason'];
+      delete body['fund_id'];
+      delete body['fund_amount'];
+    } else if (this.isPlanMode()) {
       body['scheduled_on'] = value.occurredOn;
       body['allocate_to_funds'] = value.type === 'transfer' && value.fundId === 'allocate';
       body['fund_id'] = null;
@@ -524,19 +551,37 @@ export class OperationsPage implements OnInit {
       if (plan) body['version'] = plan.version;
     } else if (existing) body['version'] = existing.version;
     this.saving.set(true);
-    const request: Observable<Operation | OneOffPlan> = this.isPlanMode()
-      ? plan
-        ? this.http.put<OneOffPlan>(
-            `${environment.apiBaseUrl}/scheduling/one-off-plans/${plan.id}`,
-            body,
-          )
-        : this.http.post<OneOffPlan>(`${environment.apiBaseUrl}/scheduling/one-off-plans`, body)
-      : id
-        ? this.http.put<Operation>(`${environment.apiBaseUrl}/operations/${id}`, body)
-        : this.http.post<Operation>(`${environment.apiBaseUrl}/operations`, body);
+    const request: Observable<Operation | OneOffPlan | ExpectedOccurrence> = occurrence
+      ? this.http.post<ExpectedOccurrence>(
+          `${environment.apiBaseUrl}/scheduling/occurrences/${occurrence.id}/confirm`,
+          { version: occurrence.version, operation: body },
+        )
+      : this.isPlanMode()
+        ? plan
+          ? this.http.put<OneOffPlan>(
+              `${environment.apiBaseUrl}/scheduling/one-off-plans/${plan.id}`,
+              body,
+            )
+          : this.http.post<OneOffPlan>(`${environment.apiBaseUrl}/scheduling/one-off-plans`, body)
+        : id
+          ? this.http.put<Operation>(`${environment.apiBaseUrl}/operations/${id}`, body)
+          : this.http.post<Operation>(`${environment.apiBaseUrl}/operations`, body);
     request.subscribe({
       next: (result) => {
         this.saving.set(false);
+        if (occurrence && 'actual_operation_id' in result && result.actual_operation_id) {
+          const operationId = result.actual_operation_id;
+          this.scheduledNotice.set('Плановая операция принята и добавлена в журнал.');
+          this.cancelEdit();
+          this.load();
+          this.loadDirectories();
+          this.loadFocusedOperation(operationId);
+          void this.router.navigate(['/operations'], {
+            queryParams: { focus: operationId },
+            replaceUrl: true,
+          });
+          return;
+        }
         if (this.isPlanMode() && 'scheduled_on' in result) {
           this.scheduledNotice.set(
             `Разовая операция запланирована на ${formatTextDate(result.scheduled_on)}.`,
@@ -585,6 +630,7 @@ export class OperationsPage implements OnInit {
     this.defaultAccountWasApplied = false;
     this.editingId.set(null);
     this.editingPlan.set(null);
+    this.confirmingOccurrence.set(null);
     this.form.reset({
       type: '',
       occurredOn: this.today(),
@@ -726,7 +772,13 @@ export class OperationsPage implements OnInit {
         this.defaultAccountId.set(settings.default_account_id);
         this.settingsReady.set(true);
         this.applyDefaultAccount();
-        if (!this.editingId() && !this.editingPlan() && this.form.controls.occurredOn.pristine) {
+        if (this.confirmingOccurrence()) {
+          this.form.controls.occurredOn.setValue(settings.application_today);
+        } else if (
+          !this.editingId() &&
+          !this.editingPlan() &&
+          this.form.controls.occurredOn.pristine
+        ) {
           this.form.controls.occurredOn.setValue(settings.application_today);
           this.form.controls.occurredOn.markAsPristine();
         }
@@ -776,6 +828,36 @@ export class OperationsPage implements OnInit {
         },
         error: (error: unknown) =>
           this.error.set(apiErrorMessage(error, 'Не удалось открыть разовый план.')),
+      });
+  }
+
+  private loadOccurrenceForConfirmation(occurrenceId: string): void {
+    this.http
+      .get<ExpectedOccurrence>(`${environment.apiBaseUrl}/scheduling/occurrences/${occurrenceId}`)
+      .subscribe({
+        next: (occurrence) => {
+          if (occurrence.status === 'confirmed' || occurrence.status === 'cancelled') {
+            this.error.set('Эту плановую операцию нельзя принять.');
+            return;
+          }
+          this.defaultAccountWasApplied = false;
+          this.confirmingOccurrence.set(occurrence);
+          this.form.setValue({
+            type: occurrence.type,
+            occurredOn: this.applicationToday() || this.today(),
+            categoryId: occurrence.category_id ?? '',
+            amount: occurrence.amount,
+            accountId: occurrence.account_id,
+            destinationAccountId: occurrence.destination_account_id ?? '',
+            description: occurrence.description ?? '',
+            reason: '',
+            fundId: occurrence.allocate_to_funds ? 'allocate' : '',
+            fundAmount: '',
+          });
+          this.formOpen.set(true);
+        },
+        error: (error: unknown) =>
+          this.error.set(apiErrorMessage(error, 'Не удалось открыть плановую операцию.')),
       });
   }
 

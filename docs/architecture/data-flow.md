@@ -169,8 +169,8 @@ flowchart LR
     Pending -->|postpone| Postponed["postponed with new date"]
     Pending -->|cancel| Cancelled["cancelled"]
     Postponed -->|cancel| Cancelled
-    Pending -->|confirm, optional amount override| Tx["Application transaction"]
-    Postponed -->|confirm, optional amount override| Tx
+    Pending -->|confirm reviewed operation snapshot| Tx["Application transaction"]
+    Postponed -->|confirm reviewed operation snapshot| Tx
     Tx --> Actual["Posted financial operation"]
     Tx -->|transfer option| Allocation["Percentage fund allocation"]
     Actual --> Confirmed["confirmed and linked"]
@@ -181,7 +181,10 @@ identity for a one-calendar-year window. Generating, postponing or cancelling
 an occurrence never changes the actual balance. Confirmation locks the
 occurrence, creates one actual operation through the Operations public contract
 and records its link in the same transaction. A retry returns that link instead
-of posting again. Sliding the window preserves overdue untouched occurrences.
+of posting again. A reviewed confirmation may replace only that occurrence's
+operation fields. Early confirmation uses application today as the fact date;
+the scheduled date remains unchanged. Sliding the window preserves overdue
+untouched occurrences.
 An optional postpone policy locks the rule, selected occurrence and only later
 rows that may change: pending occurrences and automatically cancelled rows that
 still need a preservation marker. It updates the persisted series offset and

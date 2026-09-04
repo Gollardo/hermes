@@ -8,13 +8,22 @@ from app.modules.funds.contracts import TransferAllocationCreateRequest
 from app.modules.operations.contracts import ScheduledOperationDraft, post_scheduled_operation
 from app.modules.scheduling.contracts import (
     OccurrenceConfirmationDraft,
+    OccurrenceConfirmationOverride,
     confirm_occurrence,
 )
-from app.modules.scheduling.schemas import ExpectedOccurrenceResponse
+from app.modules.scheduling.schemas import (
+    ExpectedOccurrenceResponse,
+    OccurrenceConfirmationOperationRequest,
+)
 
 
 def confirm_expected_occurrence(
-    session: Session, occurrence_id: UUID, *, expected_version: int, amount: Decimal | None
+    session: Session,
+    occurrence_id: UUID,
+    *,
+    expected_version: int,
+    amount: Decimal | None,
+    operation: OccurrenceConfirmationOperationRequest | None = None,
 ) -> ExpectedOccurrenceResponse:
     """Confirm one occurrence and all its financial effects in the caller transaction."""
 
@@ -51,5 +60,10 @@ def confirm_expected_occurrence(
         occurrence_id,
         expected_version=expected_version,
         amount=amount,
+        override=(
+            OccurrenceConfirmationOverride(**operation.model_dump())
+            if operation is not None
+            else None
+        ),
         poster=post,
     )

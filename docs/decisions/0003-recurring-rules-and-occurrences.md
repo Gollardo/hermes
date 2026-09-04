@@ -82,8 +82,13 @@ deterministic date/id order. Confirmed, manual and already protected exceptions
 remain outside the row-lock set because series shifting cannot mutate them. A
 single-occurrence postpone does not depend on the rule version when propagation
 is disabled.
-The owner may override the occurrence amount during confirmation. That amount
-is stored as a manual confirmed snapshot without changing its rule or siblings.
+The owner may review and replace the selected occurrence's operation snapshot
+during confirmation, including type, accounts, category, amount, description
+and the existing transfer-allocation choice. The reviewed fields are stored as
+a manual confirmed snapshot without changing its rule or siblings. Confirming
+a future occurrence early posts the actual operation on application today;
+today's and overdue recurring occurrences retain their due date as the fact
+date. The plan date remains on the occurrence as scheduling history.
 When a transfer snapshot requests percentage allocation, application-level
 orchestration posts the physical transfer and the Funds-owned allocation before
 linking the occurrence. All three effects are atomic; unavailable allocation

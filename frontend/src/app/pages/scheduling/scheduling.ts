@@ -545,8 +545,7 @@ export class SchedulingPage implements OnInit {
       void this.router.navigate(['/operations'], { queryParams: { plan: occurrence.id } });
       return;
     }
-    const rule = this.occurrenceRule(occurrence);
-    if (rule) this.editRule(rule);
+    void this.router.navigate(['/operations'], { queryParams: { occurrence: occurrence.id } });
   }
 
   protected openCalendarDay(day: CalendarDay): void {

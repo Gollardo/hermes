@@ -9,6 +9,12 @@ status candidates are `pending`, `confirmed`, `postponed` and `cancelled`.
 Only confirmation creates an actual financial operation that affects balance.
 Postponing one occurrence changes only that occurrence by default. A rule may
 explicitly opt into shifting its untouched later occurrences by the same delta.
+Confirmation may replace the selected occurrence's operation snapshot after a
+reviewed edit. Type, accounts, category, amount, description and the existing
+transfer-allocation choice then apply only to that occurrence; its rule and
+siblings remain unchanged. A future occurrence confirmed early posts the fact
+on application today, while today's and overdue recurring occurrences retain
+their due date as the fact date.
 
 ## One-off plans
 
@@ -106,8 +112,9 @@ the exact decision the owner made.
 
 - Rules and expected occurrences never create account or fund movements.
 - Confirmation posts exactly one actual operation and links it atomically.
-- Confirmation may override the amount of that occurrence. The confirmed
-  snapshot records the actual amount and future siblings keep the rule amount.
+- Confirmation may replace the selected occurrence's reviewed operation fields.
+  The confirmed snapshot records the accepted values and future siblings keep
+  the rule snapshot.
 - A transfer snapshot may request percentage allocation on the destination
   account. Its physical transfer, fund allocation and confirmation link commit
   or roll back together. The percentages are read from one locked active-fund

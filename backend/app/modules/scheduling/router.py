@@ -224,7 +224,11 @@ def confirm(
 ) -> ExpectedOccurrenceResponse:
     try:
         return confirm_expected_occurrence(
-            session, occurrence_id, expected_version=payload.version, amount=payload.amount
+            session,
+            occurrence_id,
+            expected_version=payload.version,
+            amount=payload.amount,
+            operation=payload.operation,
         )
     except (
         AccountReferenceError,

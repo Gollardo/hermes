@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 
 import { OperationsPage } from './operations';
 
@@ -45,6 +45,7 @@ describe('OperationsPage', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
         {
           provide: ActivatedRoute,
           useFactory: () => ({
@@ -552,6 +553,132 @@ describe('OperationsPage', () => {
 
     expect((fixture.nativeElement.querySelector('#operation-date') as HTMLInputElement).value).toBe(
       '2026-09-10',
+    );
+  });
+
+  it('edits and confirms one future recurring occurrence without editing its rule', () => {
+    queryParams = { occurrence: 'occurrence-1' };
+    fixture.detectChanges();
+
+    http.expectOne('/api/v1/scheduling/occurrences/occurrence-1').flush({
+      id: 'occurrence-1',
+      source_kind: 'recurring',
+      rule_id: 'rule-1',
+      scheduled_on: '2026-09-10',
+      due_on: '2026-09-10',
+      status: 'pending',
+      type: 'expense',
+      amount: '12.5000',
+      description: 'Insurance',
+      account_id: 'account-1',
+      account_name: 'Main',
+      destination_account_id: null,
+      destination_account_name: null,
+      category_id: 'category-1',
+      category_name: 'Food',
+      allocate_to_funds: false,
+      actual_operation_id: null,
+      version: 3,
+    });
+    http.expectOne('/api/v1/settings').flush({
+      base_currency: 'RUB',
+      timezone: 'UTC',
+      application_today: '2026-08-31',
+      default_account_id: null,
+    });
+    http.expectOne('/api/v1/accounts').flush([
+      { id: 'account-1', name: 'Main', balance: '100.0000', archived: false },
+      { id: 'account-2', name: 'Secondary', balance: '50.0000', archived: false },
+    ]);
+    http.expectOne('/api/v1/categories').flush([
+      {
+        id: 'category-1',
+        name: 'Food',
+        type: 'expense',
+        archived: false,
+        parent_id: null,
+      },
+    ]);
+    http.expectOne('/api/v1/funds/summary').flush({ funds: [], positions: [] });
+    http
+      .expectOne((request) => request.url === '/api/v1/operations')
+      .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+    http
+      .match((request) => request.url === '/api/v1/scheduling/occurrences')
+      .forEach((request) => request.flush({ items: [], page: 1, page_size: 367, total: 0 }));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Принять плановую операцию');
+    expect(fixture.nativeElement.textContent).toContain('Плановая дата — 10 сентября 2026');
+    expect((fixture.nativeElement.querySelector('#operation-date') as HTMLInputElement).value).toBe(
+      '2026-08-31',
+    );
+    setValue('#operation-amount', '20 + 5,50');
+    setValue('#operation-account', 'account-2');
+    setValue('#operation-description', 'Accepted early');
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.nativeElement.querySelector('.entry-panel form').dispatchEvent(new Event('submit'));
+
+    const request = http.expectOne('/api/v1/scheduling/occurrences/occurrence-1/confirm');
+    expect(request.request.body).toEqual({
+      version: 3,
+      operation: {
+        type: 'expense',
+        amount: '25.50',
+        account_id: 'account-2',
+        destination_account_id: null,
+        category_id: 'category-1',
+        description: 'Accepted early',
+        allocate_to_funds: false,
+      },
+    });
+    request.flush({
+      id: 'occurrence-1',
+      source_kind: 'recurring',
+      rule_id: 'rule-1',
+      scheduled_on: '2026-09-10',
+      due_on: '2026-09-10',
+      status: 'confirmed',
+      type: 'expense',
+      amount: '25.5000',
+      description: 'Accepted early',
+      account_id: 'account-2',
+      destination_account_id: null,
+      category_id: 'category-1',
+      allocate_to_funds: false,
+      actual_operation_id: 'operation-1',
+      version: 4,
+    });
+    http.expectOne('/api/v1/accounts').flush([]);
+    http.expectOne('/api/v1/categories').flush([]);
+    http.expectOne('/api/v1/funds/summary').flush({ funds: [], positions: [] });
+    http.expectOne('/api/v1/operations/operation-1').flush({
+      id: 'operation-1',
+      type: 'expense',
+      occurred_on: '2026-08-31',
+      amount: '25.5000',
+      description: 'Accepted early',
+      reason: null,
+      category_id: 'category-1',
+      category_name: 'Food',
+      account_id: 'account-2',
+      destination_account_id: null,
+      movements: [],
+      fund_id: null,
+      fund_amount: null,
+      fund_movements: [],
+      version: 1,
+    });
+    http
+      .expectOne((candidate) => candidate.url === '/api/v1/operations')
+      .flush({ items: [], page: 1, page_size: 25, total: 0, total_amount: '0.0000' });
+    http
+      .match((candidate) => candidate.url === '/api/v1/scheduling/occurrences')
+      .forEach((candidate) => candidate.flush({ items: [], page: 1, page_size: 367, total: 0 }));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Плановая операция принята и добавлена в журнал.',
     );
   });
 

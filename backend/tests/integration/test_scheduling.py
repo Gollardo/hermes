@@ -242,6 +242,87 @@ def test_expected_occurrence_lifecycle_posts_only_on_confirmation(
         assert balances[destination] == "5.0000"
 
 
+def test_future_recurring_occurrence_can_be_edited_and_confirmed_today(
+    postgres_database_settings: Settings,
+) -> None:
+    app = create_app(postgres_database_settings)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/setup", json=SETUP_PAYLOAD).status_code == 201
+        headers = _headers(client)
+        original_account = _account(client, headers, "Original", "0")
+        accepted_account = _account(client, headers, "Accepted", "0")
+        original_category = _category(client, headers, "Salary", "income")
+        accepted_category = _category(client, headers, "Bonus", "income")
+        today = _horizon_today(client, headers)
+        planned_on = today + timedelta(days=10)
+        rule = client.post(
+            "/api/v1/scheduling/rules",
+            headers=headers,
+            json=_rule_payload(
+                operation_type="income",
+                start_on=planned_on,
+                end_on=planned_on + timedelta(days=1),
+                amount="10",
+                account_id=original_account,
+                category_id=original_category,
+            ),
+        ).json()
+        occurrences = _occurrences(client, rule["id"])
+        selected, sibling = occurrences
+
+        confirmed = client.post(
+            f"/api/v1/scheduling/occurrences/{selected['id']}/confirm",
+            headers=headers,
+            json={
+                "version": selected["version"],
+                "operation": {
+                    "type": "income",
+                    "amount": "25.50",
+                    "description": "Accepted early",
+                    "account_id": accepted_account,
+                    "destination_account_id": None,
+                    "category_id": accepted_category,
+                    "allocate_to_funds": False,
+                },
+            },
+        )
+
+        assert confirmed.status_code == 200
+        snapshot = confirmed.json()
+        assert snapshot["status"] == "confirmed"
+        assert snapshot["due_on"] == planned_on.isoformat()
+        assert snapshot["amount"] == "25.5000"
+        assert snapshot["description"] == "Accepted early"
+        assert snapshot["account_id"] == accepted_account
+        assert snapshot["category_id"] == accepted_category
+        assert snapshot["manually_modified"] is True
+        operation_id = snapshot["actual_operation_id"]
+        operation = client.get(f"/api/v1/operations/{operation_id}").json()
+        assert operation["occurred_on"] == today.isoformat()
+        assert operation["amount"] == "25.5000"
+        assert operation["description"] == "Accepted early"
+        assert operation["account_id"] == accepted_account
+        assert operation["category_id"] == accepted_category
+
+        balances = {item["id"]: item["balance"] for item in client.get("/api/v1/accounts").json()}
+        assert balances[original_account] == "0.0000"
+        assert balances[accepted_account] == "25.5000"
+        persisted_rule = client.get("/api/v1/scheduling/rules").json()[0]
+        assert persisted_rule["amount"] == "10.0000"
+        assert persisted_rule["account_id"] == original_account
+        persisted_sibling = client.get(f"/api/v1/scheduling/occurrences/{sibling['id']}").json()
+        assert persisted_sibling["amount"] == "10.0000"
+        assert persisted_sibling["account_id"] == original_account
+
+        repeated = client.post(
+            f"/api/v1/scheduling/occurrences/{selected['id']}/confirm",
+            headers=headers,
+            json={"version": selected["version"]},
+        )
+        assert repeated.status_code == 200
+        assert repeated.json()["actual_operation_id"] == operation_id
+
+
 def test_postponing_with_series_shift_preserves_manual_and_confirmed_occurrences(
     postgres_database_settings: Settings,
 ) -> None:

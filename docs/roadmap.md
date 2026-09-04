@@ -340,7 +340,9 @@ The release goal was to add planned financial events.
 - [x] Prevent duplicate materialization.
 - [x] Statuses `pending`, `confirmed`, `postponed`, and `cancelled`.
 - [x] Confirm an expected operation.
-- [x] Adjust the amount of an individual occurrence during confirmation.
+- [x] Review and adjust an individual occurrence's operation fields during
+  confirmation without changing its rule or siblings; an early confirmation
+  posts on application today.
 - [x] Atomic planned transfer with percentage-based fund allocation.
 - [x] Postpone an individual occurrence.
 - [x] Cancel an individual occurrence.

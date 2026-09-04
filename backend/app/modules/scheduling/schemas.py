@@ -190,8 +190,43 @@ class OccurrenceVersionRequest(BaseModel):
     version: int = Field(ge=1)
 
 
+class OccurrenceConfirmationOperationRequest(BaseModel):
+    type: OperationType
+    amount: Money
+    description: str | None = Field(default=None, max_length=2000)
+    account_id: UUID
+    destination_account_id: UUID | None = None
+    category_id: UUID | None = None
+    allocate_to_funds: bool = False
+
+    @field_validator("description")
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> Self:
+        if self.type == OperationType.BALANCE_ADJUSTMENT:
+            raise ValueError("balance adjustments cannot confirm an occurrence")
+        if self.amount <= 0:
+            raise ValueError("amount must be positive")
+        if self.type in {OperationType.INCOME, OperationType.EXPENSE}:
+            if self.allocate_to_funds:
+                raise ValueError("only transfers can allocate to funds")
+            if self.category_id is None or self.destination_account_id is not None:
+                raise ValueError("income and expense require category and one account")
+        elif (
+            self.category_id is not None
+            or self.destination_account_id is None
+            or self.destination_account_id == self.account_id
+        ):
+            raise ValueError("transfer requires two different accounts and no category")
+        return self
+
+
 class OccurrenceConfirmRequest(OccurrenceVersionRequest):
     amount: Money | None = None
+    operation: OccurrenceConfirmationOperationRequest | None = None
 
     @field_validator("amount")
     @classmethod
@@ -199,6 +234,12 @@ class OccurrenceConfirmRequest(OccurrenceVersionRequest):
         if value is not None and value <= 0:
             raise ValueError("amount must be positive")
         return value
+
+    @model_validator(mode="after")
+    def validate_override(self) -> Self:
+        if self.amount is not None and self.operation is not None:
+            raise ValueError("amount and operation cannot be supplied together")
+        return self
 
 
 class OccurrencePostponeRequest(OccurrenceVersionRequest):
