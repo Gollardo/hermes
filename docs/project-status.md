@@ -115,8 +115,10 @@ access. Direct public-internet exposure is unsupported.
   day in a modal. Opening an actionable recurring event starts a reviewed
   confirmation in the established operation composer, where its operation
   fields may change without editing the rule or siblings. Early confirmation
-  posts the fact on the current Hermes application day. Opening an unconfirmed
-  one-off event opens the one-off plan editor. The
+  posts the fact on the current Hermes application day, including transfers
+  that allocate to funds. Confirmed snapshots remain available from their
+  calendar day but no longer contribute to its planned net total. Opening an
+  unconfirmed one-off event opens the one-off plan editor. The
   Operations journal shows one-off plans due on server-provided application
   today in a distinct balance-neutral attention section. Each can be edited or
   explicitly applied from the journal after a consequence confirmation; a

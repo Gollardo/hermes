@@ -718,7 +718,7 @@ export class OperationsPage implements OnInit {
       return false;
     }
     if (type === 'balance_adjustment' && !reason.trim()) return false;
-    if (type === 'transfer' && fundId) {
+    if (type === 'transfer' && fundId && fundId !== 'allocate') {
       const virtualUnits = moneyUnits(fundAmount);
       const physicalUnits = moneyUnits(physicalAmount);
       if (
@@ -742,7 +742,8 @@ export class OperationsPage implements OnInit {
     physicalAmount: string,
     fundAmount: string,
   ): boolean {
-    if (!fundId || (type !== 'expense' && type !== 'transfer')) return true;
+    if (!fundId || fundId === 'allocate' || (type !== 'expense' && type !== 'transfer'))
+      return true;
     const required = moneyUnits(type === 'expense' ? physicalAmount : fundAmount);
     return (
       required !== null &&

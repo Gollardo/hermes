@@ -514,7 +514,7 @@ export class SchedulingPage implements OnInit {
 
   protected calendarDaySummary(day: CalendarDay): string | null {
     const terms = day.occurrences
-      .filter((occurrence) => occurrence.status !== 'cancelled' && occurrence.type !== 'transfer')
+      .filter((occurrence) => this.actionable(occurrence) && occurrence.type !== 'transfer')
       .map((occurrence) => `${occurrence.type === 'expense' ? '-' : '+'}${occurrence.amount}`);
     const total = terms.length ? moneyExpressionPayload(terms.join('')) : '0';
     if (total === null || /^0(?:\.0+)?$/.test(total)) return null;

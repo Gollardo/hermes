@@ -556,7 +556,7 @@ describe('OperationsPage', () => {
     );
   });
 
-  it('edits and confirms one future recurring occurrence without editing its rule', () => {
+  it('edits and confirms one future allocating transfer without editing its rule', () => {
     queryParams = { occurrence: 'occurrence-1' };
     fixture.detectChanges();
 
@@ -567,16 +567,16 @@ describe('OperationsPage', () => {
       scheduled_on: '2026-09-10',
       due_on: '2026-09-10',
       status: 'pending',
-      type: 'expense',
+      type: 'transfer',
       amount: '12.5000',
       description: 'Insurance',
       account_id: 'account-1',
       account_name: 'Main',
-      destination_account_id: null,
-      destination_account_name: null,
-      category_id: 'category-1',
-      category_name: 'Food',
-      allocate_to_funds: false,
+      destination_account_id: 'account-2',
+      destination_account_name: 'Secondary',
+      category_id: null,
+      category_name: null,
+      allocate_to_funds: true,
       actual_operation_id: null,
       version: 3,
     });
@@ -614,7 +614,6 @@ describe('OperationsPage', () => {
       '2026-08-31',
     );
     setValue('#operation-amount', '20 + 5,50');
-    setValue('#operation-account', 'account-2');
     setValue('#operation-description', 'Accepted early');
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     fixture.nativeElement.querySelector('.entry-panel form').dispatchEvent(new Event('submit'));
@@ -623,13 +622,13 @@ describe('OperationsPage', () => {
     expect(request.request.body).toEqual({
       version: 3,
       operation: {
-        type: 'expense',
+        type: 'transfer',
         amount: '25.50',
-        account_id: 'account-2',
-        destination_account_id: null,
-        category_id: 'category-1',
+        account_id: 'account-1',
+        destination_account_id: 'account-2',
+        category_id: null,
         description: 'Accepted early',
-        allocate_to_funds: false,
+        allocate_to_funds: true,
       },
     });
     request.flush({
@@ -639,13 +638,13 @@ describe('OperationsPage', () => {
       scheduled_on: '2026-09-10',
       due_on: '2026-09-10',
       status: 'confirmed',
-      type: 'expense',
+      type: 'transfer',
       amount: '25.5000',
       description: 'Accepted early',
-      account_id: 'account-2',
-      destination_account_id: null,
-      category_id: 'category-1',
-      allocate_to_funds: false,
+      account_id: 'account-1',
+      destination_account_id: 'account-2',
+      category_id: null,
+      allocate_to_funds: true,
       actual_operation_id: 'operation-1',
       version: 4,
     });
@@ -654,15 +653,15 @@ describe('OperationsPage', () => {
     http.expectOne('/api/v1/funds/summary').flush({ funds: [], positions: [] });
     http.expectOne('/api/v1/operations/operation-1').flush({
       id: 'operation-1',
-      type: 'expense',
+      type: 'transfer',
       occurred_on: '2026-08-31',
       amount: '25.5000',
       description: 'Accepted early',
       reason: null,
-      category_id: 'category-1',
-      category_name: 'Food',
-      account_id: 'account-2',
-      destination_account_id: null,
+      category_id: null,
+      category_name: null,
+      account_id: 'account-1',
+      destination_account_id: 'account-2',
       movements: [],
       fund_id: null,
       fund_amount: null,

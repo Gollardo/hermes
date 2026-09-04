@@ -35,9 +35,11 @@ events merely because they are within the next 30 days.
   navigation resets scroll so the linked-fact context is visible immediately.
 - `cancelled` remains visible but visually secondary.
 - Overdue is communicated by text and boundary treatment, never by color alone.
-- A calendar day displays one signed net amount for non-cancelled income and
-  expense occurrences; a zero net amount remains blank. Transfers do not enter
-  that aggregate because they are neutral for the all-account total.
+- A calendar day displays one signed net amount for pending or postponed income
+  and expense occurrences; confirmed snapshots remain visible in day details
+  but do not enter the planned aggregate. A zero net amount remains blank.
+  Transfers do not enter that aggregate because they are neutral for the
+  all-account total.
 - A date with events and its daily amount open the complete day list. The list
   retains every occurrence title, type, status and amount; color and
   strike-through remain supplementary signals there.

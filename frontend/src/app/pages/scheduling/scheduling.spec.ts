@@ -369,6 +369,31 @@ describe('SchedulingPage recurrence editor', () => {
     expect(day.querySelector('.calendar-day-date')).not.toBeNull();
   });
 
+  it('keeps confirmed occurrences in the day details without counting them in its summary', () => {
+    flushInitial([
+      { ...OCCURRENCE, type: 'income', amount: '20.0000' },
+      {
+        ...OCCURRENCE,
+        id: 'occurrence-2',
+        status: 'confirmed',
+        overdue: false,
+        type: 'income',
+        amount: '100.0000',
+        actual_operation_id: 'operation-1',
+      },
+    ]);
+
+    const day = fixture.nativeElement.querySelector(
+      '.calendar-day[aria-label="2026-08-10"]',
+    ) as HTMLElement;
+    expect(day.textContent).toContain('+20,00 ₽');
+    expect(day.textContent).not.toContain('+120,00 ₽');
+
+    (day.querySelector('.calendar-day-date') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.confirmed-link')).not.toBeNull();
+  });
+
   it('groups attention items by due date without repeating the date', () => {
     flushInitial([OCCURRENCE, { ...OCCURRENCE, id: 'occurrence-2', description: 'Телефон' }]);
 
